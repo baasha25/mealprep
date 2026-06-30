@@ -31,7 +31,7 @@ const NAV: [string, string, LucideIcon, boolean][] = [
   ["/dashboard/kitchen", "Kitchen OS", ChefHat, true],
   ["/dashboard/purchasing", "Purchasing", Carrot, true],
   ["/dashboard/fulfillment", "Labels & packing", Tag, true],
-  ["/dashboard/routes", "Delivery Routes", Truck, false],
+  ["/dashboard/routes", "Delivery Routes", Truck, true],
   ["/dashboard/pos", "POS Terminal", Wallet, true],
   ["/dashboard/marketing", "Marketing", Megaphone, true],
   ["/dashboard/staff", "Staff", Users, false],
