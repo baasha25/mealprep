@@ -21,7 +21,7 @@ const NAV: [string, string, LucideIcon, boolean][] = [
   ["/dashboard", "Dashboard", LayoutDashboard, true],
   ["/dashboard/menu", "Menu", ChefHat, true],
   ["/dashboard/orders", "Orders", Receipt, true],
-  ["/dashboard/kitchen", "Kitchen OS", ChefHat, false],
+  ["/dashboard/kitchen", "Kitchen OS", ChefHat, true],
   ["/dashboard/routes", "Delivery Routes", Truck, false],
   ["/dashboard/pos", "POS Terminal", Wallet, false],
   ["/dashboard/marketing", "Marketing", Megaphone, false],
