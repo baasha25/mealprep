@@ -97,8 +97,9 @@ const SEED_ORDERS = [
 
 async function main() {
   console.log("Resetting seed business…");
-  // Dev seed is idempotent: wipe the pilot tenant (cascades to all children) and rebuild.
-  await db.business.deleteMany({ where: { name: "Greenleaf Kitchen" } });
+  // Dev seed is a full reset: wipe ALL tenants (cascades to every child row) and
+  // rebuild the single pilot business. Dev-only — never run against production data.
+  await db.business.deleteMany({});
 
   const business = await db.business.create({
     data: {

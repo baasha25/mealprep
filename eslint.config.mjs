@@ -12,6 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Reference-only Vite demo and generated Prisma client.
+    "demo/**",
+    "src/generated/**",
   ]),
 ]);
 
