@@ -1,0 +1,78 @@
+import { notFound } from "next/navigation";
+import { Leaf } from "lucide-react";
+import { db } from "@/lib/db";
+import { getStorefrontBusiness } from "@/lib/storefront";
+import { Storefront, type StoreMeal, type StoreSettings } from "./storefront";
+
+export const dynamic = "force-dynamic";
+
+export default async function StorePage() {
+  const business = await getStorefrontBusiness();
+  if (!business || !business.settings) notFound();
+  const s = business.settings;
+
+  const meals = await db.meal.findMany({
+    where: { businessId: business.id, active: true },
+    orderBy: { createdAt: "asc" },
+  });
+
+  const storeMeals: StoreMeal[] = meals.map((m) => ({
+    id: m.id,
+    name: m.name,
+    description: m.description,
+    diet: m.diet,
+    priceCents: m.priceCents,
+    swatch: m.swatch,
+    allergens: m.allergens,
+    calories: m.calories,
+    proteinG: m.proteinG,
+  }));
+
+  const settings: StoreSettings = {
+    subDiscountBps: s.subDiscountBps,
+    taxRateBps: s.taxRateBps,
+    deliveryFeeCents: s.deliveryFeeCents,
+    processingFeeCents: s.processingFeeCents,
+    minOrderCents: s.minOrderCents,
+    fulfillment: s.fulfillment,
+    pickupLocations: s.pickupLocations,
+  };
+
+  return (
+    <div
+      className="min-h-screen"
+      style={{ background: "var(--paper)", "--pine": business.brandColor } as React.CSSProperties}
+    >
+      <header
+        className="border-b"
+        style={{ borderColor: "var(--line)", background: "var(--surface)" }}
+      >
+        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center gap-2.5">
+          <div className="grid place-items-center w-8 h-8 rounded-md" style={{ background: "var(--pine)" }}>
+            <Leaf size={17} color="#f4f2ec" />
+          </div>
+          <div>
+            <div className="disp text-[18px] font-medium leading-none" style={{ color: "var(--ink)" }}>
+              {business.name}
+            </div>
+            <div className="text-[11.5px]" style={{ color: "var(--muted)" }}>
+              Fresh meals, made to order
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <main className="max-w-6xl mx-auto px-6 py-8 fade">
+        <div className="mb-7">
+          <h1 className="disp text-[30px] leading-none font-medium" style={{ color: "var(--ink)" }}>
+            Order Fresh Meals
+          </h1>
+          <p className="text-[13.5px] mt-2.5" style={{ color: "var(--ink-soft)" }}>
+            Browse the menu, build your order, and subscribe to save every week.
+          </p>
+        </div>
+        <Storefront businessName={business.name} meals={storeMeals} settings={settings} />
+      </main>
+    </div>
+  );
+}
