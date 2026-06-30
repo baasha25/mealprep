@@ -97,8 +97,11 @@ const SEED_ORDERS = [
 
 async function main() {
   console.log("Resetting seed business…");
-  // Dev seed is a full reset: wipe ALL tenants (cascades to every child row) and
-  // rebuild the single pilot business. Dev-only — never run against production data.
+  // Dev seed is a full reset. Delete subscriptions first: Subscription→Plan is a
+  // required (restrict) relation, so the Business cascade would try to drop Plans
+  // while subscriptions still reference them → FK violation. Clearing subscriptions
+  // (cascades to selections/items) first avoids that ordering problem.
+  await db.subscription.deleteMany({});
   await db.business.deleteMany({});
 
   const business = await db.business.create({
@@ -172,8 +175,9 @@ async function main() {
   console.log(`  ${mealIds.size} meals`);
 
   // Plans.
+  const planIds = new Map<string, string>();
   for (const p of PLANS) {
-    await db.plan.create({
+    const plan = await db.plan.create({
       data: {
         businessId: business.id,
         name: p.name,
@@ -181,7 +185,14 @@ async function main() {
         perMealPriceCents: cents(p.perMeal),
       },
     });
+    planIds.set(p.name, plan.id);
   }
+  const proPlanId = planIds.get("Pro")!;
+
+  // Next delivery a few days out so subscriptions are editable before cut-off.
+  const nextDelivery = new Date();
+  nextDelivery.setDate(nextDelivery.getDate() + 5);
+  nextDelivery.setHours(18, 0, 0, 0);
 
   // Coupons.
   await db.coupon.createMany({
@@ -220,7 +231,7 @@ async function main() {
     const taxCents = Math.round((subtotalCents * taxRateBps) / 10000);
     const feesCents = cents(4.99) + cents(1.5);
 
-    await db.order.create({
+    const order = await db.order.create({
       data: {
         businessId: business.id,
         customerId: customer.id,
@@ -236,6 +247,35 @@ async function main() {
         items: { create: lineItems },
       },
     });
+
+    // Subscription customers get an active recurring subscription with an
+    // upcoming delivery selection (the meals on their seed order).
+    if (o.type === "subscription") {
+      const sub = await db.subscription.create({
+        data: {
+          businessId: business.id,
+          customerId: customer.id,
+          planId: proPlanId,
+          status: "active",
+          frequency: "weekly",
+          nextDeliveryDate: nextDelivery,
+        },
+      });
+      await db.subscriptionSelection.create({
+        data: {
+          subscriptionId: sub.id,
+          deliveryDate: nextDelivery,
+          items: {
+            create: lineItems.map((li) => ({ mealId: li.mealId, qty: li.qty })),
+          },
+        },
+      });
+      // Link the seed order back to its subscription.
+      await db.order.update({
+        where: { id: order.id },
+        data: { subscriptionId: sub.id },
+      });
+    }
   }
   console.log(`  ${SEED_ORDERS.length} customers + orders`);
   console.log("Seed complete.");

@@ -1,0 +1,141 @@
+import Link from "next/link";
+import { Leaf } from "lucide-react";
+import { db } from "@/lib/db";
+import { getCustomerContext } from "@/lib/customer-auth";
+import { canModifyNextDelivery } from "@/lib/subscriptions";
+import { SubscriptionManager, type ManagerMeal } from "./subscription-manager";
+
+export const dynamic = "force-dynamic";
+
+export default async function AccountPage() {
+  const ctx = await getCustomerContext();
+
+  if (!ctx) {
+    return (
+      <Shell businessName="PrepFlow">
+        <p className="text-[14px]" style={{ color: "var(--muted)" }}>
+          No account found.
+        </p>
+      </Shell>
+    );
+  }
+  const { customer } = ctx;
+
+  const [business, subscription] = await Promise.all([
+    db.business.findUnique({ where: { id: customer.businessId }, include: { settings: true } }),
+    db.subscription.findFirst({
+      where: { customerId: customer.id, status: { not: "canceled" } },
+      orderBy: { createdAt: "desc" },
+      include: {
+        plan: true,
+        selections: {
+          orderBy: { deliveryDate: "asc" },
+          include: { items: true },
+          take: 1,
+        },
+      },
+    }),
+  ]);
+
+  const meals = await db.meal.findMany({
+    where: { businessId: customer.businessId, active: true },
+    orderBy: { createdAt: "asc" },
+  });
+  const managerMeals: ManagerMeal[] = meals.map((m) => ({
+    id: m.id,
+    name: m.name,
+    priceCents: m.priceCents,
+    diet: m.diet,
+  }));
+
+  const dateFmt = new Intl.DateTimeFormat("en-US", { weekday: "short", month: "short", day: "numeric" });
+
+  return (
+    <Shell businessName={business?.name ?? "PrepFlow"} brandColor={business?.brandColor}>
+      <div className="mb-7">
+        <div className="text-[10.5px] font-semibold tracking-[0.16em] uppercase mb-2.5" style={{ color: "var(--muted)" }}>
+          Your account
+        </div>
+        <h1 className="disp text-[30px] leading-none font-medium" style={{ color: "var(--ink)" }}>
+          Hi {customer.name.split(" ")[0]}
+        </h1>
+        <p className="text-[13.5px] mt-2.5" style={{ color: "var(--ink-soft)" }}>
+          Manage your meal-plan subscription — pause, skip, or swap meals before the cut-off.
+        </p>
+      </div>
+
+      {!subscription ? (
+        <div
+          className="rounded-xl border p-10 text-center"
+          style={{ borderColor: "var(--line)", background: "var(--surface)" }}
+        >
+          <p className="text-[14px]" style={{ color: "var(--ink)" }}>
+            You don&apos;t have an active subscription.
+          </p>
+          <Link
+            href="/store"
+            className="inline-block mt-4 px-4 py-2 rounded-lg text-[13px] font-medium"
+            style={{ background: "var(--pine)", color: "#f4f2ec" }}
+          >
+            Browse meal plans
+          </Link>
+        </div>
+      ) : (
+        <SubscriptionManager
+          subscriptionId={subscription.id}
+          status={subscription.status as "active" | "paused" | "canceled"}
+          planName={subscription.plan.name}
+          frequencyLabel={subscription.frequency === "weekly" ? "Weekly" : "Every 2 weeks"}
+          nextDeliveryLabel={
+            subscription.nextDeliveryDate ? dateFmt.format(subscription.nextDeliveryDate) : "—"
+          }
+          cutoffLabel={business?.settings?.cutoff ?? "48h before delivery"}
+          canModify={canModifyNextDelivery(
+            subscription.status as "active" | "paused" | "canceled",
+            new Date(),
+            subscription.nextDeliveryDate,
+          )}
+          perMealPriceCents={subscription.plan.perMealPriceCents}
+          initialSelection={Object.fromEntries(
+            (subscription.selections[0]?.items ?? []).map((i) => [i.mealId, i.qty]),
+          )}
+          meals={managerMeals}
+        />
+      )}
+    </Shell>
+  );
+}
+
+function Shell({
+  children,
+  businessName,
+  brandColor,
+}: {
+  children: React.ReactNode;
+  businessName: string;
+  brandColor?: string;
+}) {
+  return (
+    <div
+      className="min-h-screen"
+      style={{ background: "var(--paper)", "--pine": brandColor ?? "#2f4536" } as React.CSSProperties}
+    >
+      <header className="border-b" style={{ borderColor: "var(--line)", background: "var(--surface)" }}>
+        <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="grid place-items-center w-8 h-8 rounded-md" style={{ background: "var(--pine)" }}>
+              <Leaf size={17} color="#f4f2ec" />
+            </div>
+            <div className="disp text-[18px] font-medium" style={{ color: "var(--ink)" }}>
+              {businessName}
+            </div>
+          </div>
+          <Link href="/store" className="text-[13px] font-medium" style={{ color: "var(--pine)" }}>
+            Order more →
+          </Link>
+        </div>
+      </header>
+      <main className="max-w-4xl mx-auto px-6 py-8 fade">{children}</main>
+    </div>
+  );
+}
