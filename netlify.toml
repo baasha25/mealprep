@@ -1,0 +1,14 @@
+# Netlify config for the PrepFlow Next.js app (repo root).
+# The Vite demo has its own netlify.toml under demo/ and is not deployed here.
+
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+# Official Next.js runtime — handles SSR/route handlers/server actions on Netlify.
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+[build.environment]
+  # Prisma 7 generates its client on install via the postinstall script.
+  NODE_VERSION = "20"

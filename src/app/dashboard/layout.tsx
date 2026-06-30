@@ -2,6 +2,10 @@ import { requireBusiness } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { DashboardSidebar } from "@/components/dashboard-sidebar";
 
+// The dashboard is authenticated, per-tenant, live data — render on request,
+// never prerender at build (the build has no database). Applies to all /dashboard/* routes.
+export const dynamic = "force-dynamic";
+
 export default async function DashboardLayout({
   children,
 }: {
