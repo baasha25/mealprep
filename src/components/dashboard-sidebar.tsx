@@ -19,8 +19,8 @@ import {
 // arrive incrementally through Phase 0/1. Items without a page yet are marked.
 const NAV: [string, string, LucideIcon, boolean][] = [
   ["/dashboard", "Dashboard", LayoutDashboard, true],
-  ["/dashboard/menu", "Menu", ChefHat, false],
-  ["/dashboard/orders", "Orders", Receipt, false],
+  ["/dashboard/menu", "Menu", ChefHat, true],
+  ["/dashboard/orders", "Orders", Receipt, true],
   ["/dashboard/kitchen", "Kitchen OS", ChefHat, false],
   ["/dashboard/routes", "Delivery Routes", Truck, false],
   ["/dashboard/pos", "POS Terminal", Wallet, false],
