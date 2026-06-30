@@ -13,6 +13,7 @@ import {
   Wallet,
   Leaf,
   Carrot,
+  Upload,
   type LucideIcon,
 } from "lucide-react";
 
@@ -28,6 +29,7 @@ const NAV: [string, string, LucideIcon, boolean][] = [
   ["/dashboard/pos", "POS Terminal", Wallet, false],
   ["/dashboard/marketing", "Marketing", Megaphone, false],
   ["/dashboard/staff", "Staff", Users, false],
+  ["/dashboard/import", "Import data", Upload, true],
   ["/dashboard/settings", "Settings", Cog, true],
 ];
 
