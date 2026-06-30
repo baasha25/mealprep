@@ -16,6 +16,7 @@ import {
   Upload,
   User,
   Tag,
+  BarChart3,
   type LucideIcon,
 } from "lucide-react";
 
@@ -23,6 +24,7 @@ import {
 // arrive incrementally through Phase 0/1. Items without a page yet are marked.
 const NAV: [string, string, LucideIcon, boolean][] = [
   ["/dashboard", "Dashboard", LayoutDashboard, true],
+  ["/dashboard/analytics", "Analytics", BarChart3, true],
   ["/dashboard/menu", "Menu", ChefHat, true],
   ["/dashboard/orders", "Orders", Receipt, true],
   ["/dashboard/customers", "Customers", User, true],
