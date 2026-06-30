@@ -1,0 +1,100 @@
+@import "tailwindcss";
+
+/* =================================================================== */
+/*  PrepFlow design tokens — ported from the Vite demo (pine/paper/clay) */
+/*  Palette + type are the source of truth; do not redesign.            */
+/* =================================================================== */
+
+:root {
+  --paper: #f4f2ec;
+  --surface: #ffffff;
+  --ink: #1f1e1a;
+  --ink-soft: #56534b;
+  --muted: #8a857a;
+  --line: #e7e3d8;
+  --sand: #ece8df;
+  --pine: #2f4536; /* per-business brand color; overridden at runtime in the dashboard */
+  --clay: #a85a3f;
+  --sidebar: #1b1a16;
+}
+
+/* Expose tokens as Tailwind v4 theme colors so `bg-paper`, `text-ink`, etc. work,
+   while inline `style={{ color: "var(--ink)" }}` (as used throughout the demo) keeps working too. */
+@theme inline {
+  --color-paper: var(--paper);
+  --color-surface: var(--surface);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-sand: var(--sand);
+  --color-pine: var(--pine);
+  --color-clay: var(--clay);
+  --color-sidebar: var(--sidebar);
+
+  --font-sans: var(--font-inter), "Inter", sans-serif;
+  --font-display: var(--font-fraunces), "Fraunces", serif;
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-sans);
+}
+
+/* Display type — the demo's `.disp` class (Fraunces) */
+.disp {
+  font-family: var(--font-display);
+  letter-spacing: -0.01em;
+}
+
+.fade {
+  animation: fade 0.45s cubic-bezier(0.2, 0.7, 0.3, 1) both;
+}
+@keyframes fade {
+  from {
+    opacity: 0;
+    transform: translateY(7px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.recharts-tooltip-wrapper {
+  outline: none;
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  .print-full {
+    width: 100% !important;
+  }
+}
+
+::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+::-webkit-scrollbar-thumb {
+  background: #d9d4c6;
+  border-radius: 9px;
+}
+
+input,
+select,
+textarea {
+  font-family: var(--font-sans);
+}
+input::placeholder,
+textarea::placeholder {
+  color: #b3ada0;
+}
