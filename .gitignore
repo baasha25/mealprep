@@ -51,3 +51,6 @@ scaffold_tmp/
 
 # prisma generated client (regenerated on install)
 /src/generated/
+
+# local harness state
+.claude/settings.local.json
