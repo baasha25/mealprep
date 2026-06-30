@@ -194,9 +194,10 @@ model Ingredient {
   id             String   @id @default(cuid())
   businessId     String
   business       Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  name           String
-  unit           String
-  defaultTrimBps Int      @default(0) // default trim/waste, basis points
+  name             String
+  unit             String
+  defaultTrimBps   Int      @default(0) // default trim/waste, basis points
+  costPerUnitCents Int      @default(0) // purchase cost per `unit`, integer cents (powers the margin/waste engine)
 
   mealIngredients MealIngredient[]
 

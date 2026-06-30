@@ -135,10 +135,24 @@ async function main() {
       }
     }
   }
+  // Purchase cost per the ingredient's recipe unit (dollars).
+  const COST: Record<string, number> = {
+    "Chicken breast": 0.3, Quinoa: 0.5, Broccoli: 0.4, "Olive oil": 0.15,
+    "Salmon fillet": 0.75, "Sweet potato": 0.8, Asparagus: 0.9, Chickpeas: 0.45,
+    "Brown rice": 0.3, Kale: 0.35, Tahini: 0.25, "Sirloin steak": 0.85,
+    "Brussels sprouts": 0.5, "Ground turkey": 0.35, Zucchini: 0.6, Marinara: 0.7,
+    Parmesan: 0.3, Shrimp: 0.8, "Cauliflower rice": 0.55, Egg: 0.25, "Soy sauce": 0.1,
+  };
   const ingredientIds = new Map<string, string>();
   for (const [name, info] of ingredientNames) {
     const ing = await db.ingredient.create({
-      data: { businessId: business.id, name, unit: info.unit, defaultTrimBps: bps(info.trim) },
+      data: {
+        businessId: business.id,
+        name,
+        unit: info.unit,
+        defaultTrimBps: bps(info.trim),
+        costPerUnitCents: cents(COST[name] ?? 0),
+      },
     });
     ingredientIds.set(name, ing.id);
   }

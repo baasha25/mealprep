@@ -12,6 +12,7 @@ import {
   Users,
   Wallet,
   Leaf,
+  Carrot,
   type LucideIcon,
 } from "lucide-react";
 
@@ -22,6 +23,7 @@ const NAV: [string, string, LucideIcon, boolean][] = [
   ["/dashboard/menu", "Menu", ChefHat, true],
   ["/dashboard/orders", "Orders", Receipt, true],
   ["/dashboard/kitchen", "Kitchen OS", ChefHat, true],
+  ["/dashboard/purchasing", "Purchasing", Carrot, true],
   ["/dashboard/routes", "Delivery Routes", Truck, false],
   ["/dashboard/pos", "POS Terminal", Wallet, false],
   ["/dashboard/marketing", "Marketing", Megaphone, false],
