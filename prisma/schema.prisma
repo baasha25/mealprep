@@ -1,0 +1,382 @@
+// PrepFlow data model (CLAUDE.md §4).
+// Conventions:
+//  - Multi-tenant: every business is a tenant; all tenant data carries `businessId`.
+//  - Money is ALWAYS integer cents (never floats). Field names end in `Cents`.
+//  - Percentages/trim are integer basis points (bps): 8% = 800, 12% = 1200.
+//  - Quantities (recipe amounts) may be fractional → Float is acceptable (not money).
+//  - Order/line snapshots freeze price + name so history never drifts with the live menu.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+/* ============================== Enums ============================== */
+
+enum UserRole {
+  owner
+  staff
+}
+
+enum SubStatus {
+  active
+  paused
+  canceled
+}
+
+enum SubFrequency {
+  weekly
+  biweekly
+}
+
+enum OrderType {
+  subscription
+  one_time
+  pos
+}
+
+enum OrderStatus {
+  pending
+  paid
+  in_production
+  packed
+  out_for_delivery
+  fulfilled
+  canceled
+  refunded
+}
+
+enum Fulfillment {
+  delivery
+  pickup
+}
+
+enum CouponType {
+  percent
+  flat
+}
+
+enum PaymentStatus {
+  pending
+  succeeded
+  failed
+  refunded
+  partially_refunded
+}
+
+/* ============================== Tenant ============================== */
+
+model Business {
+  id              String   @id @default(cuid())
+  name            String
+  brandColor      String   @default("#2f4536")
+  stripeAccountId String?  @unique
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  settings    BusinessSettings?
+  users       User[]
+  customers   Customer[]
+  meals       Meal[]
+  ingredients Ingredient[]
+  plans       Plan[]
+  orders      Order[]
+  giftCards   GiftCard[]
+  coupons     Coupon[]
+}
+
+model BusinessSettings {
+  id         String   @id @default(cuid())
+  businessId String   @unique
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  // Pricing / fees (money in cents, rates in basis points)
+  subDiscountBps     Int @default(1500) // 15% subscription discount
+  deliveryFeeCents   Int @default(499)
+  processingFeeCents Int @default(150)
+  taxRateBps         Int @default(800) // 8%
+  minOrderCents      Int @default(3500)
+  minMeals           Int @default(3)
+  platformFeeBps     Int @default(0) // PrepFlow platform application fee — config, not hardcoded (§5/§7)
+
+  // Fulfillment
+  cutoff          String   @default("Sat 8:00 PM")
+  fulfillment     String   @default("both") // "delivery" | "pickup" | "both"
+  deliveryDays    Json     @default("{\"Mon\":true,\"Tue\":false,\"Wed\":true,\"Thu\":false,\"Fri\":true,\"Sat\":false,\"Sun\":false}")
+  pickupLocations String[] @default([])
+
+  updatedAt DateTime @updatedAt
+}
+
+model User {
+  id             String   @id @default(cuid())
+  businessId     String
+  business       Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  email          String
+  role           UserRole @default(owner)
+  authProviderId String   @unique // Clerk user id
+  createdAt      DateTime @default(now())
+
+  @@unique([businessId, email])
+  @@index([businessId])
+}
+
+/* ============================== Customers ============================== */
+
+model Customer {
+  id               String   @id @default(cuid())
+  businessId       String
+  business         Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  name             String
+  email            String
+  phone            String?
+  dietaryPrefs     String[] @default([])
+  allergens        String[] @default([])
+  loyaltyPoints    Int      @default(0)
+  stripeCustomerId String?
+  createdAt        DateTime @default(now())
+
+  addresses     Address[]
+  subscriptions Subscription[]
+  orders        Order[]
+
+  @@unique([businessId, email])
+  @@index([businessId])
+}
+
+model Address {
+  id         String   @id @default(cuid())
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  label      String?
+  line1      String
+  city       String?
+  region     String?
+  postalCode String?
+  zone       String?
+
+  @@index([customerId])
+}
+
+/* ============================== Menu ============================== */
+
+model Meal {
+  id          String   @id @default(cuid())
+  businessId  String
+  business    Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  name        String
+  description String?
+  diet        String?
+  priceCents  Int
+  swatch      String   @default("#8a5a3c")
+  // Macros
+  calories  Int      @default(0)
+  proteinG  Int      @default(0)
+  carbsG    Int      @default(0)
+  fatG      Int      @default(0)
+  allergens String[] @default([])
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  ingredients          MealIngredient[]
+  orderItems           OrderItem[]
+  subscriptionSelItems SubscriptionSelectionItem[]
+
+  @@index([businessId])
+}
+
+model Ingredient {
+  id             String   @id @default(cuid())
+  businessId     String
+  business       Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  name           String
+  unit           String
+  defaultTrimBps Int      @default(0) // default trim/waste, basis points
+
+  mealIngredients MealIngredient[]
+
+  @@unique([businessId, name])
+  @@index([businessId])
+}
+
+model MealIngredient {
+  id           String     @id @default(cuid())
+  mealId       String
+  meal         Meal       @relation(fields: [mealId], references: [id], onDelete: Cascade)
+  ingredientId String
+  ingredient   Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
+  qty          Float
+  unit         String
+  trimBps      Int        @default(0)
+
+  @@unique([mealId, ingredientId])
+  @@index([mealId])
+  @@index([ingredientId])
+}
+
+/* ============================== Plans & Subscriptions ============================== */
+
+model Plan {
+  id                String   @id @default(cuid())
+  businessId        String
+  business          Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  name              String
+  mealsPerWeek      Int
+  perMealPriceCents Int
+  active            Boolean  @default(true)
+
+  subscriptions Subscription[]
+
+  @@index([businessId])
+}
+
+model Subscription {
+  id                   String       @id @default(cuid())
+  businessId           String // denormalized for tenant isolation
+  customerId           String
+  customer             Customer     @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  planId               String
+  plan                 Plan         @relation(fields: [planId], references: [id])
+  status               SubStatus    @default(active)
+  frequency            SubFrequency @default(weekly)
+  nextDeliveryDate     DateTime?
+  stripeSubscriptionId String?
+  createdAt            DateTime     @default(now())
+  updatedAt            DateTime     @updatedAt
+
+  selections SubscriptionSelection[]
+  orders     Order[]
+
+  @@index([businessId])
+  @@index([customerId])
+}
+
+model SubscriptionSelection {
+  id             String       @id @default(cuid())
+  subscriptionId String
+  subscription   Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  deliveryDate   DateTime
+
+  items SubscriptionSelectionItem[]
+
+  @@unique([subscriptionId, deliveryDate])
+  @@index([subscriptionId])
+}
+
+model SubscriptionSelectionItem {
+  id          String                @id @default(cuid())
+  selectionId String
+  selection   SubscriptionSelection @relation(fields: [selectionId], references: [id], onDelete: Cascade)
+  mealId      String
+  meal        Meal                  @relation(fields: [mealId], references: [id])
+  qty         Int
+
+  @@index([selectionId])
+}
+
+/* ============================== Orders ============================== */
+
+model Order {
+  id                    String        @id @default(cuid())
+  businessId            String
+  business              Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  customerId            String?
+  customer              Customer?     @relation(fields: [customerId], references: [id])
+  subscriptionId        String?
+  subscription          Subscription? @relation(fields: [subscriptionId], references: [id])
+  type                  OrderType
+  status                OrderStatus   @default(pending)
+  fulfillment           Fulfillment   @default(delivery)
+  address               String?
+  zone                  String?
+  deliveryDate          DateTime?
+  subtotalCents         Int           @default(0)
+  taxCents              Int           @default(0)
+  feesCents             Int           @default(0)
+  totalCents            Int           @default(0)
+  stripePaymentIntentId String?
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+
+  items    OrderItem[]
+  payments Payment[]
+  delivery Delivery?
+
+  @@index([businessId])
+  @@index([customerId])
+}
+
+model OrderItem {
+  id                     String  @id @default(cuid())
+  orderId                String
+  order                  Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  mealId                 String?
+  meal                   Meal?   @relation(fields: [mealId], references: [id])
+  qty                    Int
+  unitPriceCentsSnapshot Int
+  nameSnapshot           String
+
+  @@index([orderId])
+}
+
+/* ============================== Money & marketing ============================== */
+
+model GiftCard {
+  id             String   @id @default(cuid())
+  businessId     String
+  business       Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  code           String
+  amountCents    Int
+  balanceCents   Int
+  recipientEmail String?
+  createdAt      DateTime @default(now())
+
+  @@unique([businessId, code])
+  @@index([businessId])
+}
+
+model Coupon {
+  id         String     @id @default(cuid())
+  businessId String
+  business   Business   @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  code       String
+  type       CouponType
+  value      Int // percent (whole %) for `percent`, cents for `flat`
+  active     Boolean    @default(true)
+
+  @@unique([businessId, code])
+  @@index([businessId])
+}
+
+/* ============================== Payments & delivery ============================== */
+
+model Payment {
+  id                    String        @id @default(cuid())
+  orderId               String
+  order                 Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  stripePaymentIntentId String?
+  stripeChargeId        String?
+  amountCents           Int
+  refundedAmountCents   Int           @default(0)
+  status                PaymentStatus @default(pending)
+  createdAt             DateTime      @default(now())
+
+  @@index([orderId])
+}
+
+model Delivery {
+  id          String    @id @default(cuid())
+  orderId     String    @unique
+  order       Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  provider    String?
+  externalId  String?
+  status      String?
+  eta         DateTime?
+  trackingUrl String?
+  proofUrl    String?
+}

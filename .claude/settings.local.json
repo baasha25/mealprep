@@ -10,7 +10,12 @@
       "Bash(node -e \"console.log\\('next', require\\('./scaffold_tmp/package.json'\\).dependencies.next\\)\")",
       "Bash(node -e \"console.log\\(JSON.stringify\\(require\\('./tsconfig.json'\\).compilerOptions.paths\\)\\)\")",
       "Bash(npm run *)",
-      "Bash(git commit -q -m 'feat: scaffold Next.js 16 + Tailwind v4; port PrepFlow design tokens *)"
+      "Bash(git commit -q -m 'feat: scaffold Next.js 16 + Tailwind v4; port PrepFlow design tokens *)",
+      "Bash(brew install *)",
+      "Bash(npm install *)",
+      "Bash(node -e \"const p=require\\('./package.json'\\); console.log\\({deps:p.dependencies, dev:p.devDependencies}\\)\")",
+      "Bash(npx prisma *)",
+      "Bash(git commit -q -m 'feat: Prisma schema + local Postgres + seed \\(Phase 0 data model\\) *)"
     ]
   }
 }

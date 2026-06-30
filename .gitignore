@@ -46,3 +46,8 @@ next-env.d.ts
 /demo/node_modules/
 /demo/dist/
 scaffold_tmp/
+
+/src/generated/prisma
+
+# prisma generated client (regenerated on install)
+/src/generated/
