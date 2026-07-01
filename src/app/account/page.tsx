@@ -64,6 +64,34 @@ export default async function AccountPage() {
         </p>
       </div>
 
+      {/* Loyalty & referrals */}
+      <div className="grid sm:grid-cols-2 gap-4 mb-4">
+        <div className="rounded-xl border p-5" style={{ borderColor: "var(--line)", background: "var(--surface)" }}>
+          <div className="text-[12px] mb-1" style={{ color: "var(--muted)" }}>Loyalty points</div>
+          <div className="disp text-[28px] font-medium" style={{ color: "var(--pine)" }}>
+            {customer.loyaltyPoints.toLocaleString()}
+          </div>
+          <div className="text-[12px] mt-1" style={{ color: "var(--muted)" }}>
+            Worth {new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(
+              (customer.loyaltyPoints * (business?.settings?.loyaltyRedeemCentsPerPoint ?? 5)) / 100,
+            )}{" "}
+            off your next order · earn 1 per $1 spent
+          </div>
+        </div>
+        {customer.referralCode && (
+          <div className="rounded-xl border p-5" style={{ borderColor: "var(--line)", background: "var(--surface)" }}>
+            <div className="text-[12px] mb-1" style={{ color: "var(--muted)" }}>Your referral code</div>
+            <div className="disp text-[24px] font-medium font-mono" style={{ color: "var(--ink)" }}>
+              {customer.referralCode}
+            </div>
+            <div className="text-[12px] mt-1" style={{ color: "var(--muted)" }}>
+              Share it — friends enter it at checkout and you earn{" "}
+              {business?.settings?.referralBonusPoints ?? 100} points per signup.
+            </div>
+          </div>
+        )}
+      </div>
+
       {!subscription ? (
         <div
           className="rounded-xl border p-10 text-center"

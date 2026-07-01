@@ -13,11 +13,18 @@ import {
   Milk,
   Nut,
   Fish,
+  Star,
   type LucideIcon,
 } from "lucide-react";
 import { formatCents } from "@/lib/money";
 import { computeOrder, type PricingSettings } from "@/lib/pricing";
-import { lookupCoupon, placeOrder, type CouponResult } from "./actions";
+import {
+  lookupCoupon,
+  lookupLoyalty,
+  placeOrder,
+  type CouponResult,
+  type LoyaltyLookup,
+} from "./actions";
 
 const ALLERGEN_ICON: Record<string, LucideIcon> = {
   gluten: Wheat,
@@ -76,6 +83,9 @@ export function Storefront({
     settings.fulfillment === "pickup" ? "pickup" : "delivery",
   );
   const [form, setForm] = useState({ name: "", email: "", phone: "", address: "", zone: "" });
+  const [loyalty, setLoyalty] = useState<LoyaltyLookup | null>(null);
+  const [applyLoyalty, setApplyLoyalty] = useState(false);
+  const [referralInput, setReferralInput] = useState("");
   const [placed, setPlaced] = useState<{ orderId: string; subscription: boolean } | null>(null);
   const [error, setError] = useState("");
   const [pending, startTransition] = useTransition();
@@ -99,12 +109,23 @@ export function Storefront({
   }));
   const appliedCoupon =
     coupon && coupon.valid ? { type: coupon.type, value: coupon.value } : null;
-  const totals = computeOrder({ lines, settings, subscribe, coupon: appliedCoupon });
+  const redeemCents = applyLoyalty && loyalty?.found ? loyalty.valueCents : 0;
+  const totals = computeOrder({ lines, settings, subscribe, coupon: appliedCoupon, redeemCents });
 
   const applyCoupon = () => {
     startTransition(async () => {
       const result = await lookupCoupon(couponInput);
       setCoupon(result);
+    });
+  };
+
+  // Look up a returning customer's points when they enter their email.
+  const checkLoyalty = () => {
+    if (!/\S+@\S+\.\S+/.test(form.email)) return;
+    startTransition(async () => {
+      const r = await lookupLoyalty(form.email);
+      setLoyalty(r);
+      if (!r.found) setApplyLoyalty(false);
     });
   };
 
@@ -115,6 +136,8 @@ export function Storefront({
         items: Object.entries(cart).map(([mealId, qty]) => ({ mealId, qty })),
         subscribe,
         couponCode: coupon?.valid ? coupon.code : undefined,
+        redeemPoints: applyLoyalty && loyalty?.found ? loyalty.points : 0,
+        referralCode: referralInput.trim() || undefined,
         fulfillment,
         customer: form,
       });
@@ -123,6 +146,9 @@ export function Storefront({
         setCart({});
         setCoupon(null);
         setCouponInput("");
+        setLoyalty(null);
+        setApplyLoyalty(false);
+        setReferralInput("");
       } else {
         setError(result.message);
       }
@@ -386,6 +412,9 @@ export function Storefront({
                 {totals.couponCents > 0 && (
                   <Line l="Coupon" v={`−${formatCents(totals.couponCents)}`} green />
                 )}
+                {totals.redeemCents > 0 && (
+                  <Line l="Points redeemed" v={`−${formatCents(totals.redeemCents)}`} green />
+                )}
                 <Line l="Tax" v={formatCents(totals.taxCents)} />
                 <Line l="Delivery" v={formatCents(totals.deliveryFeeCents)} />
                 <Line l="Processing" v={formatCents(totals.processingFeeCents)} />
@@ -444,6 +473,7 @@ export function Storefront({
                 <input
                   value={form.email}
                   onChange={(e) => setForm({ ...form, email: e.target.value })}
+                  onBlur={checkLoyalty}
                   placeholder="Email"
                   type="email"
                   className="w-full px-3 py-2 rounded-md border text-[13px] outline-none"
@@ -458,7 +488,41 @@ export function Storefront({
                     style={inputStyle}
                   />
                 )}
+                <input
+                  value={referralInput}
+                  onChange={(e) => setReferralInput(e.target.value)}
+                  placeholder="Referral code (optional)"
+                  className="w-full px-3 py-2 rounded-md border text-[13px] outline-none"
+                  style={inputStyle}
+                />
               </div>
+
+              {/* Loyalty redemption — shown when a returning customer has points */}
+              {loyalty?.found && (
+                <button
+                  onClick={() => setApplyLoyalty((v) => !v)}
+                  className="w-full flex items-center gap-3 p-3 rounded-lg border mb-3 text-left transition-colors"
+                  style={{
+                    borderColor: applyLoyalty ? "var(--pine)" : "var(--line)",
+                    background: applyLoyalty ? "color-mix(in srgb, var(--pine) 6%, transparent)" : "transparent",
+                  }}
+                >
+                  <div className="grid place-items-center w-8 h-8 rounded-md shrink-0" style={{ background: applyLoyalty ? "var(--pine)" : "var(--sand)" }}>
+                    <Star size={15} color={applyLoyalty ? "#f4f2ec" : "var(--muted)"} />
+                  </div>
+                  <div className="flex-1">
+                    <div className="text-[13px] font-medium" style={{ color: "var(--ink)" }}>
+                      Redeem {loyalty.points} points
+                    </div>
+                    <div className="text-[12px]" style={{ color: "var(--muted)" }}>
+                      Save up to {formatCents(loyalty.valueCents)} on this order
+                    </div>
+                  </div>
+                  <div className="w-9 h-5 rounded-full p-0.5 transition-colors" style={{ background: applyLoyalty ? "var(--pine)" : "#cfc8b5" }}>
+                    <div className="w-4 h-4 rounded-full bg-white transition-transform" style={{ transform: applyLoyalty ? "translateX(16px)" : "none" }} />
+                  </div>
+                </button>
+              )}
 
               {error && (
                 <p className="text-[12px] mb-2" style={{ color: "var(--clay)" }}>

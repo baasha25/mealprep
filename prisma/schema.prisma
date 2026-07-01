@@ -103,6 +103,12 @@ model BusinessSettings {
   minMeals           Int @default(3)
   platformFeeBps     Int @default(0) // PrepFlow platform application fee — config, not hardcoded (§5/§7)
 
+  // Loyalty & referrals
+  loyaltyEnabled             Boolean @default(true)
+  loyaltyPointsPerDollar     Int     @default(1) // points earned per $1 of subtotal
+  loyaltyRedeemCentsPerPoint Int     @default(5) // redemption value: 1 point = 5¢
+  referralBonusPoints        Int     @default(100) // points to referrer per successful referral
+
   // Fulfillment
   cutoff          String   @default("Sat 8:00 PM")
   fulfillment     String   @default("both") // "delivery" | "pickup" | "both"
@@ -138,13 +144,18 @@ model Customer {
   allergens        String[] @default([])
   loyaltyPoints    Int      @default(0)
   stripeCustomerId String?
+  referralCode     String? // this customer's own code to share
+  referredById     String? // the customer who referred them (if any)
   createdAt        DateTime @default(now())
 
   addresses     Address[]
   subscriptions Subscription[]
   orders        Order[]
+  referredBy    Customer?  @relation("Referrals", fields: [referredById], references: [id])
+  referrals     Customer[] @relation("Referrals")
 
   @@unique([businessId, email])
+  @@unique([businessId, referralCode])
   @@index([businessId])
 }
 

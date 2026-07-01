@@ -1,6 +1,7 @@
 import "dotenv/config";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../src/generated/prisma/client";
+import { pointsForOrder, referralCodeFrom } from "../src/lib/loyalty";
 
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
 const db = new PrismaClient({ adapter });
@@ -226,13 +227,16 @@ async function main() {
 
   // Customers + orders (with price snapshots).
   const taxRateBps = 800;
+  let custIndex = 0;
   for (const o of SEED_ORDERS) {
     const email = `${o.customer.toLowerCase().replace(/[^a-z]+/g, ".")}@email.com`;
+    custIndex++;
     const customer = await db.customer.create({
       data: {
         businessId: business.id,
         name: o.customer,
         email,
+        referralCode: referralCodeFrom(o.customer, custIndex),
         addresses: { create: [{ line1: o.addr, zone: o.zone, label: "Home" }] },
       },
     });
@@ -260,6 +264,12 @@ async function main() {
         totalCents: subtotalCents + taxCents + feesCents,
         items: { create: lineItems },
       },
+    });
+
+    // Award loyalty points for the seed order (default 1 pt / $1 of subtotal).
+    await db.customer.update({
+      where: { id: customer.id },
+      data: { loyaltyPoints: pointsForOrder(subtotalCents, 1) },
     });
 
     // Subscription customers get an active recurring subscription with an

@@ -4,6 +4,38 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { getStorefrontBusiness } from "@/lib/storefront";
 import { computeOrder, type AppliedCoupon } from "@/lib/pricing";
+import {
+  pointsForOrder,
+  resolveRedemption,
+  referralCodeFrom,
+  redeemableValueCents,
+} from "@/lib/loyalty";
+
+/* ------------------------------- Loyalty ------------------------------- */
+
+export type LoyaltyLookup =
+  | { found: true; points: number; valueCents: number; centsPerPoint: number }
+  | { found: false };
+
+/** Look up a returning customer's points by email, for the redemption UI. */
+export async function lookupLoyalty(rawEmail: string): Promise<LoyaltyLookup> {
+  const email = rawEmail.trim().toLowerCase();
+  if (!email) return { found: false };
+  const business = await getStorefrontBusiness();
+  if (!business?.settings?.loyaltyEnabled) return { found: false };
+  const customer = await db.customer.findFirst({
+    where: { businessId: business.id, email },
+    select: { loyaltyPoints: true },
+  });
+  if (!customer || customer.loyaltyPoints <= 0) return { found: false };
+  const centsPerPoint = business.settings.loyaltyRedeemCentsPerPoint;
+  return {
+    found: true,
+    points: customer.loyaltyPoints,
+    valueCents: redeemableValueCents(customer.loyaltyPoints, centsPerPoint),
+    centsPerPoint,
+  };
+}
 
 /* ------------------------------- Coupons ------------------------------- */
 
@@ -38,6 +70,8 @@ const PlaceOrderInput = z.object({
     .min(1, "Your cart is empty."),
   subscribe: z.boolean(),
   couponCode: z.string().optional(),
+  redeemPoints: z.number().int().min(0).max(1_000_000).optional(),
+  referralCode: z.string().trim().toUpperCase().max(24).optional(),
   fulfillment: z.enum(["delivery", "pickup"]),
   customer: z.object({
     name: z.string().trim().min(1, "Name is required").max(120),
@@ -99,43 +133,73 @@ export async function placeOrder(input: PlaceOrderInputT): Promise<PlaceOrderRes
     if (c.valid) appliedCoupon = { type: c.type, value: c.value };
   }
 
-  const totals = computeOrder({
+  // Existing customer (if any) — needed for loyalty balance + referral eligibility.
+  const existing = await db.customer.findFirst({
+    where: { businessId: business.id, email: data.customer.email },
+    select: { id: true, loyaltyPoints: true, referredById: true, referralCode: true },
+  });
+  const isNewCustomer = !existing;
+
+  // Base totals (pre-redemption) to know how much loyalty can offset.
+  const base = computeOrder({
     lines: lineItems.map((li) => ({ priceCents: li.unitPriceCentsSnapshot, qty: li.qty })),
     settings: s,
     subscribe: data.subscribe,
     coupon: appliedCoupon,
   });
 
-  if (totals.itemCount === 0) return { ok: false, message: "Your cart is empty." };
-  if (totals.belowMinimum) {
-    return {
-      ok: false,
-      message: `Minimum order is $${(s.minOrderCents / 100).toFixed(2)}.`,
-    };
+  if (base.itemCount === 0) return { ok: false, message: "Your cart is empty." };
+  if (base.belowMinimum) {
+    return { ok: false, message: `Minimum order is $${(s.minOrderCents / 100).toFixed(2)}.` };
   }
 
-  // Upsert the customer by (businessId, email).
+  // Loyalty redemption (only if enabled and the customer already has a balance).
+  const balance = existing?.loyaltyPoints ?? 0;
+  const redeemCapCents = base.subtotalCents - base.subDiscountCents - base.couponCents;
+  const requestedRedeem = data.redeemPoints ?? 0;
+  const redemption =
+    s.loyaltyEnabled && balance > 0 && requestedRedeem > 0
+      ? resolveRedemption(requestedRedeem, balance, Math.max(0, redeemCapCents), s.loyaltyRedeemCentsPerPoint)
+      : { points: 0, cents: 0 };
+
+  const totals = computeOrder({
+    lines: lineItems.map((li) => ({ priceCents: li.unitPriceCentsSnapshot, qty: li.qty })),
+    settings: s,
+    subscribe: data.subscribe,
+    coupon: appliedCoupon,
+    redeemCents: redemption.cents,
+  });
+
+  // Resolve a referrer (valid code, belongs to this business, not the buyer).
+  let referrerId: string | null = null;
+  if (isNewCustomer && data.referralCode) {
+    const referrer = await db.customer.findFirst({
+      where: { businessId: business.id, referralCode: data.referralCode },
+      select: { id: true },
+    });
+    if (referrer) referrerId = referrer.id;
+  }
+
+  // Upsert the customer; ensure they have a shareable referral code.
   const customer = await db.customer.upsert({
-    where: {
-      businessId_email: { businessId: business.id, email: data.customer.email },
-    },
+    where: { businessId_email: { businessId: business.id, email: data.customer.email } },
     create: {
       businessId: business.id,
       name: data.customer.name,
       email: data.customer.email,
       phone: data.customer.phone || null,
+      referredById: referrerId,
+      referralCode: referralCodeFrom(data.customer.name, Date.now() % 100000),
     },
     update: { name: data.customer.name, phone: data.customer.phone || null },
   });
 
-  // Create the order with frozen price/name snapshots. Status is `pending`
-  // until Stripe payment is wired (next module).
   const order = await db.order.create({
     data: {
       businessId: business.id,
       customerId: customer.id,
       type: data.subscribe ? "subscription" : "one_time",
-      status: "pending",
+      status: "pending", // until Stripe payment is wired
       fulfillment: data.fulfillment,
       address: data.customer.address || null,
       zone: data.customer.zone || null,
@@ -146,6 +210,24 @@ export async function placeOrder(input: PlaceOrderInputT): Promise<PlaceOrderRes
       items: { create: lineItems },
     },
   });
+
+  // Loyalty postings: redeemed points spent, points earned, referrer bonus.
+  if (s.loyaltyEnabled) {
+    const earned = pointsForOrder(totals.subtotalCents, s.loyaltyPointsPerDollar);
+    const net = earned - redemption.points;
+    if (net !== 0) {
+      await db.customer.update({
+        where: { id: customer.id },
+        data: { loyaltyPoints: { increment: net } },
+      });
+    }
+    if (referrerId) {
+      await db.customer.update({
+        where: { id: referrerId },
+        data: { loyaltyPoints: { increment: s.referralBonusPoints } },
+      });
+    }
+  }
 
   return {
     ok: true,

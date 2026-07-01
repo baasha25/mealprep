@@ -86,6 +86,31 @@ describe("computeOrder", () => {
     expect(t.belowMinimum).toBe(true);
   });
 
+  it("applies loyalty redemption after the coupon, before tax", () => {
+    const t = computeOrder({
+      lines: [{ priceCents: 1000, qty: 10 }], // $100
+      settings,
+      subscribe: false,
+      redeemCents: 500, // $5 in points
+    });
+    expect(t.redeemCents).toBe(500);
+    const taxable = 10000 - 500; // 9500
+    expect(t.taxCents).toBe(Math.round(taxable * 0.08)); // 760
+    expect(t.totalCents).toBe(taxable + 760 + 649);
+  });
+
+  it("caps redemption so it can't exceed the discounted subtotal", () => {
+    const t = computeOrder({
+      lines: [{ priceCents: 300, qty: 1 }], // $3
+      settings,
+      subscribe: false,
+      redeemCents: 5000, // way more than the order
+    });
+    expect(t.redeemCents).toBe(300); // capped to subtotal
+    expect(t.taxCents).toBe(0);
+    expect(t.totalCents).toBe(649); // fees only
+  });
+
   it("never lets discounts drive the order negative", () => {
     const t = computeOrder({
       lines: [{ priceCents: 1000, qty: 1 }],

@@ -22,6 +22,7 @@ export type OrderTotals = {
   subtotalCents: number;
   subDiscountCents: number;
   couponCents: number;
+  redeemCents: number;
   taxCents: number;
   deliveryFeeCents: number;
   processingFeeCents: number;
@@ -38,6 +39,8 @@ export function computeOrder(opts: {
   settings: PricingSettings;
   subscribe: boolean;
   coupon?: AppliedCoupon | null;
+  /** Loyalty points redeemed, expressed in cents (validated upstream). */
+  redeemCents?: number;
 }): OrderTotals {
   const { lines, settings, subscribe, coupon } = opts;
 
@@ -58,7 +61,11 @@ export function computeOrder(opts: {
         : Math.min(coupon.value, afterSub);
   }
 
-  const afterDiscounts = Math.max(0, afterSub - couponCents);
+  // Loyalty redemption, capped so it never drives the discounted subtotal negative.
+  const afterCoupon = Math.max(0, afterSub - couponCents);
+  const redeemCents = Math.max(0, Math.min(opts.redeemCents ?? 0, afterCoupon));
+
+  const afterDiscounts = afterCoupon - redeemCents;
   const taxCents = applyBps(afterDiscounts, settings.taxRateBps);
 
   // Fees only apply to a non-empty order.
@@ -74,6 +81,7 @@ export function computeOrder(opts: {
     subtotalCents,
     subDiscountCents,
     couponCents,
+    redeemCents,
     taxCents,
     deliveryFeeCents,
     processingFeeCents,
