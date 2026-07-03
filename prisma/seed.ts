@@ -341,6 +341,25 @@ async function main() {
     })),
   });
 
+  // A couple of ingredients saw a price rise (older cheaper receipt + a recent
+  // dearer one) so the profitability price-alert has something to surface.
+  const risers: [string, number][] = [["Chicken breast", 0.36], ["Salmon fillet", 0.9]];
+  for (const [name, newDollar] of risers) {
+    const id = ingredientIds.get(name);
+    if (!id) continue;
+    const olderAt = new Date();
+    olderAt.setDate(olderAt.getDate() - 21);
+    const newCost = cents(newDollar);
+    // Backdate the original cheaper receipt, add a recent pricier one, bump cost.
+    await db.ingredientReceipt.updateMany({ where: { ingredientId: id }, data: { receivedAt: olderAt } });
+    const unit = ingredientNames.get(name)!.unit;
+    const qty = STOCK_BY_UNIT[unit] ?? 10;
+    await db.ingredientReceipt.create({
+      data: { businessId: business.id, ingredientId: id, qtyReceived: qty, unit, totalCostCents: Math.round(qty * newCost), note: "Delivery" },
+    });
+    await db.ingredient.update({ where: { id }, data: { costPerUnitCents: newCost } });
+  }
+
   console.log("Seed complete.");
 }
 

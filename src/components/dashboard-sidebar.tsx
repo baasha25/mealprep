@@ -19,6 +19,7 @@ import {
   BarChart3,
   Boxes,
   Monitor,
+  TrendingUp,
   type LucideIcon,
 } from "lucide-react";
 
@@ -27,6 +28,7 @@ import {
 const NAV: [string, string, LucideIcon, boolean][] = [
   ["/dashboard", "Dashboard", LayoutDashboard, true],
   ["/dashboard/analytics", "Analytics", BarChart3, true],
+  ["/dashboard/profitability", "Profitability", TrendingUp, true],
   ["/dashboard/menu", "Menu", ChefHat, true],
   ["/dashboard/orders", "Orders", Receipt, true],
   ["/dashboard/customers", "Customers", User, true],
