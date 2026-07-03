@@ -2,6 +2,7 @@ import "dotenv/config";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../src/generated/prisma/client";
 import { pointsForOrder, referralCodeFrom } from "../src/lib/loyalty";
+import { stationFor } from "../src/lib/stations";
 
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
 const db = new PrismaClient({ adapter });
@@ -320,6 +321,26 @@ async function main() {
     }
   }
   console.log(`  ${SEED_ORDERS.length} customers + orders`);
+
+  // Starter KDS production run (tickets per meal, routed to station).
+  const mealDiet = new Map(MEALS.map((m) => [m.name, m.diet]));
+  const ticketQty = new Map<string, number>();
+  for (const o of SEED_ORDERS) {
+    for (const [mealName, qty] of Object.entries(o.items)) {
+      ticketQty.set(mealName, (ticketQty.get(mealName) ?? 0) + qty);
+    }
+  }
+  await db.productionTicket.createMany({
+    data: [...ticketQty.entries()].map(([name, qty]) => ({
+      businessId: business.id,
+      mealId: mealIds.get(name)!.id,
+      mealName: name,
+      station: stationFor(mealDiet.get(name)),
+      qty,
+      status: "todo" as const,
+    })),
+  });
+
   console.log("Seed complete.");
 }
 

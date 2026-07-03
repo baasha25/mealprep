@@ -55,6 +55,12 @@ enum Fulfillment {
   pickup
 }
 
+enum TicketStatus {
+  todo
+  cooking
+  done
+}
+
 enum CouponType {
   percent
   flat
@@ -253,6 +259,22 @@ model StockCount {
 
   @@index([businessId])
   @@index([ingredientId])
+}
+
+// A batch of one meal to produce on the line, tracked to done on the KDS board.
+// Generated from the production queue when a run is started.
+model ProductionTicket {
+  id        String       @id @default(cuid())
+  businessId String
+  mealId    String?
+  mealName  String
+  station   String
+  qty       Int
+  status    TicketStatus @default(todo)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  @@index([businessId])
 }
 
 model MealIngredient {
