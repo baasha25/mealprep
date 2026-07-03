@@ -17,6 +17,7 @@ import {
   User,
   Tag,
   BarChart3,
+  Boxes,
   type LucideIcon,
 } from "lucide-react";
 
@@ -30,6 +31,7 @@ const NAV: [string, string, LucideIcon, boolean][] = [
   ["/dashboard/customers", "Customers", User, true],
   ["/dashboard/kitchen", "Kitchen OS", ChefHat, true],
   ["/dashboard/purchasing", "Purchasing", Carrot, true],
+  ["/dashboard/inventory", "Inventory", Boxes, true],
   ["/dashboard/fulfillment", "Labels & packing", Tag, true],
   ["/dashboard/routes", "Delivery Routes", Truck, true],
   ["/dashboard/pos", "POS Terminal", Wallet, true],

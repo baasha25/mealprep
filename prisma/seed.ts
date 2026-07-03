@@ -144,20 +144,38 @@ async function main() {
     "Brussels sprouts": 0.5, "Ground turkey": 0.35, Zucchini: 0.6, Marinara: 0.7,
     Parmesan: 0.3, Shrimp: 0.8, "Cauliflower rice": 0.55, Egg: 0.25, "Soy sauce": 0.1,
   };
+  // Plausible starting delivery quantity by unit (creates a realistic mix of
+  // covered vs short vs surplus against the production queue).
+  const STOCK_BY_UNIT: Record<string, number> = { oz: 40, cup: 8, ea: 10, tbsp: 20, tsp: 20, g: 500, lb: 6 };
   const ingredientIds = new Map<string, string>();
   for (const [name, info] of ingredientNames) {
+    const costPerUnitCents = cents(COST[name] ?? 0);
+    const stockQty = STOCK_BY_UNIT[info.unit] ?? 10;
     const ing = await db.ingredient.create({
       data: {
         businessId: business.id,
         name,
         unit: info.unit,
         defaultTrimBps: bps(info.trim),
-        costPerUnitCents: cents(COST[name] ?? 0),
+        costPerUnitCents,
+        stockQty,
+        // A delivery receipt matching the on-hand stock (real invoice cost).
+        receipts: {
+          create: [
+            {
+              businessId: business.id,
+              qtyReceived: stockQty,
+              unit: info.unit,
+              totalCostCents: Math.round(stockQty * costPerUnitCents),
+              note: "Opening stock",
+            },
+          ],
+        },
       },
     });
     ingredientIds.set(name, ing.id);
   }
-  console.log(`  ${ingredientIds.size} ingredients`);
+  console.log(`  ${ingredientIds.size} ingredients (with stock + receipts)`);
 
   // Meals + recipe links.
   const mealIds = new Map<string, { id: string; priceCents: number }>();

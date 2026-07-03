@@ -209,11 +209,31 @@ model Ingredient {
   unit             String
   defaultTrimBps   Int      @default(0) // default trim/waste, basis points
   costPerUnitCents Int      @default(0) // purchase cost per `unit`, integer cents (powers the margin/waste engine)
+  stockQty         Float    @default(0) // current on-hand quantity, in `unit`
 
   mealIngredients MealIngredient[]
+  receipts        IngredientReceipt[]
 
   @@unique([businessId, name])
   @@index([businessId])
+}
+
+// A logged delivery/purchase of an ingredient. Receiving updates the ingredient's
+// on-hand stock and its real cost/unit (from the invoice) — turning the waste
+// engine's forecast into measured dollars.
+model IngredientReceipt {
+  id             String     @id @default(cuid())
+  businessId     String // denormalized for tenant isolation (scalar, like Subscription)
+  ingredientId   String
+  ingredient     Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
+  qtyReceived    Float
+  unit           String
+  totalCostCents Int
+  note           String?
+  receivedAt     DateTime   @default(now())
+
+  @@index([businessId])
+  @@index([ingredientId])
 }
 
 model MealIngredient {
