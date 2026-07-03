@@ -213,6 +213,7 @@ model Ingredient {
 
   mealIngredients MealIngredient[]
   receipts        IngredientReceipt[]
+  stockCounts     StockCount[]
 
   @@unique([businessId, name])
   @@index([businessId])
@@ -231,6 +232,24 @@ model IngredientReceipt {
   totalCostCents Int
   note           String?
   receivedAt     DateTime   @default(now())
+
+  @@index([businessId])
+  @@index([ingredientId])
+}
+
+// A physical stock count reconciled against what the system expected on hand.
+// The gap (expected − counted) is loss the recipe trim % didn't predict —
+// over-trimming, spoilage, or theft — turning forecast waste into measured waste.
+model StockCount {
+  id            String     @id @default(cuid())
+  businessId    String
+  ingredientId  String
+  ingredient    Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
+  expectedQty   Float
+  countedQty    Float
+  varianceQty   Float // expected − counted: + is unexplained loss, − is a gain
+  varianceCents Int
+  countedAt     DateTime   @default(now())
 
   @@index([businessId])
   @@index([ingredientId])

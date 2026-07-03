@@ -35,6 +35,20 @@ export function stockStatus(
 }
 
 /**
+ * Reconcile a physical count against expected on-hand. Positive variance = the
+ * shelf has LESS than the system expected (unexplained loss); negative = MORE
+ * (you wasted less than the recipe trim predicted).
+ */
+export function stockCountVariance(
+  expectedQty: number,
+  countedQty: number,
+  costPerUnitCents: number,
+): { varianceQty: number; varianceCents: number } {
+  const varianceQty = expectedQty - countedQty;
+  return { varianceQty, varianceCents: Math.round(varianceQty * costPerUnitCents) };
+}
+
+/**
  * Waste variance from a stock count. Between counts you received `received` and
  * production theoretically consumed `theoreticalUsed` (net + recipe-trim). The
  * expected remaining is (opening + received − theoreticalUsed); anything missing

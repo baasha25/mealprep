@@ -1,4 +1,4 @@
-import { Boxes, PackageCheck, TriangleAlert, Flame } from "lucide-react";
+import { Boxes, PackageCheck, TriangleAlert, Flame, TrendingDown, ClipboardCheck } from "lucide-react";
 import { requireBusiness } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { Page, Head, Kpi, Card, CardTitle } from "@/components/ui";
@@ -6,6 +6,7 @@ import { formatCents } from "@/lib/money";
 import { buildShoppingList, type PurchaseLine } from "@/lib/purchasing";
 import { stockValueCents, toBuyQty, stockStatus } from "@/lib/inventory";
 import { ReceiveForm } from "./receive-form";
+import { CountForm } from "./count-form";
 import { consumeProductionQueue } from "./actions";
 
 const PRODUCING = ["paid", "in_production"] as const;
@@ -59,7 +60,15 @@ export default async function InventoryPage() {
     orderBy: { receivedAt: "desc" },
     take: 8,
   });
-  const receiptName = new Map(ingredients.map((i) => [i.id, i.name]));
+  const ingName = new Map(ingredients.map((i) => [i.id, i.name]));
+
+  // Waste variance from recent stock counts (measured loss beyond recipe trim).
+  const counts = await db.stockCount.findMany({
+    where: { businessId: business.id },
+    orderBy: { countedAt: "desc" },
+    take: 8,
+  });
+  const unexplainedLossCents = counts.reduce((s, c) => s + Math.max(0, c.varianceCents), 0);
 
   const statusStyle: Record<string, { fg: string; bg: string; label: string }> = {
     short: { fg: "var(--clay)", bg: "color-mix(in srgb, var(--clay) 10%, transparent)", label: "Short" },
@@ -82,10 +91,11 @@ export default async function InventoryPage() {
         }
       />
 
-      <div className="grid sm:grid-cols-3 gap-3.5 mb-5">
+      <div className="grid sm:grid-cols-4 gap-3.5 mb-5">
         <Kpi icon={<Boxes size={16} />} label="Stock on hand (value)" value={formatCents(totalStockValue)} />
         <Kpi icon={<TriangleAlert size={16} />} label="Ingredients short" value={shortCount} />
         <Kpi icon={<PackageCheck size={16} />} label="Still to buy (value)" value={formatCents(toBuyValue)} />
+        <Kpi icon={<TrendingDown size={16} />} label="Unexplained loss (recent)" value={formatCents(unexplainedLossCents)} />
       </div>
 
       {/* Receiving */}
@@ -119,6 +129,48 @@ export default async function InventoryPage() {
         })}
       </div>
 
+      {/* Waste variance — measured loss vs the recipe forecast */}
+      <Card className="mb-4">
+        <CardTitle
+          icon={<ClipboardCheck size={15} />}
+          title="Stock count & waste variance"
+          note="What's really on the shelf vs. what the system expected"
+        />
+        <p className="text-[12.5px] mb-4" style={{ color: "var(--muted)" }}>
+          Count an ingredient and we&apos;ll show the gap — loss beyond your recipe trim %
+          (over-trimming, spoilage, shrinkage) — in real dollars.
+        </p>
+        <CountForm ingredients={rows.map((r) => ({ id: r.id, name: r.name, unit: r.unit, stockQty: r.stockQty }))} />
+
+        {counts.length > 0 && (
+          <div className="mt-5 pt-4" style={{ borderTop: "1px solid var(--line)" }}>
+            <div className="text-[12px] font-semibold uppercase tracking-wide mb-2" style={{ color: "var(--muted)" }}>
+              Recent counts
+            </div>
+            <div className="space-y-2">
+              {counts.map((c) => {
+                const loss = c.varianceCents > 0;
+                const gain = c.varianceCents < 0;
+                return (
+                  <div key={c.id} className="flex items-center justify-between text-[13px]">
+                    <span style={{ color: "var(--ink)" }}>{ingName.get(c.ingredientId) ?? "—"}</span>
+                    <span className="flex items-center gap-3" style={{ color: "var(--muted)" }}>
+                      <span>expected {round2(c.expectedQty)} · counted {round2(c.countedQty)}</span>
+                      <span
+                        className="font-medium tabular-nums"
+                        style={{ color: loss ? "var(--clay)" : gain ? "var(--pine)" : "var(--muted)" }}
+                      >
+                        {loss ? `−${formatCents(c.varianceCents)} lost` : gain ? `+${formatCents(-c.varianceCents)} saved` : "on target"}
+                      </span>
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </Card>
+
       {/* Recent receipts */}
       <Card>
         <CardTitle title="Recent deliveries" note={`${receipts.length} shown`} />
@@ -128,7 +180,7 @@ export default async function InventoryPage() {
           <div className="space-y-2">
             {receipts.map((rec) => (
               <div key={rec.id} className="flex items-center justify-between text-[13px]">
-                <span style={{ color: "var(--ink)" }}>{receiptName.get(rec.ingredientId) ?? "—"}</span>
+                <span style={{ color: "var(--ink)" }}>{ingName.get(rec.ingredientId) ?? "—"}</span>
                 <span style={{ color: "var(--muted)" }}>
                   {round2(rec.qtyReceived)} {rec.unit} · {formatCents(rec.totalCostCents)} ·{" "}
                   {new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" }).format(rec.receivedAt)}

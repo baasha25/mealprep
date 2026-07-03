@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { requireBusiness } from "@/lib/auth";
 import { dollarsToCents } from "@/lib/money";
-import { costPerUnitFromReceipt } from "@/lib/inventory";
+import { costPerUnitFromReceipt, stockCountVariance } from "@/lib/inventory";
 import { buildShoppingList, type PurchaseLine } from "@/lib/purchasing";
 
 export type ReceiveState = { ok: boolean; message?: string };
@@ -59,6 +59,61 @@ export async function receiveStock(_prev: ReceiveState, formData: FormData): Pro
   revalidatePath("/dashboard/inventory");
   revalidatePath("/dashboard/purchasing");
   return { ok: true, message: "Delivery received." };
+}
+
+const CountInput = z.object({
+  ingredientId: z.string().min(1),
+  counted: z.coerce.number().min(0).max(1_000_000),
+});
+
+/**
+ * Record a physical stock count. Compares the count to what the system expected
+ * on hand, logs the variance (unexplained loss beyond recipe trim), then
+ * reconciles stock to the counted amount.
+ */
+export async function recordStockCount(_prev: ReceiveState, formData: FormData): Promise<ReceiveState> {
+  const { business } = await requireBusiness();
+  const parsed = CountInput.safeParse({
+    ingredientId: formData.get("ingredientId"),
+    counted: formData.get("counted"),
+  });
+  if (!parsed.success) return { ok: false, message: parsed.error.issues[0]?.message ?? "Invalid count." };
+
+  const ingredient = await db.ingredient.findFirst({
+    where: { id: parsed.data.ingredientId, businessId: business.id },
+    select: { id: true, stockQty: true, costPerUnitCents: true },
+  });
+  if (!ingredient) return { ok: false, message: "Ingredient not found." };
+
+  const { varianceQty, varianceCents } = stockCountVariance(
+    ingredient.stockQty,
+    parsed.data.counted,
+    ingredient.costPerUnitCents,
+  );
+
+  await db.$transaction([
+    db.stockCount.create({
+      data: {
+        businessId: business.id,
+        ingredientId: ingredient.id,
+        expectedQty: ingredient.stockQty,
+        countedQty: parsed.data.counted,
+        varianceQty,
+        varianceCents,
+      },
+    }),
+    // Reconcile the system's belief to the physical count.
+    db.ingredient.update({ where: { id: ingredient.id }, data: { stockQty: parsed.data.counted } }),
+  ]);
+
+  revalidatePath("/dashboard/inventory");
+  const lost = varianceCents > 0;
+  return {
+    ok: true,
+    message: lost
+      ? `Counted — ${(varianceQty).toFixed(2)} unexplained loss recorded.`
+      : "Counted — stock reconciled.",
+  };
 }
 
 /**

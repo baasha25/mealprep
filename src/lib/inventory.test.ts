@@ -4,8 +4,25 @@ import {
   stockValueCents,
   toBuyQty,
   stockStatus,
+  stockCountVariance,
   wasteVariance,
 } from "./inventory";
+
+describe("stockCountVariance", () => {
+  it("positive variance = unexplained loss (shelf has less than expected)", () => {
+    const v = stockCountVariance(12, 9, 85);
+    expect(v.varianceQty).toBe(3);
+    expect(v.varianceCents).toBe(255); // 3 × 85¢ lost
+  });
+  it("negative variance = gain (wasted less than the recipe predicted)", () => {
+    const v = stockCountVariance(10, 12, 100);
+    expect(v.varianceQty).toBe(-2);
+    expect(v.varianceCents).toBe(-200);
+  });
+  it("zero when the count matches expected", () => {
+    expect(stockCountVariance(20, 20, 50)).toEqual({ varianceQty: 0, varianceCents: 0 });
+  });
+});
 
 describe("costPerUnitFromReceipt", () => {
   it("derives real unit cost from an invoice", () => {
