@@ -372,6 +372,7 @@ model Order {
   taxCents              Int           @default(0)
   feesCents             Int           @default(0)
   totalCents            Int           @default(0)
+  giftRedeemedCents     Int           @default(0) // stored-value tender applied at checkout
   stripePaymentIntentId String?
   createdAt             DateTime      @default(now())
   updatedAt             DateTime      @updatedAt

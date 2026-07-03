@@ -85,6 +85,17 @@ export default async function OrderDetailPage({
                 {formatCents(order.totalCents)}
               </span>
             </div>
+            {order.giftRedeemedCents > 0 && (
+              <div className="pt-2 space-y-1.5">
+                <Row l="Paid by gift card" v={`−${formatCents(order.giftRedeemedCents)}`} green />
+                <div className="flex justify-between">
+                  <span className="text-[13px] font-medium" style={{ color: "var(--ink)" }}>Amount due</span>
+                  <span className="text-[13px] font-semibold" style={{ color: "var(--ink)" }}>
+                    {formatCents(Math.max(0, order.totalCents - order.giftRedeemedCents))}
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
         </Card>
 

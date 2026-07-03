@@ -62,6 +62,25 @@ export async function lookupCoupon(rawCode: string): Promise<CouponResult> {
   return { valid: true, code, type: coupon.type, value: coupon.value, label };
 }
 
+/* ----------------------------- Gift cards ------------------------------ */
+
+export type GiftCardResult =
+  | { valid: true; code: string; balanceCents: number }
+  | { valid: false; message: string };
+
+export async function lookupGiftCard(rawCode: string): Promise<GiftCardResult> {
+  const code = rawCode.trim().toUpperCase();
+  if (!code) return { valid: false, message: "Enter a code." };
+
+  const business = await getStorefrontBusiness();
+  if (!business) return { valid: false, message: "Store unavailable." };
+
+  const gc = await db.giftCard.findFirst({ where: { businessId: business.id, code } });
+  if (!gc) return { valid: false, message: "That gift card isn't valid." };
+  if (gc.balanceCents <= 0) return { valid: false, message: "This gift card has no balance left." };
+  return { valid: true, code, balanceCents: gc.balanceCents };
+}
+
 /* ------------------------------- Checkout ------------------------------ */
 
 const PlaceOrderInput = z.object({
@@ -70,6 +89,7 @@ const PlaceOrderInput = z.object({
     .min(1, "Your cart is empty."),
   subscribe: z.boolean(),
   couponCode: z.string().optional(),
+  giftCardCode: z.string().trim().toUpperCase().max(24).optional(),
   redeemPoints: z.number().int().min(0).max(1_000_000).optional(),
   referralCode: z.string().trim().toUpperCase().max(24).optional(),
   fulfillment: z.enum(["delivery", "pickup"]),
@@ -85,7 +105,7 @@ const PlaceOrderInput = z.object({
 export type PlaceOrderInputT = z.infer<typeof PlaceOrderInput>;
 
 export type PlaceOrderResult =
-  | { ok: true; orderId: string; totalCents: number; subscription: boolean }
+  | { ok: true; orderId: string; totalCents: number; giftRedeemedCents: number; amountDueCents: number; subscription: boolean }
   | { ok: false; message: string };
 
 export async function placeOrder(input: PlaceOrderInputT): Promise<PlaceOrderResult> {
@@ -170,6 +190,20 @@ export async function placeOrder(input: PlaceOrderInputT): Promise<PlaceOrderRes
     redeemCents: redemption.cents,
   });
 
+  // Gift card — stored-value tender applied to the final total (capped at balance).
+  let giftCard: { id: string; balanceCents: number } | null = null;
+  let giftAppliedCents = 0;
+  if (data.giftCardCode) {
+    const gc = await db.giftCard.findFirst({
+      where: { businessId: business.id, code: data.giftCardCode },
+      select: { id: true, balanceCents: true },
+    });
+    if (gc && gc.balanceCents > 0) {
+      giftCard = gc;
+      giftAppliedCents = Math.min(gc.balanceCents, totals.totalCents);
+    }
+  }
+
   // Resolve a referrer (valid code, belongs to this business, not the buyer).
   let referrerId: string | null = null;
   if (isNewCustomer && data.referralCode) {
@@ -207,9 +241,18 @@ export async function placeOrder(input: PlaceOrderInputT): Promise<PlaceOrderRes
       taxCents: totals.taxCents,
       feesCents: totals.feesCents,
       totalCents: totals.totalCents,
+      giftRedeemedCents: giftAppliedCents,
       items: { create: lineItems },
     },
   });
+
+  // Spend down the gift card balance.
+  if (giftCard && giftAppliedCents > 0) {
+    await db.giftCard.update({
+      where: { id: giftCard.id },
+      data: { balanceCents: { decrement: giftAppliedCents } },
+    });
+  }
 
   // Loyalty postings: redeemed points spent, points earned, referrer bonus.
   if (s.loyaltyEnabled) {
@@ -233,6 +276,8 @@ export async function placeOrder(input: PlaceOrderInputT): Promise<PlaceOrderRes
     ok: true,
     orderId: order.id,
     totalCents: totals.totalCents,
+    giftRedeemedCents: giftAppliedCents,
+    amountDueCents: Math.max(0, totals.totalCents - giftAppliedCents),
     subscription: data.subscribe,
   };
 }

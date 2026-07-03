@@ -14,15 +14,18 @@ import {
   Nut,
   Fish,
   Star,
+  Gift,
   type LucideIcon,
 } from "lucide-react";
 import { formatCents } from "@/lib/money";
 import { computeOrder, type PricingSettings } from "@/lib/pricing";
 import {
   lookupCoupon,
+  lookupGiftCard,
   lookupLoyalty,
   placeOrder,
   type CouponResult,
+  type GiftCardResult,
   type LoyaltyLookup,
 } from "./actions";
 
@@ -79,6 +82,8 @@ export function Storefront({
   const [subscribe, setSubscribe] = useState(false);
   const [couponInput, setCouponInput] = useState("");
   const [coupon, setCoupon] = useState<CouponResult | null>(null);
+  const [giftInput, setGiftInput] = useState("");
+  const [giftCard, setGiftCard] = useState<GiftCardResult | null>(null);
   const [fulfillment, setFulfillment] = useState<"delivery" | "pickup">(
     settings.fulfillment === "pickup" ? "pickup" : "delivery",
   );
@@ -111,11 +116,21 @@ export function Storefront({
     coupon && coupon.valid ? { type: coupon.type, value: coupon.value } : null;
   const redeemCents = applyLoyalty && loyalty?.found ? loyalty.valueCents : 0;
   const totals = computeOrder({ lines, settings, subscribe, coupon: appliedCoupon, redeemCents });
+  // Gift card is stored-value tender applied to the final total.
+  const giftAppliedCents = giftCard?.valid ? Math.min(giftCard.balanceCents, totals.totalCents) : 0;
+  const amountDueCents = Math.max(0, totals.totalCents - giftAppliedCents);
 
   const applyCoupon = () => {
     startTransition(async () => {
       const result = await lookupCoupon(couponInput);
       setCoupon(result);
+    });
+  };
+
+  const applyGift = () => {
+    startTransition(async () => {
+      const result = await lookupGiftCard(giftInput);
+      setGiftCard(result);
     });
   };
 
@@ -136,6 +151,7 @@ export function Storefront({
         items: Object.entries(cart).map(([mealId, qty]) => ({ mealId, qty })),
         subscribe,
         couponCode: coupon?.valid ? coupon.code : undefined,
+        giftCardCode: giftCard?.valid ? giftCard.code : undefined,
         redeemPoints: applyLoyalty && loyalty?.found ? loyalty.points : 0,
         referralCode: referralInput.trim() || undefined,
         fulfillment,
@@ -146,6 +162,8 @@ export function Storefront({
         setCart({});
         setCoupon(null);
         setCouponInput("");
+        setGiftCard(null);
+        setGiftInput("");
         setLoyalty(null);
         setApplyLoyalty(false);
         setReferralInput("");
@@ -401,6 +419,35 @@ export function Storefront({
                 </p>
               )}
 
+              <div className="flex gap-2 mb-3">
+                <input
+                  value={giftInput}
+                  onChange={(e) => setGiftInput(e.target.value)}
+                  placeholder="Gift card — try GIFT-7K2P"
+                  className="flex-1 px-3 py-2 rounded-md border text-[13px] outline-none"
+                  style={inputStyle}
+                />
+                <button
+                  onClick={applyGift}
+                  disabled={pending}
+                  className="px-3 rounded-md text-[13px] font-medium"
+                  style={{ background: "var(--sand)", color: "var(--ink)" }}
+                >
+                  Apply
+                </button>
+              </div>
+              {giftCard?.valid && (
+                <p className="text-[12px] mb-2 flex items-center gap-1" style={{ color: "var(--pine)" }}>
+                  <Gift size={12} />
+                  {giftCard.code} — {formatCents(giftCard.balanceCents)} balance
+                </p>
+              )}
+              {giftCard && !giftCard.valid && (
+                <p className="text-[12px] mb-2" style={{ color: "var(--clay)" }}>
+                  {giftCard.message}
+                </p>
+              )}
+
               <div
                 className="space-y-1.5 text-[13px] py-3 border-t border-b mb-3"
                 style={{ borderColor: "var(--line)" }}
@@ -427,6 +474,18 @@ export function Storefront({
                   {formatCents(totals.totalCents)}
                 </span>
               </div>
+              {giftAppliedCents > 0 && (
+                <div className="mb-3">
+                  <div className="flex justify-between text-[13px]">
+                    <span style={{ color: "var(--muted)" }}>Gift card</span>
+                    <span style={{ color: "var(--pine)" }}>−{formatCents(giftAppliedCents)}</span>
+                  </div>
+                  <div className="flex justify-between items-baseline mt-1">
+                    <span className="text-[14px] font-semibold" style={{ color: "var(--ink)" }}>Amount due</span>
+                    <span className="disp text-[20px] font-medium" style={{ color: "var(--ink)" }}>{formatCents(amountDueCents)}</span>
+                  </div>
+                </div>
+              )}
 
               {totals.belowMinimum && (
                 <p
