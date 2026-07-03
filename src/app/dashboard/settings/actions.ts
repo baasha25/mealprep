@@ -25,6 +25,11 @@ const SettingsInput = z.object({
   fulfillment: z.enum(["delivery", "pickup", "both"]),
   deliveryDays: z.record(z.enum(DAYS), z.boolean()),
   pickupLocations: z.array(z.string().trim().min(1)),
+  // Loyalty & referrals
+  loyaltyEnabled: z.boolean(),
+  loyaltyPointsPerDollar: z.coerce.number().int().min(0).max(1000),
+  loyaltyRedeemCentsPerPoint: z.coerce.number().int().min(1).max(1000),
+  referralBonusPoints: z.coerce.number().int().min(0).max(1_000_000),
 });
 
 export type SettingsActionState = {
@@ -61,6 +66,10 @@ export async function updateSettings(
     fulfillment: formData.get("fulfillment"),
     deliveryDays,
     pickupLocations,
+    loyaltyEnabled: formData.get("loyaltyEnabled") === "on",
+    loyaltyPointsPerDollar: formData.get("loyaltyPointsPerDollar"),
+    loyaltyRedeemCentsPerPoint: formData.get("loyaltyRedeemCentsPerPoint"),
+    referralBonusPoints: formData.get("referralBonusPoints"),
   });
 
   if (!parsed.success) {
@@ -95,6 +104,10 @@ export async function updateSettings(
         fulfillment: d.fulfillment,
         deliveryDays: d.deliveryDays,
         pickupLocations: d.pickupLocations,
+        loyaltyEnabled: d.loyaltyEnabled,
+        loyaltyPointsPerDollar: d.loyaltyPointsPerDollar,
+        loyaltyRedeemCentsPerPoint: d.loyaltyRedeemCentsPerPoint,
+        referralBonusPoints: d.referralBonusPoints,
       },
       update: {
         subDiscountBps: percentToBps(d.subDiscount),
@@ -108,6 +121,10 @@ export async function updateSettings(
         fulfillment: d.fulfillment,
         deliveryDays: d.deliveryDays,
         pickupLocations: d.pickupLocations,
+        loyaltyEnabled: d.loyaltyEnabled,
+        loyaltyPointsPerDollar: d.loyaltyPointsPerDollar,
+        loyaltyRedeemCentsPerPoint: d.loyaltyRedeemCentsPerPoint,
+        referralBonusPoints: d.referralBonusPoints,
       },
     }),
   ]);

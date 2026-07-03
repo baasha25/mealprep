@@ -30,6 +30,10 @@ export default async function SettingsPage() {
     fulfillment: settings.fulfillment as "delivery" | "pickup" | "both",
     deliveryDays: dd,
     pickupLocations: settings.pickupLocations,
+    loyaltyEnabled: settings.loyaltyEnabled,
+    loyaltyPointsPerDollar: settings.loyaltyPointsPerDollar,
+    loyaltyRedeemCentsPerPoint: settings.loyaltyRedeemCentsPerPoint,
+    referralBonusPoints: settings.referralBonusPoints,
   };
 
   return (

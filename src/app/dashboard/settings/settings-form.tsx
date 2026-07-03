@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { Check, Store, Percent, Truck } from "lucide-react";
+import { Check, Store, Percent, Truck, Star } from "lucide-react";
 import { Card, CardTitle, Field, INP, btnPrimary } from "@/components/ui";
 import { updateSettings, type SettingsActionState } from "./actions";
 
@@ -21,6 +21,10 @@ export type SettingsInitial = {
   fulfillment: "delivery" | "pickup" | "both";
   deliveryDays: Record<string, boolean>;
   pickupLocations: string[];
+  loyaltyEnabled: boolean;
+  loyaltyPointsPerDollar: number;
+  loyaltyRedeemCentsPerPoint: number;
+  referralBonusPoints: number;
 };
 
 const inputStyle = {
@@ -234,6 +238,55 @@ export function SettingsForm({ initial }: { initial: SettingsInitial }) {
             style={inputStyle}
           />
         </Field>
+      </Card>
+
+      {/* Loyalty & referrals */}
+      <Card>
+        <CardTitle icon={<Star size={15} />} title="Loyalty & referrals" />
+        <label className="flex items-center gap-2 mb-4 cursor-pointer select-none">
+          <input type="checkbox" name="loyaltyEnabled" defaultChecked={initial.loyaltyEnabled} />
+          <span className="text-[13px]" style={{ color: "var(--ink)" }}>
+            Enable loyalty points & referrals
+          </span>
+        </label>
+        <div className="grid sm:grid-cols-3 gap-4">
+          <Field label="Points earned per $1">
+            <input
+              name="loyaltyPointsPerDollar"
+              type="number"
+              step="1"
+              min="0"
+              defaultValue={initial.loyaltyPointsPerDollar}
+              className={INP}
+              style={inputStyle}
+            />
+            <ErrorText msg={errors.loyaltyPointsPerDollar} />
+          </Field>
+          <Field label="Redemption value (¢ / point)" hint="e.g. 5 = 1 point is worth 5¢.">
+            <input
+              name="loyaltyRedeemCentsPerPoint"
+              type="number"
+              step="1"
+              min="1"
+              defaultValue={initial.loyaltyRedeemCentsPerPoint}
+              className={INP}
+              style={inputStyle}
+            />
+            <ErrorText msg={errors.loyaltyRedeemCentsPerPoint} />
+          </Field>
+          <Field label="Referral bonus (points)" hint="Awarded to the referrer per signup.">
+            <input
+              name="referralBonusPoints"
+              type="number"
+              step="1"
+              min="0"
+              defaultValue={initial.referralBonusPoints}
+              className={INP}
+              style={inputStyle}
+            />
+            <ErrorText msg={errors.referralBonusPoints} />
+          </Field>
+        </div>
       </Card>
 
       <div className="flex items-center gap-3">
