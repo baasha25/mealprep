@@ -246,7 +246,15 @@ async function main() {
 
   // Customers + orders (with price snapshots).
   const taxRateBps = 800;
+  const REVIEW_COMMENTS = [
+    "Absolutely delicious — my weekly staple.",
+    "Great macros and it actually tastes good.",
+    "Perfect portion, will reorder.",
+    "Solid but could use more sauce.",
+    "",
+  ];
   let custIndex = 0;
+  let reviewCounter = 0;
   for (const o of SEED_ORDERS) {
     const email = `${o.customer.toLowerCase().replace(/[^a-z]+/g, ".")}@email.com`;
     custIndex++;
@@ -317,6 +325,19 @@ async function main() {
       await db.order.update({
         where: { id: order.id },
         data: { subscriptionId: sub.id },
+      });
+    }
+
+    // A review from this customer for each meal they ordered.
+    let firstOfOrder = true;
+    for (const mealName of Object.keys(o.items)) {
+      const meal = mealIds.get(mealName)!;
+      const rating = [5, 4, 5, 5, 4, 3][reviewCounter % 6];
+      const comment = firstOfOrder ? REVIEW_COMMENTS[reviewCounter % REVIEW_COMMENTS.length] : "";
+      reviewCounter++;
+      firstOfOrder = false;
+      await db.mealReview.create({
+        data: { businessId: business.id, mealId: meal.id, customerId: customer.id, rating, comment: comment || null },
       });
     }
   }

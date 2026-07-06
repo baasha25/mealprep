@@ -16,6 +16,14 @@ export default async function StorePage() {
     orderBy: { createdAt: "asc" },
   });
 
+  const ratingAgg = await db.mealReview.groupBy({
+    by: ["mealId"],
+    where: { businessId: business.id },
+    _avg: { rating: true },
+    _count: { rating: true },
+  });
+  const ratingByMeal = new Map(ratingAgg.map((r) => [r.mealId, { avg: r._avg.rating ?? 0, count: r._count.rating }]));
+
   const storeMeals: StoreMeal[] = meals.map((m) => ({
     id: m.id,
     name: m.name,
@@ -26,6 +34,8 @@ export default async function StorePage() {
     allergens: m.allergens,
     calories: m.calories,
     proteinG: m.proteinG,
+    ratingAvg: ratingByMeal.get(m.id)?.avg ?? 0,
+    ratingCount: ratingByMeal.get(m.id)?.count ?? 0,
   }));
 
   const settings: StoreSettings = {

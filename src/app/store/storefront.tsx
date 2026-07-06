@@ -46,6 +46,8 @@ export type StoreMeal = {
   allergens: string[];
   calories: number;
   proteinG: number;
+  ratingAvg: number;
+  ratingCount: number;
 };
 
 export type StoreSettings = PricingSettings & {
@@ -281,8 +283,15 @@ export function Storefront({
                       {m.description}
                     </p>
                   )}
-                  <div className="text-[11.5px] mb-3" style={{ color: "var(--muted)" }}>
-                    {m.calories} cal · {m.proteinG}g protein
+                  <div className="text-[11.5px] mb-3 flex items-center gap-2" style={{ color: "var(--muted)" }}>
+                    {m.ratingCount > 0 && (
+                      <span className="flex items-center gap-0.5" style={{ color: "#c98a2b" }}>
+                        <Star size={12} fill="#e0a53f" style={{ color: "#e0a53f" }} />
+                        {m.ratingAvg.toFixed(1)}
+                        <span style={{ color: "var(--muted)" }}>({m.ratingCount})</span>
+                      </span>
+                    )}
+                    <span>{m.calories} cal · {m.proteinG}g protein</span>
                   </div>
                   <div className="flex items-center justify-between mt-auto">
                     <span className="disp text-[17px] font-medium" style={{ color: "var(--ink)" }}>

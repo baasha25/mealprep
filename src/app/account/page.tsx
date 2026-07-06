@@ -1,9 +1,10 @@
 import Link from "next/link";
-import { Leaf } from "lucide-react";
+import { Leaf, Star } from "lucide-react";
 import { db } from "@/lib/db";
 import { getCustomerContext } from "@/lib/customer-auth";
 import { canModifyNextDelivery } from "@/lib/subscriptions";
 import { SubscriptionManager, type ManagerMeal } from "./subscription-manager";
+import { RateMeals, type ReviewableMeal } from "./rate-meals";
 
 export const dynamic = "force-dynamic";
 
@@ -47,6 +48,25 @@ export default async function AccountPage() {
     priceCents: m.priceCents,
     diet: m.diet,
   }));
+
+  // Meals this customer has ordered → reviewable, prefilled with any existing review.
+  const [orderedItems, myReviews] = await Promise.all([
+    db.orderItem.findMany({
+      where: { order: { customerId: customer.id }, mealId: { not: null } },
+      select: { mealId: true, nameSnapshot: true },
+    }),
+    db.mealReview.findMany({ where: { customerId: customer.id }, select: { mealId: true, rating: true, comment: true } }),
+  ]);
+  const reviewByMeal = new Map(myReviews.map((r) => [r.mealId, r]));
+  const activeMealIds = new Set(meals.map((m) => m.id));
+  const seenMeal = new Set<string>();
+  const reviewableMeals: ReviewableMeal[] = [];
+  for (const it of orderedItems) {
+    if (!it.mealId || seenMeal.has(it.mealId) || !activeMealIds.has(it.mealId)) continue;
+    seenMeal.add(it.mealId);
+    const r = reviewByMeal.get(it.mealId);
+    reviewableMeals.push({ id: it.mealId, name: it.nameSnapshot, rating: r?.rating ?? 0, comment: r?.comment ?? "" });
+  }
 
   const dateFmt = new Intl.DateTimeFormat("en-US", { weekday: "short", month: "short", day: "numeric" });
 
@@ -130,6 +150,18 @@ export default async function AccountPage() {
           meals={managerMeals}
         />
       )}
+
+      {/* Rate your meals */}
+      <div className="rounded-xl border p-5 mt-4" style={{ borderColor: "var(--line)", background: "var(--surface)" }}>
+        <div className="flex items-center gap-2 mb-1">
+          <Star size={16} style={{ color: "#e0a53f" }} />
+          <h3 className="text-[15px] font-semibold" style={{ color: "var(--ink)" }}>Rate your meals</h3>
+        </div>
+        <p className="text-[12.5px] mb-1" style={{ color: "var(--muted)" }}>
+          Your ratings help other diners and the kitchen improve.
+        </p>
+        <RateMeals meals={reviewableMeals} />
+      </div>
     </Shell>
   );
 }

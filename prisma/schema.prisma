@@ -157,6 +157,7 @@ model Customer {
   addresses     Address[]
   subscriptions Subscription[]
   orders        Order[]
+  reviews       MealReview[]
   referredBy    Customer?  @relation("Referrals", fields: [referredById], references: [id])
   referrals     Customer[] @relation("Referrals")
 
@@ -203,8 +204,26 @@ model Meal {
   ingredients          MealIngredient[]
   orderItems           OrderItem[]
   subscriptionSelItems SubscriptionSelectionItem[]
+  reviews              MealReview[]
 
   @@index([businessId])
+}
+
+// A customer's rating + optional review of a meal (one per customer per meal).
+model MealReview {
+  id         String   @id @default(cuid())
+  businessId String
+  mealId     String
+  meal       Meal     @relation(fields: [mealId], references: [id], onDelete: Cascade)
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  rating     Int // 1–5
+  comment    String?
+  createdAt  DateTime @default(now())
+
+  @@unique([mealId, customerId])
+  @@index([businessId])
+  @@index([mealId])
 }
 
 model Ingredient {

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Plus, Pencil, Trash2, Eye, EyeOff, UtensilsCrossed } from "lucide-react";
+import { Plus, Pencil, Trash2, Eye, EyeOff, UtensilsCrossed, Star } from "lucide-react";
 import { requireBusiness } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { Page, Head } from "@/components/ui";
@@ -11,8 +11,15 @@ export default async function MenuPage() {
   const meals = await db.meal.findMany({
     where: { businessId: business.id },
     orderBy: { createdAt: "asc" },
-    include: { _count: { select: { ingredients: true } } },
+    include: { _count: { select: { ingredients: true, reviews: true } } },
   });
+
+  const ratingAgg = await db.mealReview.groupBy({
+    by: ["mealId"],
+    where: { businessId: business.id },
+    _avg: { rating: true },
+  });
+  const ratingByMeal = new Map(ratingAgg.map((r) => [r.mealId, r._avg.rating ?? 0]));
 
   return (
     <Page>
@@ -97,10 +104,19 @@ export default async function MenuPage() {
                     {formatCents(m.priceCents)}
                   </span>
                 </div>
-                <div className="text-[12px] mb-3" style={{ color: "var(--muted)" }}>
-                  {m.diet ? `${m.diet} · ` : ""}
-                  {m.calories} cal · {m._count.ingredients} ingredient
-                  {m._count.ingredients === 1 ? "" : "s"}
+                <div className="text-[12px] mb-3 flex items-center gap-2 flex-wrap" style={{ color: "var(--muted)" }}>
+                  {m._count.reviews > 0 && (
+                    <span className="flex items-center gap-0.5" style={{ color: "#c98a2b" }}>
+                      <Star size={11} fill="#e0a53f" style={{ color: "#e0a53f" }} />
+                      {(ratingByMeal.get(m.id) ?? 0).toFixed(1)}
+                      <span style={{ color: "var(--muted)" }}>({m._count.reviews})</span>
+                    </span>
+                  )}
+                  <span>
+                    {m.diet ? `${m.diet} · ` : ""}
+                    {m.calories} cal · {m._count.ingredients} ingredient
+                    {m._count.ingredients === 1 ? "" : "s"}
+                  </span>
                 </div>
 
                 <div
