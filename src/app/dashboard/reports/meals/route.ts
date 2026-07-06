@@ -1,4 +1,4 @@
-import { requireBusiness } from "@/lib/auth";
+import { requireOwner } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { toCsv } from "@/lib/csv";
 
@@ -7,7 +7,7 @@ const isoDate = (d: Date) => d.toISOString().slice(0, 10);
 
 // Downloadable meal-sales report: units and revenue per meal.
 export async function GET() {
-  const { business } = await requireBusiness();
+  const { business } = await requireOwner();
   const items = await db.orderItem.findMany({
     where: { order: { businessId: business.id } },
     select: { nameSnapshot: true, qty: true, unitPriceCentsSnapshot: true },

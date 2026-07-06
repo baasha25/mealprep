@@ -1,12 +1,12 @@
 import Link from "next/link";
 import { Users, ChevronRight, Repeat } from "lucide-react";
-import { requireBusiness } from "@/lib/auth";
+import { requireOwner } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { Page, Head, Kpi } from "@/components/ui";
 import { formatCents } from "@/lib/money";
 
 export default async function CustomersPage() {
-  const { business } = await requireBusiness();
+  const { business } = await requireOwner();
   const customers = await db.customer.findMany({
     where: { businessId: business.id },
     orderBy: { createdAt: "desc" },

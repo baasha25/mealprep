@@ -1,12 +1,12 @@
 import { TrendingUp, Receipt, Repeat, Users, ChefHat } from "lucide-react";
-import { requireBusiness } from "@/lib/auth";
+import { requireOwner } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { Page, Head, Kpi, Card, CardTitle } from "@/components/ui";
 import { formatCents, formatCents0 } from "@/lib/money";
 import { ORDER_TYPE_LABEL } from "@/lib/order-status";
 
 export default async function AnalyticsPage() {
-  const { business } = await requireBusiness();
+  const { business } = await requireOwner();
   const where = { businessId: business.id };
 
   const [orders, customerCount, activeSubs, orderItems] = await Promise.all([

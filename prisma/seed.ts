@@ -236,6 +236,15 @@ async function main() {
     ],
   });
 
+  // Team members (owner + staff) for the Staff & permissions screen.
+  await db.user.createMany({
+    data: [
+      { businessId: business.id, email: "owner@greenleaf.kitchen", role: "owner", authProviderId: "seed-owner" },
+      { businessId: business.id, email: "carlos.chef@greenleaf.kitchen", role: "staff", authProviderId: "seed-chef" },
+      { businessId: business.id, email: "nina.prep@greenleaf.kitchen", role: "staff", authProviderId: "seed-prep" },
+    ],
+  });
+
   // Gift cards.
   await db.giftCard.createMany({
     data: [

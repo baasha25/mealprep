@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { canAccess, type Role } from "@/lib/permissions";
 import {
   LayoutDashboard,
   Receipt,
@@ -42,7 +43,7 @@ const NAV: [string, string, LucideIcon, boolean][] = [
   ["/dashboard/routes", "Delivery Routes", Truck, true],
   ["/dashboard/pos", "POS Terminal", Wallet, true],
   ["/dashboard/marketing", "Marketing", Megaphone, true],
-  ["/dashboard/staff", "Staff", Users, false],
+  ["/dashboard/staff", "Staff", Users, true],
   ["/dashboard/import", "Import data", Upload, true],
   ["/dashboard/settings", "Settings", Cog, true],
 ];
@@ -50,11 +51,14 @@ const NAV: [string, string, LucideIcon, boolean][] = [
 export function DashboardSidebar({
   businessName,
   stats,
+  role,
 }: {
   businessName: string;
   stats: string;
+  role: Role;
 }) {
   const pathname = usePathname();
+  const nav = NAV.filter(([href]) => canAccess(role, href));
 
   return (
     <aside
@@ -79,7 +83,7 @@ export function DashboardSidebar({
         Workspace
       </div>
       <nav className="flex flex-col gap-0.5">
-        {NAV.map(([href, label, Icon, live]) => {
+        {nav.map(([href, label, Icon, live]) => {
           const on =
             pathname === href ||
             (href !== "/dashboard" && pathname.startsWith(href));

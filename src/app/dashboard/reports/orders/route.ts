@@ -1,4 +1,4 @@
-import { requireBusiness } from "@/lib/auth";
+import { requireOwner } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { toCsv } from "@/lib/csv";
 import { ORDER_TYPE_LABEL } from "@/lib/order-status";
@@ -8,7 +8,7 @@ const isoDate = (d: Date) => d.toISOString().slice(0, 10);
 
 // Downloadable orders ledger (all orders) for the owner's bookkeeper.
 export async function GET() {
-  const { business } = await requireBusiness();
+  const { business } = await requireOwner();
   const orders = await db.order.findMany({
     where: { businessId: business.id },
     orderBy: { createdAt: "desc" },

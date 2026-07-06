@@ -1,5 +1,5 @@
 import { TrendingUp, DollarSign, AlertTriangle, ChefHat, ArrowUpRight } from "lucide-react";
-import { requireBusiness } from "@/lib/auth";
+import { requireOwner } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { Page, Head, Kpi, Card, CardTitle } from "@/components/ui";
 import { formatCents, bpsToPercent } from "@/lib/money";
@@ -21,7 +21,7 @@ const CLASS_STYLE: Record<MenuClass, { fg: string; bg: string; blurb: string }> 
 };
 
 export default async function ProfitabilityPage() {
-  const { business } = await requireBusiness();
+  const { business } = await requireOwner();
 
   const meals = await db.meal.findMany({
     where: { businessId: business.id, active: true },

@@ -1,5 +1,5 @@
 import { Tag, Gift, Trash2, Eye, EyeOff } from "lucide-react";
-import { requireBusiness } from "@/lib/auth";
+import { requireOwner } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { Page, Head, Card, CardTitle } from "@/components/ui";
 import { formatCents } from "@/lib/money";
@@ -7,7 +7,7 @@ import { CouponForm, GiftCardForm } from "./forms";
 import { toggleCoupon, deleteCoupon } from "./actions";
 
 export default async function MarketingPage() {
-  const { business } = await requireBusiness();
+  const { business } = await requireOwner();
   const [coupons, giftCards] = await Promise.all([
     db.coupon.findMany({ where: { businessId: business.id }, orderBy: { code: "asc" } }),
     db.giftCard.findMany({ where: { businessId: business.id }, orderBy: { createdAt: "desc" } }),

@@ -1,12 +1,12 @@
 import { FileSpreadsheet, Download, TrendingUp, Receipt, Percent, CreditCard } from "lucide-react";
-import { requireBusiness } from "@/lib/auth";
+import { requireOwner } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { Page, Head, Kpi, Card, CardTitle, Row } from "@/components/ui";
 import { formatCents } from "@/lib/money";
 import { ORDER_TYPE_LABEL } from "@/lib/order-status";
 
 export default async function ReportsPage() {
-  const { business } = await requireBusiness();
+  const { business } = await requireOwner();
   const orders = await db.order.findMany({
     where: { businessId: business.id },
     select: { type: true, subtotalCents: true, taxCents: true, feesCents: true, totalCents: true, giftRedeemedCents: true },

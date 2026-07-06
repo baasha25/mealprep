@@ -1,11 +1,11 @@
-import { requireBusiness } from "@/lib/auth";
+import { requireOwner } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { Page, Head } from "@/components/ui";
 import { bpsToPercent, centsToDollars } from "@/lib/money";
 import { SettingsForm, type SettingsInitial } from "./settings-form";
 
 export default async function SettingsPage() {
-  const { business } = await requireBusiness();
+  const { business } = await requireOwner();
 
   // Ensure a settings row exists (defaults defined in the Prisma schema).
   const settings = await db.businessSettings.upsert({
