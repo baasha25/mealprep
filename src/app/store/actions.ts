@@ -1,7 +1,9 @@
 "use server";
 
 import { z } from "zod";
+import { headers } from "next/headers";
 import { db } from "@/lib/db";
+import { stripe, STRIPE_ENABLED } from "@/lib/stripe";
 import { getStorefrontBusiness } from "@/lib/storefront";
 import { computeOrder, type AppliedCoupon } from "@/lib/pricing";
 import {
@@ -105,7 +107,7 @@ const PlaceOrderInput = z.object({
 export type PlaceOrderInputT = z.infer<typeof PlaceOrderInput>;
 
 export type PlaceOrderResult =
-  | { ok: true; orderId: string; totalCents: number; giftRedeemedCents: number; amountDueCents: number; subscription: boolean }
+  | { ok: true; orderId: string; totalCents: number; giftRedeemedCents: number; amountDueCents: number; subscription: boolean; checkoutUrl?: string }
   | { ok: false; message: string };
 
 export async function placeOrder(input: PlaceOrderInputT): Promise<PlaceOrderResult> {
@@ -272,12 +274,48 @@ export async function placeOrder(input: PlaceOrderInputT): Promise<PlaceOrderRes
     }
   }
 
+  const amountDueCents = Math.max(0, totals.totalCents - giftAppliedCents);
+
+  // Fully covered by gift card / points → nothing to charge; mark it paid.
+  if (amountDueCents === 0) {
+    await db.order.update({ where: { id: order.id }, data: { status: "paid" } });
+  }
+
+  // Otherwise send the customer to Stripe Checkout (test mode) to pay the balance.
+  let checkoutUrl: string | undefined;
+  if (amountDueCents > 0 && STRIPE_ENABLED) {
+    const h = await headers();
+    const origin = h.get("origin") ?? process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+    const session = await stripe.checkout.sessions.create({
+      mode: "payment",
+      payment_method_types: ["card"],
+      customer_email: data.customer.email,
+      client_reference_id: order.id,
+      metadata: { orderId: order.id },
+      line_items: [
+        {
+          quantity: 1,
+          price_data: {
+            currency: "usd",
+            unit_amount: amountDueCents,
+            product_data: { name: `${business.name} — ${totals.itemCount} meals`, description: `Order #${order.id.slice(-6)}` },
+          },
+        },
+      ],
+      success_url: `${origin}/store/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${origin}/store?canceled=1`,
+    });
+    await db.order.update({ where: { id: order.id }, data: { stripePaymentIntentId: session.id } });
+    checkoutUrl = session.url ?? undefined;
+  }
+
   return {
     ok: true,
     orderId: order.id,
     totalCents: totals.totalCents,
     giftRedeemedCents: giftAppliedCents,
-    amountDueCents: Math.max(0, totals.totalCents - giftAppliedCents),
+    amountDueCents,
     subscription: data.subscribe,
+    checkoutUrl,
   };
 }

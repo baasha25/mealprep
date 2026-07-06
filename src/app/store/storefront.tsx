@@ -160,6 +160,12 @@ export function Storefront({
         customer: form,
       });
       if (result.ok) {
+        // Balance due → hand off to Stripe Checkout.
+        if (result.checkoutUrl) {
+          window.location.href = result.checkoutUrl;
+          return;
+        }
+        // Fully covered by gift card / points → confirm inline.
         setPlaced({ orderId: result.orderId, subscription: result.subscription });
         setCart({});
         setCoupon(null);
