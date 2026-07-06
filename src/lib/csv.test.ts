@@ -1,5 +1,25 @@
 import { describe, it, expect } from "vitest";
-import { parseCsv, parseCsvRecords, splitList } from "./csv";
+import { parseCsv, parseCsvRecords, splitList, csvCell, toCsv } from "./csv";
+
+describe("csvCell / toCsv", () => {
+  it("leaves plain values unquoted", () => {
+    expect(csvCell("hello")).toBe("hello");
+    expect(csvCell(12.5)).toBe("12.5");
+    expect(csvCell(null)).toBe("");
+  });
+  it("quotes and escapes special characters", () => {
+    expect(csvCell("Bowl, large")).toBe('"Bowl, large"');
+    expect(csvCell('say "hi"')).toBe('"say ""hi"""');
+    expect(csvCell("line1\nline2")).toBe('"line1\nline2"');
+  });
+  it("serializes a grid with CRLF rows", () => {
+    expect(toCsv([["a", "b"], ["1,2", 3]])).toBe('a,b\r\n"1,2",3');
+  });
+  it("round-trips through the parser", () => {
+    const rows = [["name", "note"], ["Chicken", "great, tasty"]];
+    expect(parseCsv(toCsv(rows))).toEqual(rows);
+  });
+});
 
 describe("parseCsv", () => {
   it("parses a simple grid", () => {

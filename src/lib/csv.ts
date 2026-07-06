@@ -63,6 +63,17 @@ export function parseCsvRecords(text: string): Record<string, string>[] {
   });
 }
 
+/** Escape a single CSV cell (quote if it contains a comma, quote, or newline). */
+export function csvCell(v: string | number | null | undefined): string {
+  const s = v == null ? "" : String(v);
+  return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
+/** Serialize rows to CSV text (CRLF line endings for spreadsheet compatibility). */
+export function toCsv(rows: (string | number | null | undefined)[][]): string {
+  return rows.map((r) => r.map(csvCell).join(",")).join("\r\n");
+}
+
 /** Split a delimited cell ("fish; dairy") into a clean list. */
 export function splitList(cell: string | undefined): string[] {
   if (!cell) return [];
