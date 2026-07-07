@@ -1,6 +1,16 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
-export default function Home() {
+export const dynamic = "force-dynamic";
+
+export default async function Home() {
+  // A signed-in owner landing on the marketing root goes straight to work.
+  if (process.env.CLERK_SECRET_KEY) {
+    const { auth } = await import("@clerk/nextjs/server");
+    const { userId } = await auth();
+    if (userId) redirect("/dashboard");
+  }
+
   return (
     <main className="min-h-screen flex flex-col items-center justify-center px-6 text-center">
       <div className="grid place-items-center w-12 h-12 rounded-lg mb-6 disp text-2xl font-medium text-paper bg-pine">
@@ -15,21 +25,18 @@ export default function Home() {
       </p>
       <div className="mt-8 flex gap-3">
         <Link
-          href="/dashboard"
+          href="/sign-up"
           className="px-5 py-2.5 rounded-lg text-[14px] font-medium text-paper bg-pine"
         >
-          Owner dashboard
+          Start free
         </Link>
         <Link
-          href="/store"
+          href="/sign-in"
           className="px-5 py-2.5 rounded-lg text-[14px] font-medium text-pine border border-pine"
         >
-          View storefront
+          Sign in
         </Link>
       </div>
-      <p className="mt-10 text-[12px] text-muted">
-        Phase 0 — pilot build in progress.
-      </p>
     </main>
   );
 }
