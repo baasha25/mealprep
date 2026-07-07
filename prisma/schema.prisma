@@ -79,6 +79,7 @@ enum PaymentStatus {
 model Business {
   id              String   @id @default(cuid())
   name            String
+  slug            String?  @unique // public storefront URL segment: /store/<slug>
   brandColor      String   @default("#2f4536")
   stripeAccountId String?  @unique
   createdAt       DateTime @default(now())

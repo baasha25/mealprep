@@ -109,6 +109,7 @@ async function main() {
   const business = await db.business.create({
     data: {
       name: "Greenleaf Kitchen",
+      slug: "greenleaf-kitchen",
       brandColor: "#2f4536",
       settings: {
         create: {
