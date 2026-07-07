@@ -5,6 +5,7 @@ import { headers } from "next/headers";
 import { db } from "@/lib/db";
 import { stripe, STRIPE_ENABLED } from "@/lib/stripe";
 import { getStorefrontBusiness } from "@/lib/storefront";
+import { sendOrderConfirmation } from "@/lib/email";
 import { computeOrder, type AppliedCoupon } from "@/lib/pricing";
 import {
   pointsForOrder,
@@ -277,9 +278,11 @@ export async function placeOrder(input: PlaceOrderInputT): Promise<PlaceOrderRes
 
   const amountDueCents = Math.max(0, totals.totalCents - giftAppliedCents);
 
-  // Fully covered by gift card / points → nothing to charge; mark it paid.
+  // Fully covered by gift card / points → nothing to charge; mark it paid and
+  // send the receipt now (Stripe's success page won't run for these).
   if (amountDueCents === 0) {
     await db.order.update({ where: { id: order.id }, data: { status: "paid" } });
+    await sendOrderConfirmation(order.id);
   }
 
   // Otherwise send the customer to Stripe Checkout (test mode) to pay the balance.

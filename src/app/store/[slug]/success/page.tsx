@@ -3,6 +3,7 @@ import { Leaf, Check, AlertTriangle } from "lucide-react";
 import { db } from "@/lib/db";
 import { stripe, STRIPE_ENABLED } from "@/lib/stripe";
 import { getStorefrontBusiness } from "@/lib/storefront";
+import { sendOrderConfirmation } from "@/lib/email";
 import { formatCents } from "@/lib/money";
 
 export const dynamic = "force-dynamic";
@@ -32,7 +33,8 @@ export default async function CheckoutSuccessPage({
         if (order) {
           code = order.id.slice(-6);
           paid = true;
-          // Mark paid + record the payment (idempotent).
+          // Mark paid + record the payment (idempotent) and send the receipt
+          // once, only on the first transition to paid.
           if (order.status !== "paid") {
             const paymentIntentId = typeof session.payment_intent === "string" ? session.payment_intent : null;
             await db.$transaction([
@@ -41,6 +43,7 @@ export default async function CheckoutSuccessPage({
                 data: { orderId: order.id, stripePaymentIntentId: paymentIntentId, amountCents, status: "succeeded" },
               }),
             ]);
+            await sendOrderConfirmation(order.id);
           }
         }
       }
