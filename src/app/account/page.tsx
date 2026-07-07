@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Leaf, Star } from "lucide-react";
+import { UserButton } from "@clerk/nextjs";
 import { db } from "@/lib/db";
 import { getCustomerContext } from "@/lib/customer-auth";
 import { canModifyNextDelivery } from "@/lib/subscriptions";
@@ -13,10 +14,25 @@ export default async function AccountPage() {
 
   if (!ctx) {
     return (
-      <Shell businessName="PrepFlow">
-        <p className="text-[14px]" style={{ color: "var(--muted)" }}>
-          No account found.
-        </p>
+      <Shell businessName="PrepFlow" storeHref="/store">
+        <div
+          className="rounded-xl border p-10 text-center"
+          style={{ borderColor: "var(--line)", background: "var(--surface)" }}
+        >
+          <p className="text-[14px]" style={{ color: "var(--ink)" }}>
+            You haven&apos;t placed an order yet.
+          </p>
+          <p className="text-[13px] mt-1" style={{ color: "var(--muted)" }}>
+            Once you order, your subscription and loyalty show up here.
+          </p>
+          <Link
+            href="/store"
+            className="inline-block mt-4 px-4 py-2 rounded-lg text-[13px] font-medium"
+            style={{ background: "var(--pine)", color: "#f4f2ec" }}
+          >
+            Browse the menu
+          </Link>
+        </div>
       </Shell>
     );
   }
@@ -69,9 +85,10 @@ export default async function AccountPage() {
   }
 
   const dateFmt = new Intl.DateTimeFormat("en-US", { weekday: "short", month: "short", day: "numeric" });
+  const storeHref = business?.slug ? `/store/${business.slug}` : "/store";
 
   return (
-    <Shell businessName={business?.name ?? "PrepFlow"} brandColor={business?.brandColor}>
+    <Shell businessName={business?.name ?? "PrepFlow"} brandColor={business?.brandColor} storeHref={storeHref}>
       <div className="mb-7">
         <div className="text-[10.5px] font-semibold tracking-[0.16em] uppercase mb-2.5" style={{ color: "var(--muted)" }}>
           Your account
@@ -121,7 +138,7 @@ export default async function AccountPage() {
             You don&apos;t have an active subscription.
           </p>
           <Link
-            href="/store"
+            href={storeHref}
             className="inline-block mt-4 px-4 py-2 rounded-lg text-[13px] font-medium"
             style={{ background: "var(--pine)", color: "#f4f2ec" }}
           >
@@ -170,11 +187,14 @@ function Shell({
   children,
   businessName,
   brandColor,
+  storeHref,
 }: {
   children: React.ReactNode;
   businessName: string;
   brandColor?: string;
+  storeHref: string;
 }) {
+  const clerkOn = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
   return (
     <div
       className="min-h-screen"
@@ -190,9 +210,12 @@ function Shell({
               {businessName}
             </div>
           </div>
-          <Link href="/store" className="text-[13px] font-medium" style={{ color: "var(--pine)" }}>
-            Order more →
-          </Link>
+          <div className="flex items-center gap-4">
+            <Link href={storeHref} className="text-[13px] font-medium" style={{ color: "var(--pine)" }}>
+              Order more →
+            </Link>
+            {clerkOn && <UserButton />}
+          </div>
         </div>
       </header>
       <main className="max-w-4xl mx-auto px-6 py-8 fade">{children}</main>
