@@ -5,7 +5,7 @@ import { headers } from "next/headers";
 import { db } from "@/lib/db";
 import { stripe, STRIPE_ENABLED } from "@/lib/stripe";
 import { getStorefrontBusiness } from "@/lib/storefront";
-import { sendOrderConfirmation } from "@/lib/email";
+import { sendOrderConfirmation, sendOwnerNewOrder } from "@/lib/email";
 import { computeOrder, type AppliedCoupon } from "@/lib/pricing";
 import {
   pointsForOrder,
@@ -283,6 +283,7 @@ export async function placeOrder(input: PlaceOrderInputT): Promise<PlaceOrderRes
   if (amountDueCents === 0) {
     await db.order.update({ where: { id: order.id }, data: { status: "paid" } });
     await sendOrderConfirmation(order.id);
+    await sendOwnerNewOrder(order.id);
   }
 
   // Otherwise send the customer to Stripe Checkout (test mode) to pay the balance.

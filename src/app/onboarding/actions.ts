@@ -56,15 +56,22 @@ export async function createKitchen(
     slug = `${base}-${n++}`;
   }
 
+  const brandColor = parsed.data.brandColor ?? "#2f4536";
   await db.business.create({
     data: {
       name: parsed.data.name,
       slug,
-      brandColor: parsed.data.brandColor ?? "#2f4536",
+      brandColor,
       settings: { create: {} }, // all pricing/fulfillment defaults from the schema
       users: { create: { email, role: "owner", authProviderId: userId } },
     },
   });
+
+  // Welcome the new owner (best-effort; never blocks onboarding).
+  if (email) {
+    const { sendWelcome } = await import("@/lib/email");
+    await sendWelcome({ to: email, businessName: parsed.data.name, brandColor });
+  }
 
   redirect("/dashboard");
 }

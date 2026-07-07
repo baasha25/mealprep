@@ -3,7 +3,7 @@ import { Leaf, Check, AlertTriangle } from "lucide-react";
 import { db } from "@/lib/db";
 import { stripe, STRIPE_ENABLED } from "@/lib/stripe";
 import { getStorefrontBusiness } from "@/lib/storefront";
-import { sendOrderConfirmation } from "@/lib/email";
+import { sendOrderConfirmation, sendOwnerNewOrder } from "@/lib/email";
 import { formatCents } from "@/lib/money";
 
 export const dynamic = "force-dynamic";
@@ -44,6 +44,7 @@ export default async function CheckoutSuccessPage({
               }),
             ]);
             await sendOrderConfirmation(order.id);
+            await sendOwnerNewOrder(order.id);
           }
         }
       }
