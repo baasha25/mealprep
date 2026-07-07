@@ -20,11 +20,15 @@ export default async function StaffPage() {
         title="Staff & permissions"
         sub="Invite your team and control who can see money, customers, and settings."
         right={
-          <form action={previewAsStaff}>
-            <button type="submit" className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[13px] font-medium border" style={{ borderColor: "var(--line)", color: "var(--ink)" }}>
-              <Eye size={15} /> Preview staff view
-            </button>
-          </form>
+          // Cookie-based preview only works under the dev stub; with real auth,
+          // test the staff view by signing in as a staff member.
+          !process.env.CLERK_SECRET_KEY ? (
+            <form action={previewAsStaff}>
+              <button type="submit" className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[13px] font-medium border" style={{ borderColor: "var(--line)", color: "var(--ink)" }}>
+                <Eye size={15} /> Preview staff view
+              </button>
+            </form>
+          ) : null
         }
       />
 

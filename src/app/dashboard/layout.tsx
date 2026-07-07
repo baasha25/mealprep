@@ -38,7 +38,9 @@ export default async function DashboardLayout({
         role={role}
       />
       <main className="flex-1 min-w-0">
-        {role === "staff" && (
+        {/* Owner "preview as staff" is a dev-only affordance (cookie-based).
+            With real auth, staff are actually staff — no preview banner. */}
+        {role === "staff" && !process.env.CLERK_SECRET_KEY && (
           <div
             className="no-print flex items-center gap-3 px-6 py-2.5 text-[13px] flex-wrap"
             style={{ background: "var(--sidebar)", color: "#f4f2ec" }}
