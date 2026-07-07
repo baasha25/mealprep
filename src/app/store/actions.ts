@@ -20,10 +20,10 @@ export type LoyaltyLookup =
   | { found: false };
 
 /** Look up a returning customer's points by email, for the redemption UI. */
-export async function lookupLoyalty(rawEmail: string): Promise<LoyaltyLookup> {
+export async function lookupLoyalty(slug: string, rawEmail: string): Promise<LoyaltyLookup> {
   const email = rawEmail.trim().toLowerCase();
   if (!email) return { found: false };
-  const business = await getStorefrontBusiness();
+  const business = await getStorefrontBusiness(slug);
   if (!business?.settings?.loyaltyEnabled) return { found: false };
   const customer = await db.customer.findFirst({
     where: { businessId: business.id, email },
@@ -45,11 +45,11 @@ export type CouponResult =
   | { valid: true; code: string; type: "percent" | "flat"; value: number; label: string }
   | { valid: false; message: string };
 
-export async function lookupCoupon(rawCode: string): Promise<CouponResult> {
+export async function lookupCoupon(slug: string, rawCode: string): Promise<CouponResult> {
   const code = rawCode.trim().toUpperCase();
   if (!code) return { valid: false, message: "Enter a code." };
 
-  const business = await getStorefrontBusiness();
+  const business = await getStorefrontBusiness(slug);
   if (!business) return { valid: false, message: "Store unavailable." };
 
   const coupon = await db.coupon.findFirst({
@@ -70,11 +70,11 @@ export type GiftCardResult =
   | { valid: true; code: string; balanceCents: number }
   | { valid: false; message: string };
 
-export async function lookupGiftCard(rawCode: string): Promise<GiftCardResult> {
+export async function lookupGiftCard(slug: string, rawCode: string): Promise<GiftCardResult> {
   const code = rawCode.trim().toUpperCase();
   if (!code) return { valid: false, message: "Enter a code." };
 
-  const business = await getStorefrontBusiness();
+  const business = await getStorefrontBusiness(slug);
   if (!business) return { valid: false, message: "Store unavailable." };
 
   const gc = await db.giftCard.findFirst({ where: { businessId: business.id, code } });
@@ -86,6 +86,7 @@ export async function lookupGiftCard(rawCode: string): Promise<GiftCardResult> {
 /* ------------------------------- Checkout ------------------------------ */
 
 const PlaceOrderInput = z.object({
+  slug: z.string().min(1, "Store unavailable."),
   items: z
     .array(z.object({ mealId: z.string().min(1), qty: z.number().int().min(1).max(99) }))
     .min(1, "Your cart is empty."),
@@ -117,7 +118,7 @@ export async function placeOrder(input: PlaceOrderInputT): Promise<PlaceOrderRes
   }
   const data = parsed.data;
 
-  const business = await getStorefrontBusiness();
+  const business = await getStorefrontBusiness(data.slug);
   if (!business || !business.settings) {
     return { ok: false, message: "Store is not available." };
   }
@@ -151,7 +152,7 @@ export async function placeOrder(input: PlaceOrderInputT): Promise<PlaceOrderRes
   // Validate coupon server-side.
   let appliedCoupon: AppliedCoupon | null = null;
   if (data.couponCode) {
-    const c = await lookupCoupon(data.couponCode);
+    const c = await lookupCoupon(data.slug, data.couponCode);
     if (c.valid) appliedCoupon = { type: c.type, value: c.value };
   }
 
@@ -302,8 +303,8 @@ export async function placeOrder(input: PlaceOrderInputT): Promise<PlaceOrderRes
           },
         },
       ],
-      success_url: `${origin}/store/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${origin}/store?canceled=1`,
+      success_url: `${origin}/store/${data.slug}/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${origin}/store/${data.slug}?canceled=1`,
     });
     await db.order.update({ where: { id: order.id }, data: { stripePaymentIntentId: session.id } });
     checkoutUrl = session.url ?? undefined;

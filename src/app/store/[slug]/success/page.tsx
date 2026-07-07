@@ -8,12 +8,15 @@ import { formatCents } from "@/lib/money";
 export const dynamic = "force-dynamic";
 
 export default async function CheckoutSuccessPage({
+  params,
   searchParams,
 }: {
+  params: Promise<{ slug: string }>;
   searchParams: Promise<{ session_id?: string }>;
 }) {
+  const { slug } = await params;
   const { session_id } = await searchParams;
-  const business = await getStorefrontBusiness();
+  const business = await getStorefrontBusiness(slug);
 
   let paid = false;
   let amountCents = 0;
@@ -79,7 +82,7 @@ export default async function CheckoutSuccessPage({
             </p>
           </>
         )}
-        <Link href="/store" className="inline-block mt-7 px-5 py-2.5 rounded-lg text-[14px] font-medium" style={{ background: "var(--pine)", color: "#f4f2ec" }}>
+        <Link href={`/store/${slug}`} className="inline-block mt-7 px-5 py-2.5 rounded-lg text-[14px] font-medium" style={{ background: "var(--pine)", color: "#f4f2ec" }}>
           Back to the store
         </Link>
       </main>

@@ -27,7 +27,7 @@ import {
   type CouponResult,
   type GiftCardResult,
   type LoyaltyLookup,
-} from "./actions";
+} from "../actions";
 
 const ALLERGEN_ICON: Record<string, LucideIcon> = {
   gluten: Wheat,
@@ -67,10 +67,12 @@ const inputStyle = {
 } as const;
 
 export function Storefront({
+  slug,
   businessName,
   meals,
   settings,
 }: {
+  slug: string;
   businessName: string;
   meals: StoreMeal[];
   settings: StoreSettings;
@@ -124,14 +126,14 @@ export function Storefront({
 
   const applyCoupon = () => {
     startTransition(async () => {
-      const result = await lookupCoupon(couponInput);
+      const result = await lookupCoupon(slug, couponInput);
       setCoupon(result);
     });
   };
 
   const applyGift = () => {
     startTransition(async () => {
-      const result = await lookupGiftCard(giftInput);
+      const result = await lookupGiftCard(slug, giftInput);
       setGiftCard(result);
     });
   };
@@ -140,7 +142,7 @@ export function Storefront({
   const checkLoyalty = () => {
     if (!/\S+@\S+\.\S+/.test(form.email)) return;
     startTransition(async () => {
-      const r = await lookupLoyalty(form.email);
+      const r = await lookupLoyalty(slug, form.email);
       setLoyalty(r);
       if (!r.found) setApplyLoyalty(false);
     });
@@ -150,6 +152,7 @@ export function Storefront({
     setError("");
     startTransition(async () => {
       const result = await placeOrder({
+        slug,
         items: Object.entries(cart).map(([mealId, qty]) => ({ mealId, qty })),
         subscribe,
         couponCode: coupon?.valid ? coupon.code : undefined,
