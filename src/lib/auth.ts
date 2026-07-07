@@ -44,10 +44,20 @@ export async function getAuthContext(): Promise<AuthContext | null> {
     return { business, userId: null, role };
   }
 
-  // Clerk path (wired when keys are present) — intentionally not implemented yet.
-  throw new Error(
-    "Clerk auth is not wired yet. Add CLERK_SECRET_KEY and implement the Clerk branch in src/lib/auth.ts.",
-  );
+  // Clerk path (active once CLERK_SECRET_KEY is set). Dynamic import so the
+  // dev-stub path never touches Clerk.
+  const { auth } = await import("@clerk/nextjs/server");
+  const { userId } = await auth();
+  if (!userId) redirect("/sign-in");
+
+  const user = await db.user.findUnique({
+    where: { authProviderId: userId },
+    include: { business: true },
+  });
+  // Signed in but no kitchen yet → onboarding provisions the Business + owner User.
+  if (!user) redirect("/onboarding");
+
+  return { business: user.business, userId, role: user.role as Role };
 }
 
 /**
