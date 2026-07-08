@@ -22,6 +22,7 @@ import {
   Monitor,
   TrendingUp,
   FileSpreadsheet,
+  Repeat,
   type LucideIcon,
 } from "lucide-react";
 
@@ -33,6 +34,7 @@ const NAV: [string, string, LucideIcon, boolean][] = [
   ["/dashboard/profitability", "Profitability", TrendingUp, true],
   ["/dashboard/reports", "Reports", FileSpreadsheet, true],
   ["/dashboard/menu", "Menu", ChefHat, true],
+  ["/dashboard/plans", "Meal Plans", Repeat, true],
   ["/dashboard/orders", "Orders", Receipt, true],
   ["/dashboard/customers", "Customers", User, true],
   ["/dashboard/kitchen", "Kitchen OS", ChefHat, true],

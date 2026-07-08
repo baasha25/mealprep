@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { Leaf } from "lucide-react";
 import { db } from "@/lib/db";
 import { getStorefrontBusiness } from "@/lib/storefront";
+import { formatCents } from "@/lib/money";
 import { Storefront, type StoreMeal, type StoreSettings } from "./storefront";
 
 export const dynamic = "force-dynamic";
@@ -20,6 +21,11 @@ export default async function StorePage({
   const meals = await db.meal.findMany({
     where: { businessId: business.id, active: true },
     orderBy: { createdAt: "asc" },
+  });
+
+  const plans = await db.plan.findMany({
+    where: { businessId: business.id, active: true },
+    orderBy: { mealsPerWeek: "asc" },
   });
 
   const ratingAgg = await db.mealReview.groupBy({
@@ -92,6 +98,34 @@ export default async function StorePage({
             Browse the menu, build your order, and subscribe to save every week.
           </p>
         </div>
+
+        {plans.length > 0 && (
+          <div className="mb-8">
+            <h2 className="text-[15px] font-semibold mb-3" style={{ color: "var(--ink)" }}>
+              Subscription plans
+            </h2>
+            <div className="grid sm:grid-cols-3 gap-3">
+              {plans.map((p) => (
+                <div key={p.id} className="rounded-xl border p-4" style={{ borderColor: "var(--line)", background: "var(--surface)" }}>
+                  <div className="text-[14px] font-semibold" style={{ color: "var(--ink)" }}>{p.name}</div>
+                  <div className="text-[12px] mt-0.5" style={{ color: "var(--muted)" }}>
+                    {p.mealsPerWeek} meals/week · {formatCents(p.perMealPriceCents)}/meal
+                  </div>
+                  <div className="mt-2">
+                    <span className="disp text-[20px] font-medium" style={{ color: "var(--pine)" }}>
+                      {formatCents(p.mealsPerWeek * p.perMealPriceCents)}
+                    </span>
+                    <span className="text-[12px]" style={{ color: "var(--muted)" }}> /week</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <p className="text-[12px] mt-2.5" style={{ color: "var(--muted)" }}>
+              Turn on <span className="font-medium" style={{ color: "var(--pine)" }}>Subscribe &amp; save</span> at checkout to save {Math.round(s.subDiscountBps / 100)}% every week.
+            </p>
+          </div>
+        )}
+
         <Storefront slug={slug} businessName={business.name} meals={storeMeals} settings={settings} />
       </main>
     </div>
