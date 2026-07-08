@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import {
   Repeat,
   Pause,
@@ -11,12 +11,15 @@ import {
   Minus,
   Check,
   Lock,
+  Clock,
+  Truck,
 } from "lucide-react";
 import { formatCents } from "@/lib/money";
 import {
   pauseSubscription,
   resumeSubscription,
   skipNextDelivery,
+  cancelSubscription,
   updateSelection,
 } from "./actions";
 
@@ -29,6 +32,8 @@ export function SubscriptionManager({
   frequencyLabel,
   nextDeliveryLabel,
   cutoffLabel,
+  cutoffISO,
+  upcomingDates,
   canModify,
   perMealPriceCents,
   initialSelection,
@@ -40,6 +45,8 @@ export function SubscriptionManager({
   frequencyLabel: string;
   nextDeliveryLabel: string;
   cutoffLabel: string;
+  cutoffISO: string | null;
+  upcomingDates: string[];
   canModify: boolean;
   perMealPriceCents: number;
   initialSelection: Record<string, number>;
@@ -49,6 +56,30 @@ export function SubscriptionManager({
   const [toast, setToast] = useState<{ ok: boolean; message: string } | null>(null);
   const [sel, setSel] = useState<Record<string, number>>(initialSelection);
   const [dirty, setDirty] = useState(false);
+
+  // Live cut-off countdown (client-only; "—" until mounted to avoid hydration drift).
+  const [countdown, setCountdown] = useState<string | null>(null);
+  useEffect(() => {
+    if (!cutoffISO) return;
+    const target = new Date(cutoffISO).getTime();
+    const tick = () => {
+      const ms = target - Date.now();
+      if (ms <= 0) {
+        setCountdown("passed");
+        return;
+      }
+      const d = Math.floor(ms / 86_400_000);
+      const h = Math.floor((ms % 86_400_000) / 3_600_000);
+      const m = Math.floor((ms % 3_600_000) / 60_000);
+      const s = Math.floor((ms % 60_000) / 1000);
+      setCountdown(
+        `${d > 0 ? `${d}d ` : ""}${String(h).padStart(2, "0")}h ${String(m).padStart(2, "0")}m ${String(s).padStart(2, "0")}s`,
+      );
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [cutoffISO]);
 
   const flash = (r: { ok: boolean; message: string }) => {
     setToast(r);
@@ -170,6 +201,26 @@ export function SubscriptionManager({
             {canModify ? <SkipForward size={14} /> : <Lock size={13} />} Skip next
           </button>
         </div>
+
+        {!paused && countdown && countdown !== "passed" && (
+          <div
+            className="mt-4 pt-4 flex items-center gap-2.5"
+            style={{ borderTop: "1px solid var(--line)" }}
+          >
+            <Clock size={16} style={{ color: "var(--clay)" }} />
+            <div>
+              <div className="text-[11.5px]" style={{ color: "var(--muted)" }}>
+                Order deadline for your next delivery
+              </div>
+              <div
+                className="text-[17px] font-semibold"
+                style={{ color: "var(--ink)", fontVariantNumeric: "tabular-nums" }}
+              >
+                {countdown}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Meal selection editor */}
@@ -259,6 +310,57 @@ export function SubscriptionManager({
           </div>
         )}
       </div>
+
+      {/* Upcoming deliveries */}
+      {!paused && upcomingDates.length > 0 && (
+        <div className="rounded-xl border p-5" style={cardStyle}>
+          <div className="flex items-center gap-2 mb-3">
+            <Truck size={16} style={{ color: "var(--muted)" }} />
+            <h3 className="text-[15px] font-semibold" style={{ color: "var(--ink)" }}>
+              Upcoming deliveries
+            </h3>
+          </div>
+          <div className="space-y-2">
+            {upcomingDates.map((d, i) => (
+              <div
+                key={i}
+                className="flex items-center justify-between text-[13px] px-3 py-2 rounded-lg"
+                style={{ background: "var(--paper)", border: "1px solid var(--line)" }}
+              >
+                <span style={{ color: "var(--ink)" }}>{d}</span>
+                {i === 0 && (
+                  <span
+                    className="text-[11px] px-2 py-0.5 rounded-full font-medium"
+                    style={{ background: "color-mix(in srgb, var(--pine) 12%, transparent)", color: "var(--pine)" }}
+                  >
+                    Next
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Cancel */}
+      {status !== "canceled" && (
+        <div className="flex items-center justify-between gap-3 flex-wrap px-1 pt-1">
+          <span className="text-[12px]" style={{ color: "var(--muted)" }}>
+            Need to stop your plan?
+          </span>
+          <button
+            onClick={() => {
+              if (window.confirm("Cancel your subscription? You can start a new one anytime."))
+                run(() => cancelSubscription(subscriptionId));
+            }}
+            disabled={pending}
+            className="text-[12.5px] font-medium disabled:opacity-50"
+            style={{ color: "var(--clay)" }}
+          >
+            Cancel subscription
+          </button>
+        </div>
+      )}
     </div>
   );
 }

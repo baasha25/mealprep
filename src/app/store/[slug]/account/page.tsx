@@ -5,7 +5,7 @@ import { SignIn, UserButton } from "@clerk/nextjs";
 import { db } from "@/lib/db";
 import { getStorefrontBusiness } from "@/lib/storefront";
 import { getKitchenCustomer } from "@/lib/customer-auth";
-import { canModifyNextDelivery } from "@/lib/subscriptions";
+import { canModifyNextDelivery, cutoffAt, advanceDeliveryDate } from "@/lib/subscriptions";
 import { SubscriptionManager, type ManagerMeal } from "@/app/account/subscription-manager";
 import { RateMeals, type ReviewableMeal } from "@/app/account/rate-meals";
 
@@ -114,6 +114,18 @@ export default async function KitchenAccountPage({
 
   const dateFmt = new Intl.DateTimeFormat("en-US", { weekday: "short", month: "short", day: "numeric" });
 
+  // Cut-off countdown target + the next few delivery dates for the account UI.
+  const nextDate = subscription?.nextDeliveryDate ?? null;
+  const cutoffISO = nextDate ? cutoffAt(nextDate).toISOString() : null;
+  const upcomingDates: string[] = [];
+  if (nextDate && subscription) {
+    let d = new Date(nextDate);
+    for (let i = 0; i < 4; i++) {
+      upcomingDates.push(dateFmt.format(d));
+      d = advanceDeliveryDate(d, subscription.frequency as "weekly" | "biweekly");
+    }
+  }
+
   return (
     <Shell businessName={business.name} brandColor={business.brandColor} storeHref={storeHref} showUser>
       <div className="mb-7">
@@ -179,6 +191,8 @@ export default async function KitchenAccountPage({
           frequencyLabel={subscription.frequency === "weekly" ? "Weekly" : "Every 2 weeks"}
           nextDeliveryLabel={subscription.nextDeliveryDate ? dateFmt.format(subscription.nextDeliveryDate) : "—"}
           cutoffLabel={business.settings?.cutoff ?? "48h before delivery"}
+          cutoffISO={cutoffISO}
+          upcomingDates={upcomingDates}
           canModify={canModifyNextDelivery(
             subscription.status as "active" | "paused" | "canceled",
             new Date(),

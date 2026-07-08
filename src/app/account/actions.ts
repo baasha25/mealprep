@@ -40,6 +40,17 @@ export async function resumeSubscription(subscriptionId: string): Promise<SubAct
   return { ok: true, message: "Subscription resumed." };
 }
 
+export async function cancelSubscription(subscriptionId: string): Promise<SubActionResult> {
+  const owned = await loadOwnedSubscription(subscriptionId);
+  if (!owned) return { ok: false, message: "Subscription not found." };
+  if (owned.sub.status === "canceled")
+    return { ok: false, message: "This subscription is already canceled." };
+
+  await db.subscription.update({ where: { id: subscriptionId }, data: { status: "canceled" } });
+  revalidatePath("/store/[slug]/account", "page");
+  return { ok: true, message: "Your subscription has been canceled." };
+}
+
 export async function skipNextDelivery(subscriptionId: string): Promise<SubActionResult> {
   const owned = await loadOwnedSubscription(subscriptionId);
   if (!owned) return { ok: false, message: "Subscription not found." };
