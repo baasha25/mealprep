@@ -1,32 +1,69 @@
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { Leaf, Star } from "lucide-react";
-import { UserButton } from "@clerk/nextjs";
+import { SignIn, UserButton } from "@clerk/nextjs";
 import { db } from "@/lib/db";
-import { getCustomerContext } from "@/lib/customer-auth";
+import { getStorefrontBusiness } from "@/lib/storefront";
+import { getKitchenCustomer } from "@/lib/customer-auth";
 import { canModifyNextDelivery } from "@/lib/subscriptions";
-import { SubscriptionManager, type ManagerMeal } from "./subscription-manager";
-import { RateMeals, type ReviewableMeal } from "./rate-meals";
+import { SubscriptionManager, type ManagerMeal } from "@/app/account/subscription-manager";
+import { RateMeals, type ReviewableMeal } from "@/app/account/rate-meals";
 
 export const dynamic = "force-dynamic";
 
-export default async function AccountPage() {
-  const ctx = await getCustomerContext();
+export default async function KitchenAccountPage({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
+  const { slug } = await params;
+  const business = await getStorefrontBusiness(slug);
+  if (!business) notFound();
 
-  if (!ctx) {
+  const storeHref = `/store/${slug}`;
+  const accountHref = `/store/${slug}/account`;
+  const { signedIn, customer } = await getKitchenCustomer(business.id);
+
+  // Signed out → kitchen-branded sign-in, embedded right here. After auth the
+  // customer returns to THIS account — never the owner "set up your kitchen" flow.
+  if (!signedIn) {
     return (
-      <Shell businessName="PrepFlow" storeHref="/store">
+      <Shell businessName={business.name} brandColor={business.brandColor} storeHref={storeHref} showUser={false}>
+        <div className="max-w-md mx-auto text-center mb-6">
+          <h1 className="disp text-[26px] font-medium" style={{ color: "var(--ink)" }}>
+            Your {business.name} account
+          </h1>
+          <p className="text-[13.5px] mt-2" style={{ color: "var(--ink-soft)" }}>
+            Sign in to manage your subscription, track loyalty points, and reorder faster.
+          </p>
+        </div>
+        <div className="flex justify-center">
+          <SignIn
+            routing="hash"
+            fallbackRedirectUrl={accountHref}
+            signUpFallbackRedirectUrl={accountHref}
+          />
+        </div>
+      </Shell>
+    );
+  }
+
+  // Signed in but no orders from this kitchen yet.
+  if (!customer) {
+    return (
+      <Shell businessName={business.name} brandColor={business.brandColor} storeHref={storeHref} showUser>
         <div
           className="rounded-xl border p-10 text-center"
           style={{ borderColor: "var(--line)", background: "var(--surface)" }}
         >
           <p className="text-[14px]" style={{ color: "var(--ink)" }}>
-            You haven&apos;t placed an order yet.
+            You haven&apos;t ordered from {business.name} yet.
           </p>
           <p className="text-[13px] mt-1" style={{ color: "var(--muted)" }}>
-            Once you order, your subscription and loyalty show up here.
+            Once you place an order, your subscription and loyalty show up here.
           </p>
           <Link
-            href="/store"
+            href={storeHref}
             className="inline-block mt-4 px-4 py-2 rounded-lg text-[13px] font-medium"
             style={{ background: "var(--pine)", color: "#f4f2ec" }}
           >
@@ -36,26 +73,18 @@ export default async function AccountPage() {
       </Shell>
     );
   }
-  const { customer } = ctx;
 
-  const [business, subscription] = await Promise.all([
-    db.business.findUnique({ where: { id: customer.businessId }, include: { settings: true } }),
-    db.subscription.findFirst({
-      where: { customerId: customer.id, status: { not: "canceled" } },
-      orderBy: { createdAt: "desc" },
-      include: {
-        plan: true,
-        selections: {
-          orderBy: { deliveryDate: "asc" },
-          include: { items: true },
-          take: 1,
-        },
-      },
-    }),
-  ]);
+  const subscription = await db.subscription.findFirst({
+    where: { customerId: customer.id, status: { not: "canceled" } },
+    orderBy: { createdAt: "desc" },
+    include: {
+      plan: true,
+      selections: { orderBy: { deliveryDate: "asc" }, include: { items: true }, take: 1 },
+    },
+  });
 
   const meals = await db.meal.findMany({
-    where: { businessId: customer.businessId, active: true },
+    where: { businessId: business.id, active: true },
     orderBy: { createdAt: "asc" },
   });
   const managerMeals: ManagerMeal[] = meals.map((m) => ({
@@ -65,7 +94,6 @@ export default async function AccountPage() {
     diet: m.diet,
   }));
 
-  // Meals this customer has ordered → reviewable, prefilled with any existing review.
   const [orderedItems, myReviews] = await Promise.all([
     db.orderItem.findMany({
       where: { order: { customerId: customer.id }, mealId: { not: null } },
@@ -85,10 +113,9 @@ export default async function AccountPage() {
   }
 
   const dateFmt = new Intl.DateTimeFormat("en-US", { weekday: "short", month: "short", day: "numeric" });
-  const storeHref = business?.slug ? `/store/${business.slug}` : "/store";
 
   return (
-    <Shell businessName={business?.name ?? "PrepFlow"} brandColor={business?.brandColor} storeHref={storeHref}>
+    <Shell businessName={business.name} brandColor={business.brandColor} storeHref={storeHref} showUser>
       <div className="mb-7">
         <div className="text-[10.5px] font-semibold tracking-[0.16em] uppercase mb-2.5" style={{ color: "var(--muted)" }}>
           Your account
@@ -101,7 +128,6 @@ export default async function AccountPage() {
         </p>
       </div>
 
-      {/* Loyalty & referrals */}
       <div className="grid sm:grid-cols-2 gap-4 mb-4">
         <div className="rounded-xl border p-5" style={{ borderColor: "var(--line)", background: "var(--surface)" }}>
           <div className="text-[12px] mb-1" style={{ color: "var(--muted)" }}>Loyalty points</div>
@@ -110,7 +136,7 @@ export default async function AccountPage() {
           </div>
           <div className="text-[12px] mt-1" style={{ color: "var(--muted)" }}>
             Worth {new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(
-              (customer.loyaltyPoints * (business?.settings?.loyaltyRedeemCentsPerPoint ?? 5)) / 100,
+              (customer.loyaltyPoints * (business.settings?.loyaltyRedeemCentsPerPoint ?? 5)) / 100,
             )}{" "}
             off your next order · earn 1 per $1 spent
           </div>
@@ -123,7 +149,7 @@ export default async function AccountPage() {
             </div>
             <div className="text-[12px] mt-1" style={{ color: "var(--muted)" }}>
               Share it — friends enter it at checkout and you earn{" "}
-              {business?.settings?.referralBonusPoints ?? 100} points per signup.
+              {business.settings?.referralBonusPoints ?? 100} points per signup.
             </div>
           </div>
         )}
@@ -151,10 +177,8 @@ export default async function AccountPage() {
           status={subscription.status as "active" | "paused" | "canceled"}
           planName={subscription.plan.name}
           frequencyLabel={subscription.frequency === "weekly" ? "Weekly" : "Every 2 weeks"}
-          nextDeliveryLabel={
-            subscription.nextDeliveryDate ? dateFmt.format(subscription.nextDeliveryDate) : "—"
-          }
-          cutoffLabel={business?.settings?.cutoff ?? "48h before delivery"}
+          nextDeliveryLabel={subscription.nextDeliveryDate ? dateFmt.format(subscription.nextDeliveryDate) : "—"}
+          cutoffLabel={business.settings?.cutoff ?? "48h before delivery"}
           canModify={canModifyNextDelivery(
             subscription.status as "active" | "paused" | "canceled",
             new Date(),
@@ -168,7 +192,6 @@ export default async function AccountPage() {
         />
       )}
 
-      {/* Rate your meals */}
       <div className="rounded-xl border p-5 mt-4" style={{ borderColor: "var(--line)", background: "var(--surface)" }}>
         <div className="flex items-center gap-2 mb-1">
           <Star size={16} style={{ color: "#e0a53f" }} />
@@ -188,11 +211,13 @@ function Shell({
   businessName,
   brandColor,
   storeHref,
+  showUser,
 }: {
   children: React.ReactNode;
   businessName: string;
   brandColor?: string;
   storeHref: string;
+  showUser: boolean;
 }) {
   const clerkOn = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
   return (
@@ -214,7 +239,7 @@ function Shell({
             <Link href={storeHref} className="text-[13px] font-medium" style={{ color: "var(--pine)" }}>
               Order more →
             </Link>
-            {clerkOn && <UserButton />}
+            {clerkOn && showUser && <UserButton />}
           </div>
         </div>
       </header>

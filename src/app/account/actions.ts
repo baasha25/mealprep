@@ -25,7 +25,7 @@ export async function pauseSubscription(subscriptionId: string): Promise<SubActi
     return { ok: false, message: "This subscription can't be paused." };
 
   await db.subscription.update({ where: { id: subscriptionId }, data: { status: "paused" } });
-  revalidatePath("/account");
+  revalidatePath("/store/[slug]/account", "page");
   return { ok: true, message: "Subscription paused." };
 }
 
@@ -36,7 +36,7 @@ export async function resumeSubscription(subscriptionId: string): Promise<SubAct
     return { ok: false, message: "This subscription isn't paused." };
 
   await db.subscription.update({ where: { id: subscriptionId }, data: { status: "active" } });
-  revalidatePath("/account");
+  revalidatePath("/store/[slug]/account", "page");
   return { ok: true, message: "Subscription resumed." };
 }
 
@@ -67,7 +67,7 @@ export async function skipNextDelivery(subscriptionId: string): Promise<SubActio
     }),
   ]);
 
-  revalidatePath("/account");
+  revalidatePath("/store/[slug]/account", "page");
   return { ok: true, message: "Next delivery skipped." };
 }
 
@@ -122,6 +122,6 @@ export async function updateSelection(input: {
     });
   });
 
-  revalidatePath("/account");
+  revalidatePath("/store/[slug]/account", "page");
   return { ok: true, message: "Meals updated for your next delivery." };
 }

@@ -6,13 +6,13 @@ import type { NextFetchEvent } from "next/server";
  * Route protection. Clerk activates only when CLERK_SECRET_KEY is set; until
  * then this is a pass-through so the dev-stub auth keeps the app working.
  *
- * Protected: the owner/staff dashboard, the customer account area, and the
- * new-owner onboarding flow. Everything else (landing, storefront, sign-in) is
- * public.
+ * Protected: the owner/staff dashboard and the new-owner onboarding flow.
+ * The customer account (/store/[slug]/account) is intentionally NOT protected —
+ * it renders its own kitchen-branded sign-in inline, so customers never get
+ * bounced to the owner login/onboarding. Everything else is public.
  */
 const isProtected = createRouteMatcher([
   "/dashboard(.*)",
-  "/account(.*)",
   "/onboarding(.*)",
 ]);
 

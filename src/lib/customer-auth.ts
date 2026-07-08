@@ -16,6 +16,50 @@ import type { Customer } from "@/generated/prisma/client";
 const USE_DEV_AUTH =
   !process.env.CLERK_SECRET_KEY || process.env.CLERK_SECRET_KEY === "";
 
+/**
+ * Kitchen-scoped customer resolver for /store/[slug]/account. Returns whether
+ * the visitor is signed in and, if so, their Customer row *for this kitchen*
+ * (matched by verified Clerk email + businessId). `signedIn: false` tells the
+ * page to render the kitchen-branded sign-in instead of redirecting to the
+ * generic owner login — so customers never fall into owner onboarding.
+ */
+export async function getKitchenCustomer(
+  businessId: string,
+): Promise<{ signedIn: boolean; customer: Customer | null }> {
+  if (USE_DEV_AUTH) {
+    const sub = await db.subscription.findFirst({
+      where: { status: { not: "canceled" }, customer: { businessId } },
+      orderBy: { createdAt: "asc" },
+      include: { customer: true },
+    });
+    if (sub) return { signedIn: true, customer: sub.customer };
+    const customer = await db.customer.findFirst({
+      where: { businessId },
+      orderBy: { createdAt: "asc" },
+    });
+    return { signedIn: true, customer };
+  }
+
+  const { auth, currentUser } = await import("@clerk/nextjs/server");
+  const { userId } = await auth();
+  if (!userId) return { signedIn: false, customer: null };
+  const cu = await currentUser();
+  const email = (
+    cu?.primaryEmailAddress?.emailAddress ??
+    cu?.emailAddresses?.[0]?.emailAddress ??
+    ""
+  )
+    .trim()
+    .toLowerCase();
+  if (!email) return { signedIn: true, customer: null };
+
+  const customer = await db.customer.findFirst({
+    where: { businessId, email },
+    orderBy: { createdAt: "desc" },
+  });
+  return { signedIn: true, customer };
+}
+
 export async function getCustomerContext(): Promise<{ customer: Customer } | null> {
   if (USE_DEV_AUTH) {
     const sub = await db.subscription.findFirst({

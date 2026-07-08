@@ -35,6 +35,6 @@ export async function submitReview(input: { mealId: string; rating: number; comm
     update: { rating: d.rating, comment: d.comment || null },
   });
 
-  revalidatePath("/account");
+  revalidatePath("/store/[slug]/account", "page");
   return { ok: true, message: "Thanks for your review!" };
 }

@@ -77,7 +77,7 @@ export default async function StorePage({
               </div>
             </div>
           </div>
-          <Link href="/account" className="text-[13px] font-medium" style={{ color: "var(--pine)" }}>
+          <Link href={`/store/${slug}/account`} className="text-[13px] font-medium" style={{ color: "var(--pine)" }}>
             My account →
           </Link>
         </div>
