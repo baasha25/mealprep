@@ -23,6 +23,7 @@ import {
   TrendingUp,
   FileSpreadsheet,
   Repeat,
+  Share2,
   type LucideIcon,
 } from "lucide-react";
 
@@ -45,6 +46,7 @@ const NAV: [string, string, LucideIcon, boolean][] = [
   ["/dashboard/routes", "Delivery Routes", Truck, true],
   ["/dashboard/pos", "POS Terminal", Wallet, true],
   ["/dashboard/marketing", "Marketing", Megaphone, true],
+  ["/dashboard/share", "Share links", Share2, true],
   ["/dashboard/staff", "Staff", Users, true],
   ["/dashboard/import", "Import data", Upload, true],
   ["/dashboard/settings", "Settings", Cog, true],

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Leaf, Star } from "lucide-react";
-import { SignIn, UserButton } from "@clerk/nextjs";
+import { SignIn, SignUp, UserButton } from "@clerk/nextjs";
 import { db } from "@/lib/db";
 import { getStorefrontBusiness } from "@/lib/storefront";
 import { getKitchenCustomer } from "@/lib/customer-auth";
@@ -13,10 +13,13 @@ export const dynamic = "force-dynamic";
 
 export default async function KitchenAccountPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ signup?: string }>;
 }) {
   const { slug } = await params;
+  const { signup } = await searchParams;
   const business = await getStorefrontBusiness(slug);
   if (!business) notFound();
 
@@ -24,25 +27,36 @@ export default async function KitchenAccountPage({
   const accountHref = `/store/${slug}/account`;
   const { signedIn, customer } = await getKitchenCustomer(business.id);
 
-  // Signed out → kitchen-branded sign-in, embedded right here. After auth the
-  // customer returns to THIS account — never the owner "set up your kitchen" flow.
+  // Signed out → kitchen-branded sign-in (or sign-up when ?signup), embedded right
+  // here. After auth the customer returns to THIS account — never the owner flow.
   if (!signedIn) {
+    const joining = signup !== undefined;
     return (
       <Shell businessName={business.name} brandColor={business.brandColor} storeHref={storeHref} showUser={false}>
         <div className="max-w-md mx-auto text-center mb-6">
           <h1 className="disp text-[26px] font-medium" style={{ color: "var(--ink)" }}>
-            Your {business.name} account
+            {joining ? `Join ${business.name}` : `Your ${business.name} account`}
           </h1>
           <p className="text-[13.5px] mt-2" style={{ color: "var(--ink-soft)" }}>
-            Sign in to manage your subscription, track loyalty points, and reorder faster.
+            {joining
+              ? "Create an account to subscribe, earn loyalty points, and reorder faster."
+              : "Sign in to manage your subscription, track loyalty points, and reorder faster."}
           </p>
         </div>
         <div className="flex justify-center">
-          <SignIn
-            routing="hash"
-            fallbackRedirectUrl={accountHref}
-            signUpFallbackRedirectUrl={accountHref}
-          />
+          {joining ? (
+            <SignUp
+              routing="hash"
+              fallbackRedirectUrl={accountHref}
+              signInFallbackRedirectUrl={accountHref}
+            />
+          ) : (
+            <SignIn
+              routing="hash"
+              fallbackRedirectUrl={accountHref}
+              signUpFallbackRedirectUrl={accountHref}
+            />
+          )}
         </div>
       </Shell>
     );
