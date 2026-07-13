@@ -291,6 +291,10 @@ export async function placeOrder(input: PlaceOrderInputT): Promise<PlaceOrderRes
   if (amountDueCents > 0 && STRIPE_ENABLED) {
     const h = await headers();
     const origin = h.get("origin") ?? process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+    // Connect: when the kitchen has connected their bank, the charge goes to
+    // their account and PrepFlow keeps the platform fee. Otherwise it stays on
+    // the platform account (test/demo fallback).
+    const connected = business.stripeChargesEnabled && business.stripeAccountId;
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
       payment_method_types: ["card"],
@@ -307,6 +311,14 @@ export async function placeOrder(input: PlaceOrderInputT): Promise<PlaceOrderRes
           },
         },
       ],
+      ...(connected
+        ? {
+            payment_intent_data: {
+              application_fee_amount: Math.round((amountDueCents * (s.platformFeeBps ?? 0)) / 10000),
+              transfer_data: { destination: business.stripeAccountId! },
+            },
+          }
+        : {}),
       success_url: `${origin}/store/${data.slug}/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/store/${data.slug}?canceled=1`,
     });

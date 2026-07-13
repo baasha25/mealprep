@@ -47,6 +47,11 @@ export async function startPlanSubscription(input: unknown): Promise<SubscribeRe
   const h = await headers();
   const origin = h.get("origin") ?? process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 
+  // Connect: recurring charges go to the kitchen's account with PrepFlow's
+  // platform fee %; otherwise they stay on the platform account (test/demo).
+  const connected = business.stripeChargesEnabled && business.stripeAccountId;
+  const feePct = (business.settings?.platformFeeBps ?? 0) / 100;
+
   const session = await stripe.checkout.sessions.create({
     mode: "subscription",
     payment_method_types: ["card"],
@@ -65,6 +70,12 @@ export async function startPlanSubscription(input: unknown): Promise<SubscribeRe
     metadata: { businessId: business.id, planId: plan.id, frequency },
     subscription_data: {
       metadata: { businessId: business.id, planId: plan.id, frequency },
+      ...(connected
+        ? {
+            application_fee_percent: feePct,
+            transfer_data: { destination: business.stripeAccountId! },
+          }
+        : {}),
     },
     success_url: `${origin}/store/${slug}/subscribed?session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${origin}/store/${slug}?canceled=1`,
