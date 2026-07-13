@@ -3,8 +3,30 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
+import { stripe, STRIPE_ENABLED } from "@/lib/stripe";
 import { getCustomerContext } from "@/lib/customer-auth";
 import { advanceDeliveryDate, canModifyNextDelivery, canPause, canResume } from "@/lib/subscriptions";
+
+/** Best-effort sync of a subscription state change to Stripe (never throws). */
+async function syncStripe(
+  stripeSubscriptionId: string | null,
+  action: "pause" | "resume" | "cancel",
+): Promise<void> {
+  if (!STRIPE_ENABLED || !stripeSubscriptionId) return;
+  try {
+    if (action === "cancel") {
+      await stripe.subscriptions.cancel(stripeSubscriptionId);
+    } else if (action === "pause") {
+      await stripe.subscriptions.update(stripeSubscriptionId, {
+        pause_collection: { behavior: "void" },
+      });
+    } else {
+      await stripe.subscriptions.update(stripeSubscriptionId, { pause_collection: null });
+    }
+  } catch (err) {
+    console.error(`[stripe] subscription ${action} failed:`, err);
+  }
+}
 
 export type SubActionResult = { ok: boolean; message: string };
 
@@ -25,6 +47,7 @@ export async function pauseSubscription(subscriptionId: string): Promise<SubActi
     return { ok: false, message: "This subscription can't be paused." };
 
   await db.subscription.update({ where: { id: subscriptionId }, data: { status: "paused" } });
+  await syncStripe(owned.sub.stripeSubscriptionId, "pause");
   revalidatePath("/store/[slug]/account", "page");
   return { ok: true, message: "Subscription paused." };
 }
@@ -36,6 +59,7 @@ export async function resumeSubscription(subscriptionId: string): Promise<SubAct
     return { ok: false, message: "This subscription isn't paused." };
 
   await db.subscription.update({ where: { id: subscriptionId }, data: { status: "active" } });
+  await syncStripe(owned.sub.stripeSubscriptionId, "resume");
   revalidatePath("/store/[slug]/account", "page");
   return { ok: true, message: "Subscription resumed." };
 }
@@ -47,6 +71,7 @@ export async function cancelSubscription(subscriptionId: string): Promise<SubAct
     return { ok: false, message: "This subscription is already canceled." };
 
   await db.subscription.update({ where: { id: subscriptionId }, data: { status: "canceled" } });
+  await syncStripe(owned.sub.stripeSubscriptionId, "cancel");
   revalidatePath("/store/[slug]/account", "page");
   return { ok: true, message: "Your subscription has been canceled." };
 }
