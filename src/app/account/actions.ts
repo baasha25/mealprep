@@ -161,3 +161,44 @@ export async function updateSelection(input: {
   revalidatePath("/store/[slug]/account", "page");
   return { ok: true, message: "Meals updated for your next delivery." };
 }
+
+const AddressInput = z.object({
+  line1: z.string().trim().min(1, "Street address is required").max(200),
+  city: z.string().trim().max(80).optional().default(""),
+  region: z.string().trim().max(80).optional().default(""),
+  postalCode: z.string().trim().max(20).optional().default(""),
+});
+
+/** Save/update the customer's delivery address (one primary address). */
+export async function saveDeliveryAddress(input: {
+  line1: string;
+  city?: string;
+  region?: string;
+  postalCode?: string;
+}): Promise<SubActionResult> {
+  const ctx = await getCustomerContext();
+  if (!ctx) return { ok: false, message: "You're not signed in." };
+  const parsed = AddressInput.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, message: parsed.error.issues[0]?.message ?? "Invalid address." };
+  }
+  const data = {
+    label: "Delivery",
+    line1: parsed.data.line1,
+    city: parsed.data.city || null,
+    region: parsed.data.region || null,
+    postalCode: parsed.data.postalCode || null,
+  };
+  const existing = await db.address.findFirst({
+    where: { customerId: ctx.customer.id },
+    orderBy: { id: "asc" },
+    select: { id: true },
+  });
+  if (existing) {
+    await db.address.update({ where: { id: existing.id }, data });
+  } else {
+    await db.address.create({ data: { customerId: ctx.customer.id, ...data } });
+  }
+  revalidatePath("/store/[slug]/account", "page");
+  return { ok: true, message: "Delivery address saved." };
+}

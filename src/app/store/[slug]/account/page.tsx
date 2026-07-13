@@ -8,6 +8,7 @@ import { getKitchenCustomer } from "@/lib/customer-auth";
 import { canModifyNextDelivery, cutoffAt, advanceDeliveryDate } from "@/lib/subscriptions";
 import { SubscriptionManager, type ManagerMeal } from "@/app/account/subscription-manager";
 import { RateMeals, type ReviewableMeal } from "@/app/account/rate-meals";
+import { DeliveryAddress } from "@/app/account/delivery-address";
 
 export const dynamic = "force-dynamic";
 
@@ -97,6 +98,12 @@ export default async function KitchenAccountPage({
     },
   });
 
+  const address = await db.address.findFirst({
+    where: { customerId: customer.id },
+    orderBy: { id: "asc" },
+    select: { line1: true, city: true, region: true, postalCode: true },
+  });
+
   const meals = await db.meal.findMany({
     where: { businessId: business.id, active: true },
     orderBy: { createdAt: "asc" },
@@ -179,6 +186,10 @@ export default async function KitchenAccountPage({
             </div>
           </div>
         )}
+      </div>
+
+      <div className="mb-4">
+        <DeliveryAddress initial={address} />
       </div>
 
       {!subscription ? (
