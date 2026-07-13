@@ -110,7 +110,7 @@ model BusinessSettings {
   taxRateBps         Int @default(800) // 8%
   minOrderCents      Int @default(3500)
   minMeals           Int @default(3)
-  platformFeeBps     Int @default(0) // PrepFlow platform application fee — config, not hardcoded (§5/§7)
+  platformFeeBps     Int @default(150) // PrepFlow platform fee — Starter-tier entry rate 1.5% (Growth 1.25%, Pro 1.0%); config, not hardcoded (§5/§7)
 
   // Loyalty & referrals
   loyaltyEnabled             Boolean @default(true)

@@ -119,7 +119,7 @@ async function main() {
           taxRateBps: bps(0.08),
           minOrderCents: cents(35),
           minMeals: 3,
-          platformFeeBps: bps(0.02), // 2% example platform fee — config, not final
+          platformFeeBps: bps(0.015), // 1.5% — Starter-tier platform fee (Growth 1.25%, Pro 1.0%); config
           cutoff: "Sat 8:00 PM",
           fulfillment: "both",
           pickupLocations: ["Downtown Commissary", "Westside Pickup Hub"],
