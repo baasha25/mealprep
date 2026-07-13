@@ -196,6 +196,50 @@ export async function sendWelcome(opts: {
   });
 }
 
+/** Recurring-charge receipt — sent when a subscription invoice is paid. */
+export async function sendSubscriptionReceipt(opts: {
+  to: string;
+  businessName: string;
+  brandColor?: string;
+  planName: string;
+  amountCents: number;
+  nextDeliveryLabel?: string;
+}): Promise<void> {
+  await send({
+    to: opts.to,
+    subject: `Your ${opts.businessName} subscription renewed`,
+    businessName: opts.businessName,
+    brandColor: opts.brandColor,
+    heading: `Subscription renewed`,
+    subheading: `${escapeHtml(opts.planName)} · ${formatCents(opts.amountCents)}`,
+    bodyHtml: `
+      <p style="margin:0 0 8px;color:${INK};font-size:14px;">Thanks — we've charged ${formatCents(opts.amountCents)} for your next cycle.</p>
+      ${opts.nextDeliveryLabel ? `<p style="margin:0 0 14px;color:${SOFT};font-size:13px;">Next delivery: ${escapeHtml(opts.nextDeliveryLabel)}</p>` : ""}
+      <p style="margin:12px 0 0;color:${SOFT};font-size:13px;">Manage or pause your plan anytime from your account. Questions? Just reply.</p>`,
+  });
+}
+
+/** Dunning — sent when a subscription payment fails. */
+export async function sendPaymentFailed(opts: {
+  to: string;
+  businessName: string;
+  brandColor?: string;
+  planName: string;
+  accountUrl: string;
+}): Promise<void> {
+  await send({
+    to: opts.to,
+    subject: `Payment failed — ${opts.businessName}`,
+    businessName: opts.businessName,
+    brandColor: opts.brandColor,
+    heading: `We couldn't process your payment`,
+    subheading: escapeHtml(opts.planName),
+    bodyHtml: `
+      <p style="margin:0 0 14px;color:${INK};font-size:14px;">Your latest subscription charge didn't go through. Please update your payment method so your meals keep coming — we'll retry automatically.</p>
+      <a href="${opts.accountUrl}" style="display:inline-block;background:${opts.brandColor || "#2f4536"};color:#f4f2ec;text-decoration:none;font-size:14px;font-weight:500;padding:10px 18px;border-radius:8px;">Update payment</a>`,
+  });
+}
+
 /* ------------------------------- Utils ---------------------------------- */
 
 function escapeHtml(s: string): string {

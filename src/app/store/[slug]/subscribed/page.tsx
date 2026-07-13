@@ -1,9 +1,8 @@
 import Link from "next/link";
 import { Leaf, Check, AlertTriangle } from "lucide-react";
-import { db } from "@/lib/db";
 import { stripe, STRIPE_ENABLED } from "@/lib/stripe";
 import { getStorefrontBusiness } from "@/lib/storefront";
-import { referralCodeFrom } from "@/lib/loyalty";
+import { ensureSubscriptionFromCheckout } from "@/lib/billing";
 
 export const dynamic = "force-dynamic";
 
@@ -24,47 +23,12 @@ export default async function SubscribedPage({
   if (business && STRIPE_ENABLED && session_id) {
     try {
       const session = await stripe.checkout.sessions.retrieve(session_id);
-      const subId = typeof session.subscription === "string" ? session.subscription : session.subscription?.id;
-      const custId = typeof session.customer === "string" ? session.customer : session.customer?.id ?? null;
-      const email = (session.customer_details?.email ?? session.customer_email ?? "").trim().toLowerCase();
-      const name = session.customer_details?.name ?? email.split("@")[0] ?? "there";
-      const planId = session.metadata?.planId;
-      const frequency = (session.metadata?.frequency === "biweekly" ? "biweekly" : "weekly") as
-        | "weekly"
-        | "biweekly";
-
-      if (session.status === "complete" && subId && email && planId) {
-        const plan = await db.plan.findFirst({ where: { id: planId, businessId: business.id } });
-        planName = plan?.name ?? "your plan";
-
-        // Idempotent — only create the subscription once per Stripe subscription.
-        const already = await db.subscription.findFirst({ where: { stripeSubscriptionId: subId } });
-        if (!already && plan) {
-          const customer = await db.customer.upsert({
-            where: { businessId_email: { businessId: business.id, email } },
-            create: {
-              businessId: business.id,
-              name,
-              email,
-              stripeCustomerId: custId,
-              referralCode: referralCodeFrom(name, Date.now() % 100000),
-            },
-            update: { stripeCustomerId: custId },
-          });
-          const firstDelivery = new Date(Date.now() + 5 * 86_400_000);
-          await db.subscription.create({
-            data: {
-              businessId: business.id,
-              customerId: customer.id,
-              planId: plan.id,
-              status: "active",
-              frequency,
-              nextDeliveryDate: firstDelivery,
-              stripeSubscriptionId: subId,
-            },
-          });
+      if (session.status === "complete") {
+        const result = await ensureSubscriptionFromCheckout(session);
+        if (result) {
+          ok = true;
+          planName = result.planName;
         }
-        ok = true;
       }
     } catch {
       ok = false;
