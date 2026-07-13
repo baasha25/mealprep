@@ -3,11 +3,25 @@
 import { useClerk } from "@clerk/nextjs";
 import { LogOut } from "lucide-react";
 
-// Owner/staff sign-out for the dashboard shell. Only rendered when Clerk auth
-// is enabled (there is no session to end under the dev stub), so useClerk()
-// always has a provider here.
-export function SignOutButton() {
+// Sign-out control shared by the owner dashboard sidebar (dark "sidebar" tone)
+// and the customer account header (light "link" tone). Only rendered when
+// Clerk auth is enabled, so useClerk() always has a provider here.
+export function SignOutButton({ tone = "sidebar" }: { tone?: "sidebar" | "link" }) {
   const { signOut } = useClerk();
+
+  if (tone === "link") {
+    return (
+      <button
+        type="button"
+        onClick={() => signOut({ redirectUrl: "/" })}
+        className="flex items-center gap-1.5 text-[13px] font-medium transition-colors"
+        style={{ color: "var(--muted)" }}
+      >
+        <LogOut size={14} /> Sign out
+      </button>
+    );
+  }
+
   return (
     <button
       type="button"

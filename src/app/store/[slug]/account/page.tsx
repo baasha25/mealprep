@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Leaf, Star } from "lucide-react";
-import { SignIn, SignUp, UserButton } from "@clerk/nextjs";
+import { SignIn, SignUp } from "@clerk/nextjs";
+import { SignOutButton } from "@/components/sign-out-button";
 import { db } from "@/lib/db";
 import { getStorefrontBusiness } from "@/lib/storefront";
 import { getKitchenCustomer } from "@/lib/customer-auth";
@@ -278,7 +279,7 @@ function Shell({
             <Link href={storeHref} className="text-[13px] font-medium" style={{ color: "var(--pine)" }}>
               Order more →
             </Link>
-            {clerkOn && showUser && <UserButton />}
+            {clerkOn && showUser && <SignOutButton tone="link" />}
           </div>
         </div>
       </header>
