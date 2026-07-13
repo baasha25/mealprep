@@ -314,6 +314,9 @@ export async function placeOrder(input: PlaceOrderInputT): Promise<PlaceOrderRes
       ...(connected
         ? {
             payment_intent_data: {
+              // on_behalf_of makes the kitchen the settlement merchant, so Stripe's
+              // processing fee comes out of THEIR account (pass-through), not ours.
+              on_behalf_of: business.stripeAccountId!,
               application_fee_amount: Math.round((amountDueCents * (s.platformFeeBps ?? 0)) / 10000),
               transfer_data: { destination: business.stripeAccountId! },
             },
