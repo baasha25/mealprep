@@ -80,6 +80,7 @@ model Business {
   id              String   @id @default(cuid())
   name            String
   slug            String?  @unique // public storefront URL segment: /store/<slug>
+  customDomain    String?  @unique // white-label: serve the storefront on the kitchen's own domain
   brandColor      String   @default("#2f4536")
   stripeAccountId String?  @unique // Stripe Connect (Express) connected account
   stripeChargesEnabled Boolean @default(false) // true once Stripe clears them to take payments
