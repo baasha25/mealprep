@@ -240,6 +240,31 @@ export async function sendPaymentFailed(opts: {
   });
 }
 
+/** Owner marketing campaign — a free-text email to a customer segment. */
+export async function sendCampaignEmail(opts: {
+  to: string;
+  businessName: string;
+  brandColor?: string;
+  subject: string;
+  message: string;
+}): Promise<void> {
+  const bodyHtml = opts.message
+    .split(/\n\n+/)
+    .map(
+      (p) =>
+        `<p style="margin:0 0 12px;color:${INK};font-size:14px;line-height:1.55;">${escapeHtml(p).replace(/\n/g, "<br/>")}</p>`,
+    )
+    .join("");
+  await send({
+    to: opts.to,
+    subject: opts.subject,
+    businessName: opts.businessName,
+    brandColor: opts.brandColor,
+    heading: escapeHtml(opts.subject),
+    bodyHtml,
+  });
+}
+
 /* ------------------------------- Utils ---------------------------------- */
 
 function escapeHtml(s: string): string {

@@ -1,9 +1,9 @@
-import { Tag, Gift, Trash2, Eye, EyeOff } from "lucide-react";
+import { Tag, Gift, Trash2, Eye, EyeOff, Mail } from "lucide-react";
 import { requireOwner } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { Page, Head, Card, CardTitle } from "@/components/ui";
 import { formatCents } from "@/lib/money";
-import { CouponForm, GiftCardForm } from "./forms";
+import { CouponForm, GiftCardForm, CampaignForm } from "./forms";
 import { toggleCoupon, deleteCoupon } from "./actions";
 
 export default async function MarketingPage() {
@@ -85,6 +85,15 @@ export default async function MarketingPage() {
           )}
         </Card>
       </div>
+
+      <Card className="mt-4">
+        <CardTitle icon={<Mail size={15} />} title="Email campaign" />
+        <p className="text-[12.5px] mb-4" style={{ color: "var(--muted)" }}>
+          Send a one-off email to a customer segment from your verified domain — win back lapsed
+          customers or announce a promo.
+        </p>
+        <CampaignForm />
+      </Card>
     </Page>
   );
 }

@@ -3,10 +3,78 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
-import { requireBusiness } from "@/lib/auth";
+import { requireBusiness, requireOwner } from "@/lib/auth";
 import { dollarsToCents } from "@/lib/money";
+import { sendCampaignEmail } from "@/lib/email";
 
 export type FormState = { ok: boolean; message?: string };
+
+/* ---------------------------- Email campaigns --------------------------- */
+
+const CampaignInput = z.object({
+  segment: z.enum(["all", "lapsed", "subscribers"]),
+  subject: z.string().trim().min(1, "Subject is required").max(140),
+  message: z.string().trim().min(1, "Message is required").max(4000),
+});
+
+const LAPSED_DAYS = 45;
+const MAX_RECIPIENTS = 200;
+
+/** Send a one-off marketing email to a customer segment (owner-triggered). */
+export async function sendEmailCampaign(input: {
+  segment: string;
+  subject: string;
+  message: string;
+}): Promise<FormState & { count?: number }> {
+  const { business } = await requireOwner();
+  const parsed = CampaignInput.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, message: parsed.error.issues[0]?.message ?? "Invalid campaign." };
+  }
+  const { segment, subject, message } = parsed.data;
+
+  let emails: string[] = [];
+  if (segment === "subscribers") {
+    const subs = await db.subscription.findMany({
+      where: { businessId: business.id, status: "active" },
+      select: { customer: { select: { email: true } } },
+    });
+    emails = subs.map((s) => s.customer?.email).filter((e): e is string => Boolean(e));
+  } else if (segment === "lapsed") {
+    const cutoff = new Date(Date.now() - LAPSED_DAYS * 86_400_000);
+    const customers = await db.customer.findMany({
+      where: { businessId: business.id },
+      select: { email: true, orders: { select: { createdAt: true }, orderBy: { createdAt: "desc" }, take: 1 } },
+    });
+    emails = customers
+      .filter((c) => {
+        const last = c.orders[0]?.createdAt;
+        return !last || last < cutoff;
+      })
+      .map((c) => c.email);
+  } else {
+    const customers = await db.customer.findMany({
+      where: { businessId: business.id },
+      select: { email: true },
+    });
+    emails = customers.map((c) => c.email);
+  }
+
+  const unique = [...new Set(emails.filter(Boolean))].slice(0, MAX_RECIPIENTS);
+  if (unique.length === 0) return { ok: false, message: "No customers match that segment." };
+
+  // Send in small parallel batches to stay well under provider rate limits.
+  let sent = 0;
+  for (let i = 0; i < unique.length; i += 5) {
+    await Promise.all(
+      unique.slice(i, i + 5).map(async (to) => {
+        await sendCampaignEmail({ to, businessName: business.name, brandColor: business.brandColor, subject, message });
+        sent++;
+      }),
+    );
+  }
+  return { ok: true, message: `Campaign sent to ${sent} customer${sent === 1 ? "" : "s"}.`, count: sent };
+}
 
 /* -------------------------------- Coupons ------------------------------- */
 
