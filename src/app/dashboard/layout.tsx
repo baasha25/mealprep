@@ -36,6 +36,7 @@ export default async function DashboardLayout({
         businessName={business.name}
         stats={`${mealCount} menu items · ${orderCount} orders`}
         role={role}
+        authEnabled={Boolean(process.env.CLERK_SECRET_KEY)}
       />
       <main className="flex-1 min-w-0">
         {/* Owner "preview as staff" is a dev-only affordance (cookie-based).

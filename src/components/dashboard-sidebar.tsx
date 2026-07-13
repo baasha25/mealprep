@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { canAccess, type Role } from "@/lib/permissions";
+import { SignOutButton } from "@/components/sign-out-button";
 import {
   LayoutDashboard,
   Receipt,
@@ -60,10 +61,12 @@ export function DashboardSidebar({
   businessName,
   stats,
   role,
+  authEnabled,
 }: {
   businessName: string;
   stats: string;
   role: Role;
+  authEnabled: boolean;
 }) {
   const pathname = usePathname();
   const nav = NAV.filter(([href]) => canAccess(role, href));
@@ -138,6 +141,7 @@ export function DashboardSidebar({
         <p className="text-[11px] leading-snug" style={{ color: "#ffffff5c" }}>
           {stats}
         </p>
+        {authEnabled && <SignOutButton />}
       </div>
     </aside>
   );
