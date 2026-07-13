@@ -24,6 +24,7 @@ import {
   FileSpreadsheet,
   Repeat,
   Share2,
+  Landmark,
   type LucideIcon,
 } from "lucide-react";
 
@@ -45,6 +46,7 @@ const NAV: [string, string, LucideIcon, boolean][] = [
   ["/dashboard/fulfillment", "Labels & packing", Tag, true],
   ["/dashboard/routes", "Delivery Routes", Truck, true],
   ["/dashboard/pos", "POS Terminal", Wallet, true],
+  ["/dashboard/payouts", "Payouts", Landmark, true],
   ["/dashboard/marketing", "Marketing", Megaphone, true],
   ["/dashboard/share", "Share links", Share2, true],
   ["/dashboard/staff", "Staff", Users, true],

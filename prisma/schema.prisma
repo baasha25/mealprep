@@ -81,7 +81,8 @@ model Business {
   name            String
   slug            String?  @unique // public storefront URL segment: /store/<slug>
   brandColor      String   @default("#2f4536")
-  stripeAccountId String?  @unique
+  stripeAccountId String?  @unique // Stripe Connect (Express) connected account
+  stripeChargesEnabled Boolean @default(false) // true once Stripe clears them to take payments
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 

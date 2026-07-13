@@ -12,6 +12,7 @@ export const OWNER_ONLY: string[] = [
   "/dashboard/customers",
   "/dashboard/settings",
   "/dashboard/plans",
+  "/dashboard/payouts",
   "/dashboard/import",
   "/dashboard/staff",
 ];
