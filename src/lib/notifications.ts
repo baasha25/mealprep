@@ -65,6 +65,14 @@ export async function runDailyNotifications(now: Date = new Date()): Promise<Run
   });
   const bizById = new Map(businesses.map((b) => [b.id, b]));
 
+  // Pre-load already-sent keys so we skip in-memory instead of relying on the
+  // unique-constraint to reject a duplicate create (which logs a prisma error).
+  const already = await db.sentNotification.findMany({
+    where: { targetId: { in: subs.map((s) => s.id) } },
+    select: { type: true, targetId: true, forDate: true },
+  });
+  const sentKeys = new Set(already.map((r) => `${r.type}:${r.targetId}:${r.forDate}`));
+
   const summary: RunSummary = { scanned: subs.length, cutoff: 0, deliveryDay: 0 };
 
   for (const sub of subs) {
@@ -97,8 +105,10 @@ export async function runDailyNotifications(now: Date = new Date()): Promise<Run
     };
 
     for (const kind of kinds) {
-      // Idempotency: the unique (type, targetId, forDate) index makes create()
-      // throw if we've already sent this reminder — so skip rather than resend.
+      // Idempotency: skip if we've already logged this reminder. The create is
+      // still wrapped as a race backstop (the unique index is the source of truth).
+      const key = `${kind}:${sub.id}:${forDate}`;
+      if (sentKeys.has(key)) continue;
       try {
         await db.sentNotification.create({
           data: { businessId: biz.id, type: kind, targetId: sub.id, forDate },
@@ -106,6 +116,7 @@ export async function runDailyNotifications(now: Date = new Date()): Promise<Run
       } catch {
         continue;
       }
+      sentKeys.add(key);
       if (kind === "cutoff") {
         await sendCutoffReminder(base);
         summary.cutoff++;
