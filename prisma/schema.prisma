@@ -74,6 +74,13 @@ enum PaymentStatus {
   partially_refunded
 }
 
+// PrepFlow's own subscription plan for a kitchen (drives the platform fee).
+enum BusinessTier {
+  starter
+  growth
+  pro
+}
+
 /* ============================== Tenant ============================== */
 
 model Business {
@@ -82,6 +89,7 @@ model Business {
   slug            String?  @unique // public storefront URL segment: /store/<slug>
   customDomain    String?  @unique // white-label: serve the storefront on the kitchen's own domain
   brandColor      String   @default("#2f4536")
+  tier            BusinessTier @default(starter) // PrepFlow plan; sets the platform fee (see src/lib/tiers.ts)
   stripeAccountId String?  @unique // Stripe Connect (Express) connected account
   stripeChargesEnabled Boolean @default(false) // true once Stripe clears them to take payments
   createdAt       DateTime @default(now())

@@ -4,6 +4,7 @@ import { z } from "zod";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { slugify } from "@/lib/slug";
+import { TIERS } from "@/lib/tiers";
 
 const Input = z.object({
   name: z.string().trim().min(2, "Enter your kitchen's name").max(80),
@@ -12,6 +13,7 @@ const Input = z.object({
     .trim()
     .regex(/^#[0-9a-fA-F]{6}$/, "Pick a valid color")
     .optional(),
+  tier: z.enum(["starter", "growth", "pro"]).default("starter"),
 });
 
 export type OnboardResult = { ok: false; message: string };
@@ -29,6 +31,7 @@ export async function createKitchen(
   const parsed = Input.safeParse({
     name: formData.get("name"),
     brandColor: formData.get("brandColor") || undefined,
+    tier: formData.get("tier") || undefined,
   });
   if (!parsed.success) {
     return { ok: false, message: parsed.error.issues[0]?.message ?? "Invalid details." };
@@ -57,12 +60,16 @@ export async function createKitchen(
   }
 
   const brandColor = parsed.data.brandColor ?? "#2f4536";
+  const tier = parsed.data.tier;
   await db.business.create({
     data: {
       name: parsed.data.name,
       slug,
       brandColor,
-      settings: { create: {} }, // all pricing/fulfillment defaults from the schema
+      tier,
+      // Chosen plan drives the platform fee; other pricing/fulfillment
+      // fields fall back to the schema defaults.
+      settings: { create: { platformFeeBps: TIERS[tier].platformFeeBps } },
       users: { create: { email, role: "owner", authProviderId: userId } },
     },
   });

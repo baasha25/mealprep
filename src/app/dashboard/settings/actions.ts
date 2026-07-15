@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { requireBusiness } from "@/lib/auth";
 import { dollarsToCents, percentToBps } from "@/lib/money";
+import { TIERS } from "@/lib/tiers";
 
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
 
@@ -16,7 +17,7 @@ const SettingsInput = z.object({
     .regex(/^#[0-9a-fA-F]{6}$/, "Brand color must be a hex value like #2f4536"),
   subDiscount: z.coerce.number().min(0).max(100),
   taxRate: z.coerce.number().min(0).max(100),
-  platformFee: z.coerce.number().min(0).max(100),
+  tier: z.enum(["starter", "growth", "pro"]),
   deliveryFee: z.coerce.number().min(0).max(1000),
   processingFee: z.coerce.number().min(0).max(1000),
   minOrder: z.coerce.number().min(0).max(100000),
@@ -57,7 +58,7 @@ export async function updateSettings(
     brandColor: formData.get("brandColor"),
     subDiscount: formData.get("subDiscount"),
     taxRate: formData.get("taxRate"),
-    platformFee: formData.get("platformFee"),
+    tier: formData.get("tier"),
     deliveryFee: formData.get("deliveryFee"),
     processingFee: formData.get("processingFee"),
     minOrder: formData.get("minOrder"),
@@ -87,7 +88,7 @@ export async function updateSettings(
   await db.$transaction([
     db.business.update({
       where: { id: business.id },
-      data: { name: d.name, brandColor: d.brandColor },
+      data: { name: d.name, brandColor: d.brandColor, tier: d.tier },
     }),
     db.businessSettings.upsert({
       where: { businessId: business.id },
@@ -95,7 +96,7 @@ export async function updateSettings(
         businessId: business.id,
         subDiscountBps: percentToBps(d.subDiscount),
         taxRateBps: percentToBps(d.taxRate),
-        platformFeeBps: percentToBps(d.platformFee),
+        platformFeeBps: TIERS[d.tier].platformFeeBps,
         deliveryFeeCents: dollarsToCents(d.deliveryFee),
         processingFeeCents: dollarsToCents(d.processingFee),
         minOrderCents: dollarsToCents(d.minOrder),
@@ -112,7 +113,7 @@ export async function updateSettings(
       update: {
         subDiscountBps: percentToBps(d.subDiscount),
         taxRateBps: percentToBps(d.taxRate),
-        platformFeeBps: percentToBps(d.platformFee),
+        platformFeeBps: TIERS[d.tier].platformFeeBps,
         deliveryFeeCents: dollarsToCents(d.deliveryFee),
         processingFeeCents: dollarsToCents(d.processingFee),
         minOrderCents: dollarsToCents(d.minOrder),

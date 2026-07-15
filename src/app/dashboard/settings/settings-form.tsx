@@ -1,15 +1,17 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { Check, Store, Percent, Truck, Star } from "lucide-react";
 import { Card, CardTitle, Field, INP, btnPrimary } from "@/components/ui";
 import { updateSettings, type SettingsActionState } from "./actions";
+import { TIERS, TIER_KEYS, feePctLabel, type TierKey } from "@/lib/tiers";
 
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
 
 export type SettingsInitial = {
   name: string;
   brandColor: string;
+  tier: TierKey;
   subDiscount: number;
   taxRate: number;
   platformFee: number;
@@ -48,6 +50,7 @@ export function SettingsForm({ initial }: { initial: SettingsInitial }) {
     FormData
   >(updateSettings, { ok: false });
   const errors = state.errors ?? {};
+  const [tier, setTier] = useState<TierKey>(initial.tier);
 
   return (
     <form action={formAction} className="space-y-4">
@@ -124,18 +127,28 @@ export function SettingsForm({ initial }: { initial: SettingsInitial }) {
             <ErrorText msg={errors.taxRate} />
           </Field>
           <Field
-            label="Platform fee (%)"
-            hint="PrepFlow application fee. Configurable, not hardcoded."
+            label="PrepFlow plan"
+            hint={`Sets your platform fee automatically — ${feePctLabel(tier)}.`}
           >
-            <input
-              name="platformFee"
-              type="number"
-              step="0.01"
-              defaultValue={initial.platformFee}
-              className={INP}
-              style={inputStyle}
-            />
-            <ErrorText msg={errors.platformFee} />
+            <input type="hidden" name="tier" value={tier} />
+            <div className="flex rounded-lg border p-0.5" style={{ borderColor: "var(--line)", background: "var(--paper)" }}>
+              {TIER_KEYS.map((k) => {
+                const on = tier === k;
+                return (
+                  <button
+                    type="button"
+                    key={k}
+                    onClick={() => setTier(k)}
+                    className="flex-1 rounded-md px-2 py-1.5 text-[12.5px] font-medium transition-colors"
+                    style={{ background: on ? "var(--pine)" : "transparent", color: on ? "#f4f2ec" : "var(--muted)" }}
+                    title={`$${Math.round(TIERS[k].priceCents / 100)}/mo · ${feePctLabel(k)} fee`}
+                  >
+                    {TIERS[k].name}
+                  </button>
+                );
+              })}
+            </div>
+            <ErrorText msg={errors.tier} />
           </Field>
           <Field label="Delivery fee ($)">
             <input
