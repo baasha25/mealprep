@@ -30,31 +30,57 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
-// Dashboard navigation — ports the demo's NAV. Hrefs are real routes; pages
-// arrive incrementally through Phase 0/1. Items without a page yet are marked.
-const NAV: [string, string, LucideIcon, boolean][] = [
-  ["/dashboard", "Dashboard", LayoutDashboard, true],
-  ["/dashboard/analytics", "Analytics", BarChart3, true],
-  ["/dashboard/profitability", "Profitability", TrendingUp, true],
-  ["/dashboard/reports", "Reports", FileSpreadsheet, true],
-  ["/dashboard/menu", "Menu", ChefHat, true],
-  ["/dashboard/plans", "Meal Plans", Repeat, true],
-  ["/dashboard/subscriptions", "Subscriptions", CalendarClock, true],
-  ["/dashboard/orders", "Orders", Receipt, true],
-  ["/dashboard/customers", "Customers", User, true],
-  ["/dashboard/kitchen", "Kitchen OS", ChefHat, true],
-  ["/dashboard/kds", "Kitchen Display", Monitor, true],
-  ["/dashboard/purchasing", "Purchasing", Carrot, true],
-  ["/dashboard/inventory", "Inventory", Boxes, true],
-  ["/dashboard/fulfillment", "Labels & packing", Tag, true],
-  ["/dashboard/routes", "Delivery Routes", Truck, true],
-  ["/dashboard/pos", "POS Terminal", Wallet, true],
-  ["/dashboard/payouts", "Payouts", Landmark, true],
-  ["/dashboard/marketing", "Marketing", Megaphone, true],
-  ["/dashboard/share", "Share links", Share2, true],
-  ["/dashboard/staff", "Staff", Users, true],
-  ["/dashboard/import", "Import data", Upload, true],
-  ["/dashboard/settings", "Settings", Cog, true],
+// Dashboard navigation, grouped into labeled sections. Hrefs are real routes.
+type NavItem = [href: string, label: string, icon: LucideIcon];
+
+const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
+  {
+    label: "Overview",
+    items: [
+      ["/dashboard", "Dashboard", LayoutDashboard],
+      ["/dashboard/analytics", "Analytics", BarChart3],
+      ["/dashboard/profitability", "Profitability", TrendingUp],
+      ["/dashboard/reports", "Reports", FileSpreadsheet],
+    ],
+  },
+  {
+    label: "Sales",
+    items: [
+      ["/dashboard/menu", "Menu", ChefHat],
+      ["/dashboard/plans", "Meal Plans", Repeat],
+      ["/dashboard/subscriptions", "Subscriptions", CalendarClock],
+      ["/dashboard/orders", "Orders", Receipt],
+      ["/dashboard/customers", "Customers", User],
+      ["/dashboard/pos", "POS Terminal", Wallet],
+    ],
+  },
+  {
+    label: "Kitchen",
+    items: [
+      ["/dashboard/kitchen", "Kitchen OS", ChefHat],
+      ["/dashboard/kds", "Kitchen Display", Monitor],
+      ["/dashboard/purchasing", "Purchasing", Carrot],
+      ["/dashboard/inventory", "Inventory", Boxes],
+      ["/dashboard/fulfillment", "Labels & packing", Tag],
+      ["/dashboard/routes", "Delivery Routes", Truck],
+    ],
+  },
+  {
+    label: "Marketing",
+    items: [
+      ["/dashboard/marketing", "Marketing", Megaphone],
+      ["/dashboard/share", "Share links", Share2],
+    ],
+  },
+  {
+    label: "Admin",
+    items: [
+      ["/dashboard/payouts", "Payouts", Landmark],
+      ["/dashboard/staff", "Staff", Users],
+      ["/dashboard/import", "Import data", Upload],
+      ["/dashboard/settings", "Settings", Cog],
+    ],
+  },
 ];
 
 export function DashboardSidebar({
@@ -69,7 +95,6 @@ export function DashboardSidebar({
   authEnabled: boolean;
 }) {
   const pathname = usePathname();
-  const nav = NAV.filter(([href]) => canAccess(role, href));
 
   return (
     <aside
@@ -87,50 +112,50 @@ export function DashboardSidebar({
           PrepFlow
         </div>
       </Link>
-      <div
-        className="px-3 text-[10px] font-semibold tracking-[0.14em] uppercase mb-2"
-        style={{ color: "#ffffff40" }}
-      >
-        Workspace
-      </div>
-      <nav className="flex flex-col gap-0.5">
-        {nav.map(([href, label, Icon, live]) => {
-          const on =
-            pathname === href ||
-            (href !== "/dashboard" && pathname.startsWith(href));
+      <div className="flex flex-col gap-4">
+        {NAV_GROUPS.map((group) => {
+          const items = group.items.filter(([href]) => canAccess(role, href));
+          if (items.length === 0) return null;
           return (
-            <Link
-              key={href}
-              href={live ? href : "#"}
-              aria-disabled={!live}
-              className="flex items-center gap-3 px-3 py-2 rounded-md text-[13.5px] transition-colors text-left"
-              style={{
-                background: on ? "#ffffff0e" : "transparent",
-                color: on ? "#f4f2ec" : live ? "#ffffff7a" : "#ffffff45",
-                fontWeight: on ? 500 : 450,
-                pointerEvents: live ? "auto" : "none",
-              }}
-            >
-              <Icon size={17} style={{ opacity: on ? 1 : 0.7 }} />
-              {label}
-              {!live && (
-                <span
-                  className="ml-auto text-[9px] uppercase tracking-wide"
-                  style={{ color: "#ffffff35" }}
-                >
-                  soon
-                </span>
-              )}
-              {on && (
-                <span
-                  className="ml-auto w-1 h-1 rounded-full"
-                  style={{ background: "var(--clay)" }}
-                />
-              )}
-            </Link>
+            <div key={group.label}>
+              <div
+                className="px-3 text-[10px] font-semibold tracking-[0.14em] uppercase mb-1.5"
+                style={{ color: "#ffffff40" }}
+              >
+                {group.label}
+              </div>
+              <nav className="flex flex-col gap-0.5">
+                {items.map(([href, label, Icon]) => {
+                  const on =
+                    pathname === href ||
+                    (href !== "/dashboard" && pathname.startsWith(href));
+                  return (
+                    <Link
+                      key={href}
+                      href={href}
+                      className="flex items-center gap-3 px-3 py-2 rounded-md text-[13.5px] transition-colors text-left"
+                      style={{
+                        background: on ? "#ffffff0e" : "transparent",
+                        color: on ? "#f4f2ec" : "#ffffff7a",
+                        fontWeight: on ? 500 : 450,
+                      }}
+                    >
+                      <Icon size={17} style={{ opacity: on ? 1 : 0.7 }} />
+                      {label}
+                      {on && (
+                        <span
+                          className="ml-auto w-1 h-1 rounded-full"
+                          style={{ background: "var(--clay)" }}
+                        />
+                      )}
+                    </Link>
+                  );
+                })}
+              </nav>
+            </div>
           );
         })}
-      </nav>
+      </div>
       <div
         className="mt-auto mx-1 rounded-lg px-3.5 py-3"
         style={{ background: "#ffffff0a", border: "1px solid #ffffff12" }}
