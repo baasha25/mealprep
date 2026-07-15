@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
@@ -33,7 +34,10 @@ export type AuthContext = {
   role: Role;
 };
 
-export async function getAuthContext(): Promise<AuthContext | null> {
+// Memoized per server request (React cache): the layout, the page, and any
+// server actions in the same render share ONE user+business lookup instead of
+// each firing their own. Big latency win on every dashboard navigation.
+export const getAuthContext = cache(async (): Promise<AuthContext | null> => {
   if (USE_DEV_AUTH) {
     const business = await db.business.findFirst({
       orderBy: { createdAt: "asc" },
@@ -58,7 +62,7 @@ export async function getAuthContext(): Promise<AuthContext | null> {
   if (!user) redirect("/onboarding");
 
   return { business: user.business, userId, role: user.role as Role };
-}
+});
 
 /**
  * Use in dashboard pages and server actions. Returns the tenant context or

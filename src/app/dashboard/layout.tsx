@@ -1,9 +1,8 @@
 import Link from "next/link";
 import { Eye, AlertTriangle, ArrowUpCircle } from "lucide-react";
 import { requireBusiness } from "@/lib/auth";
-import { db } from "@/lib/db";
 import { orderLimitStatus } from "@/lib/usage";
-import type { TierKey } from "@/lib/tiers";
+import { TIERS, type TierKey } from "@/lib/tiers";
 import { DashboardSidebar } from "@/components/dashboard-sidebar";
 import { exitStaffPreview } from "./staff/actions";
 
@@ -18,12 +17,16 @@ export default async function DashboardLayout({
 }) {
   const { business, role } = await requireBusiness();
 
-  const [mealCount, orderCount, usage] = await Promise.all([
-    db.meal.count({ where: { businessId: business.id, active: true } }),
-    db.order.count({ where: { businessId: business.id } }),
-    orderLimitStatus({ id: business.id, tier: business.tier as TierKey }),
-  ]);
+  // One query for the whole shell: order usage (also powers the sidebar footer
+  // and cap banner). The old cosmetic "N menu items · N orders" counts were two
+  // extra DB round-trips on every dashboard page — dropped.
+  const usage = await orderLimitStatus({ id: business.id, tier: business.tier as TierKey });
   const showCap = role === "owner" && (usage.atLimit || usage.nearLimit);
+  const planLabel = TIERS[usage.tier].name;
+  const sidebarStats =
+    usage.limit === null
+      ? `${planLabel} plan · ${usage.used} orders this month`
+      : `${planLabel} · ${usage.used}/${usage.limit} orders this month`;
 
   return (
     // Inject the per-business brand color so --pine cascades through the dashboard.
@@ -38,7 +41,7 @@ export default async function DashboardLayout({
     >
       <DashboardSidebar
         businessName={business.name}
-        stats={`${mealCount} menu items · ${orderCount} orders`}
+        stats={sidebarStats}
         role={role}
         authEnabled={Boolean(process.env.CLERK_SECRET_KEY)}
       />
