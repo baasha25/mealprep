@@ -14,17 +14,19 @@ export function isoDate(d: Date): string {
  * Which reminders are due for one subscription right now. De-duplication across
  * runs is handled by the caller (SentNotification), so this only decides timing.
  * - cutoff: "pick your meals" — fires once the ordering cut-off is within the
- *   next 48h (and not passed), so subscribers get ~2 days to make selections.
- * - delivery_day: fires when the delivery is (UTC) today.
+ *   next 48h (and not passed), UNLESS the subscriber has already picked meals
+ *   for this delivery (no point nagging them).
+ * - delivery_day: fires when the delivery is (UTC) today (regardless of picks).
  */
 export function dueReminders(input: {
   now: Date;
   nextDeliveryDate: Date;
   notifyCutoff: boolean;
   notifyDeliveryDay: boolean;
+  alreadyPicked?: boolean;
 }): ReminderKind[] {
   const kinds: ReminderKind[] = [];
-  if (input.notifyCutoff) {
+  if (input.notifyCutoff && !input.alreadyPicked) {
     const msToCutoff = cutoffAt(input.nextDeliveryDate).getTime() - input.now.getTime();
     if (msToCutoff > 0 && msToCutoff <= 48 * 3_600_000) kinds.push("cutoff");
   }
@@ -50,6 +52,11 @@ export async function runDailyNotifications(now: Date = new Date()): Promise<Run
       businessId: true,
       nextDeliveryDate: true,
       customer: { select: { name: true, email: true } },
+      // Upcoming-ish selections so we can tell if they've already picked meals.
+      selections: {
+        where: { deliveryDate: { gte: new Date(now.getTime() - 24 * 3_600_000) } },
+        select: { deliveryDate: true, _count: { select: { items: true } } },
+      },
     },
   });
 
@@ -81,11 +88,17 @@ export async function runDailyNotifications(now: Date = new Date()): Promise<Run
     const biz = bizById.get(sub.businessId);
     if (!biz?.slug) continue;
 
+    // Already picked = a selection with items exists for this exact delivery.
+    const alreadyPicked = sub.selections.some(
+      (s) => s._count.items > 0 && s.deliveryDate.getTime() === sub.nextDeliveryDate!.getTime(),
+    );
+
     const kinds = dueReminders({
       now,
       nextDeliveryDate: sub.nextDeliveryDate,
       notifyCutoff: biz.settings?.notifyCutoff ?? true,
       notifyDeliveryDay: biz.settings?.notifyDeliveryDay ?? true,
+      alreadyPicked,
     });
     if (kinds.length === 0) continue;
 

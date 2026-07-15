@@ -37,6 +37,19 @@ describe("dueReminders", () => {
     expect(dueReminders({ now, nextDeliveryDate, ...both })).toEqual([]);
   });
 
+  it("suppresses the cut-off reminder once the subscriber has picked meals", () => {
+    // cut-off is 40h away → normally fires; but they've already picked
+    const now = new Date("2026-07-14T00:00:00Z");
+    const nextDeliveryDate = new Date("2026-07-17T16:00:00Z");
+    expect(dueReminders({ now, nextDeliveryDate, ...both, alreadyPicked: true })).toEqual([]);
+  });
+
+  it("still sends the delivery-day email even if they picked", () => {
+    const now = new Date("2026-07-15T08:00:00Z");
+    const nextDeliveryDate = new Date("2026-07-15T00:00:00Z");
+    expect(dueReminders({ now, nextDeliveryDate, ...both, alreadyPicked: true })).toEqual(["delivery_day"]);
+  });
+
   it("respects the per-kitchen toggles", () => {
     const cutoffNow = new Date("2026-07-14T00:00:00Z");
     const cutoffDelivery = new Date("2026-07-16T12:00:00Z");
