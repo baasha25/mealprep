@@ -1,10 +1,12 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { canAccess, type Role } from "@/lib/permissions";
 import { SignOutButton } from "@/components/sign-out-button";
 import {
+  ChevronDown,
   LayoutDashboard,
   Receipt,
   ChefHat,
@@ -96,6 +98,31 @@ export function DashboardSidebar({
 }) {
   const pathname = usePathname();
 
+  // Which groups are collapsed, persisted across reloads. Starts all-expanded
+  // to match SSR, then hydrates the saved state after mount (avoids mismatch).
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("pf_sidebar_collapsed");
+      if (raw) setCollapsed(JSON.parse(raw));
+    } catch {
+      /* ignore malformed/unavailable storage */
+    }
+  }, []);
+  const toggleGroup = (label: string) =>
+    setCollapsed((prev) => {
+      const next = { ...prev, [label]: !prev[label] };
+      try {
+        localStorage.setItem("pf_sidebar_collapsed", JSON.stringify(next));
+      } catch {
+        /* ignore */
+      }
+      return next;
+    });
+
+  const isActive = (href: string) =>
+    pathname === href || (href !== "/dashboard" && pathname.startsWith(href));
+
   return (
     <aside
       className="no-print w-[224px] shrink-0 flex flex-col px-3 py-5 sticky top-0 h-screen overflow-y-auto"
@@ -112,46 +139,67 @@ export function DashboardSidebar({
           PrepFlow
         </div>
       </Link>
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-3">
         {NAV_GROUPS.map((group) => {
           const items = group.items.filter(([href]) => canAccess(role, href));
           if (items.length === 0) return null;
+          const isCollapsed = !!collapsed[group.label];
+          const groupActive = items.some(([href]) => isActive(href));
           return (
             <div key={group.label}>
-              <div
-                className="px-3 text-[10px] font-semibold tracking-[0.14em] uppercase mb-1.5"
-                style={{ color: "#ffffff40" }}
+              <button
+                type="button"
+                onClick={() => toggleGroup(group.label)}
+                className="w-full flex items-center gap-1.5 px-3 py-1 mb-0.5 rounded-md"
+                aria-expanded={!isCollapsed}
               >
-                {group.label}
-              </div>
-              <nav className="flex flex-col gap-0.5">
-                {items.map(([href, label, Icon]) => {
-                  const on =
-                    pathname === href ||
-                    (href !== "/dashboard" && pathname.startsWith(href));
-                  return (
-                    <Link
-                      key={href}
-                      href={href}
-                      className="flex items-center gap-3 px-3 py-2 rounded-md text-[13.5px] transition-colors text-left"
-                      style={{
-                        background: on ? "#ffffff0e" : "transparent",
-                        color: on ? "#f4f2ec" : "#ffffff7a",
-                        fontWeight: on ? 500 : 450,
-                      }}
-                    >
-                      <Icon size={17} style={{ opacity: on ? 1 : 0.7 }} />
-                      {label}
-                      {on && (
-                        <span
-                          className="ml-auto w-1 h-1 rounded-full"
-                          style={{ background: "var(--clay)" }}
-                        />
-                      )}
-                    </Link>
-                  );
-                })}
-              </nav>
+                <span
+                  className="text-[10px] font-semibold tracking-[0.14em] uppercase"
+                  style={{ color: "#ffffff40" }}
+                >
+                  {group.label}
+                </span>
+                {/* When collapsed, flag the group that holds the current page. */}
+                {isCollapsed && groupActive && (
+                  <span className="w-1 h-1 rounded-full" style={{ background: "var(--clay)" }} />
+                )}
+                <ChevronDown
+                  size={13}
+                  className="ml-auto transition-transform"
+                  style={{
+                    color: "#ffffff40",
+                    transform: isCollapsed ? "rotate(-90deg)" : "rotate(0deg)",
+                  }}
+                />
+              </button>
+              {!isCollapsed && (
+                <nav className="flex flex-col gap-0.5">
+                  {items.map(([href, label, Icon]) => {
+                    const on = isActive(href);
+                    return (
+                      <Link
+                        key={href}
+                        href={href}
+                        className="flex items-center gap-3 px-3 py-2 rounded-md text-[13.5px] transition-colors text-left"
+                        style={{
+                          background: on ? "#ffffff0e" : "transparent",
+                          color: on ? "#f4f2ec" : "#ffffff7a",
+                          fontWeight: on ? 500 : 450,
+                        }}
+                      >
+                        <Icon size={17} style={{ opacity: on ? 1 : 0.7 }} />
+                        {label}
+                        {on && (
+                          <span
+                            className="ml-auto w-1 h-1 rounded-full"
+                            style={{ background: "var(--clay)" }}
+                          />
+                        )}
+                      </Link>
+                    );
+                  })}
+                </nav>
+              )}
             </div>
           );
         })}
