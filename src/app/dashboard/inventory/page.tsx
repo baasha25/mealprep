@@ -1,12 +1,15 @@
-import { Boxes, PackageCheck, TriangleAlert, Flame, TrendingDown, ClipboardCheck } from "lucide-react";
+import { Boxes, PackageCheck, TriangleAlert, Flame, TrendingDown, ClipboardCheck, ScanLine } from "lucide-react";
 import { requireBusiness } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { Page, Head, Kpi, Card, CardTitle } from "@/components/ui";
 import { formatCents } from "@/lib/money";
 import { buildShoppingList, type PurchaseLine } from "@/lib/purchasing";
 import { stockValueCents, toBuyQty, stockStatus } from "@/lib/inventory";
+import { ANTHROPIC_ENABLED } from "@/lib/anthropic";
+import type { TierKey } from "@/lib/tiers";
 import { ReceiveForm } from "./receive-form";
 import { CountForm } from "./count-form";
+import { InvoiceScanner } from "./invoice-scanner";
 import { consumeProductionQueue } from "./actions";
 
 const PRODUCING = ["paid", "in_production"] as const;
@@ -14,6 +17,7 @@ const round2 = (n: number) => Math.round(n * 100) / 100;
 
 export default async function InventoryPage() {
   const { business } = await requireBusiness();
+  const isPro = (business.tier as TierKey) === "pro";
 
   const ingredients = await db.ingredient.findMany({
     where: { businessId: business.id },
@@ -97,6 +101,37 @@ export default async function InventoryPage() {
         <Kpi icon={<PackageCheck size={16} />} label="Still to buy (value)" value={formatCents(toBuyValue)} />
         <Kpi icon={<TrendingDown size={16} />} label="Unexplained loss (recent)" value={formatCents(unexplainedLossCents)} />
       </div>
+
+      {/* Invoice scanning — Pro feature (reads line items with Claude vision) */}
+      {isPro ? (
+        <Card className="mb-4">
+          <CardTitle icon={<ScanLine size={15} />} title="Scan an invoice" note="Pro · reads line items with AI" />
+          {ANTHROPIC_ENABLED ? (
+            <InvoiceScanner />
+          ) : (
+            <p className="text-[13px]" style={{ color: "var(--muted)" }}>
+              Invoice scanning needs an API key — add <code>ANTHROPIC_API_KEY</code> to enable it.
+            </p>
+          )}
+        </Card>
+      ) : (
+        <Card className="mb-4">
+          <div className="flex items-center gap-3">
+            <div className="grid place-items-center w-9 h-9 rounded-lg shrink-0" style={{ background: "color-mix(in srgb, var(--pine) 10%, transparent)" }}>
+              <ScanLine size={17} style={{ color: "var(--pine)" }} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-[13.5px] font-medium" style={{ color: "var(--ink)" }}>
+                Scan invoices automatically
+                <span className="text-[10px] px-1.5 py-0.5 rounded ml-1.5 align-middle" style={{ background: "var(--sand)", color: "var(--muted)" }}>Pro</span>
+              </div>
+              <div className="text-[12px]" style={{ color: "var(--muted)" }}>
+                Snap a photo of a supplier invoice and we&apos;ll fill in your stock. Upgrade your plan in Settings.
+              </div>
+            </div>
+          </div>
+        </Card>
+      )}
 
       {/* Receiving */}
       <Card className="mb-4">
