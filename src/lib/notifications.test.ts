@@ -4,11 +4,18 @@ import { dueReminders, isoDate } from "./notifications";
 const both = { notifyCutoff: true, notifyDeliveryDay: true };
 
 describe("dueReminders", () => {
-  it("fires the cut-off reminder when the cut-off is within the next 24h", () => {
-    // delivery 60h out → cut-off (delivery − 48h) is 12h away
+  it("fires the cut-off reminder when the cut-off is within the next 48h", () => {
+    // delivery 88h out → cut-off (delivery − 48h) is 40h away → inside the 48h window
     const now = new Date("2026-07-14T00:00:00Z");
-    const nextDeliveryDate = new Date("2026-07-16T12:00:00Z");
+    const nextDeliveryDate = new Date("2026-07-17T16:00:00Z");
     expect(dueReminders({ now, nextDeliveryDate, ...both })).toEqual(["cutoff"]);
+  });
+
+  it("does not fire the cut-off reminder when the cut-off is more than 48h away", () => {
+    // delivery 98h out → cut-off is 50h away → still too early
+    const now = new Date("2026-07-14T00:00:00Z");
+    const nextDeliveryDate = new Date("2026-07-18T02:00:00Z");
+    expect(dueReminders({ now, nextDeliveryDate, ...both })).toEqual([]);
   });
 
   it("does not fire cut-off once it has already passed", () => {

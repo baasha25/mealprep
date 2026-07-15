@@ -13,7 +13,8 @@ export function isoDate(d: Date): string {
 /**
  * Which reminders are due for one subscription right now. De-duplication across
  * runs is handled by the caller (SentNotification), so this only decides timing.
- * - cutoff: fires once the edit cut-off is within the next 24h (and not passed).
+ * - cutoff: "pick your meals" — fires once the ordering cut-off is within the
+ *   next 48h (and not passed), so subscribers get ~2 days to make selections.
  * - delivery_day: fires when the delivery is (UTC) today.
  */
 export function dueReminders(input: {
@@ -25,7 +26,7 @@ export function dueReminders(input: {
   const kinds: ReminderKind[] = [];
   if (input.notifyCutoff) {
     const msToCutoff = cutoffAt(input.nextDeliveryDate).getTime() - input.now.getTime();
-    if (msToCutoff > 0 && msToCutoff <= 24 * 3_600_000) kinds.push("cutoff");
+    if (msToCutoff > 0 && msToCutoff <= 48 * 3_600_000) kinds.push("cutoff");
   }
   if (input.notifyDeliveryDay && isoDate(input.now) === isoDate(input.nextDeliveryDate)) {
     kinds.push("delivery_day");
