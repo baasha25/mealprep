@@ -1,7 +1,9 @@
 import Link from "next/link";
-import { Eye } from "lucide-react";
+import { Eye, AlertTriangle, ArrowUpCircle } from "lucide-react";
 import { requireBusiness } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { orderLimitStatus } from "@/lib/usage";
+import type { TierKey } from "@/lib/tiers";
 import { DashboardSidebar } from "@/components/dashboard-sidebar";
 import { exitStaffPreview } from "./staff/actions";
 
@@ -16,10 +18,12 @@ export default async function DashboardLayout({
 }) {
   const { business, role } = await requireBusiness();
 
-  const [mealCount, orderCount] = await Promise.all([
+  const [mealCount, orderCount, usage] = await Promise.all([
     db.meal.count({ where: { businessId: business.id, active: true } }),
     db.order.count({ where: { businessId: business.id } }),
+    orderLimitStatus({ id: business.id, tier: business.tier as TierKey }),
   ]);
+  const showCap = role === "owner" && (usage.atLimit || usage.nearLimit);
 
   return (
     // Inject the per-business brand color so --pine cascades through the dashboard.
@@ -57,6 +61,37 @@ export default async function DashboardLayout({
                 Exit staff view
               </button>
             </form>
+          </div>
+        )}
+        {showCap && (
+          <div
+            className="no-print flex items-center gap-3 px-6 py-2.5 text-[13px] flex-wrap"
+            style={{
+              background: usage.atLimit ? "var(--clay)" : "var(--sand)",
+              color: usage.atLimit ? "#fff" : "var(--ink)",
+            }}
+          >
+            <span className="flex items-center gap-1.5 font-medium">
+              <AlertTriangle size={14} />
+              {usage.atLimit
+                ? `You've reached your ${usage.tier} plan limit of ${usage.limit} orders this month.`
+                : `You've used ${usage.used} of ${usage.limit} orders this month.`}
+            </span>
+            <span style={{ color: usage.atLimit ? "#ffffffcc" : "var(--muted)" }}>
+              {usage.atLimit
+                ? "New orders are paused until you upgrade."
+                : "Upgrade for unlimited orders before you hit the cap."}
+            </span>
+            <Link
+              href="/dashboard/settings"
+              className="ml-auto flex items-center gap-1.5 px-3 py-1 rounded-md text-[12.5px] font-medium"
+              style={{
+                background: usage.atLimit ? "#ffffff26" : "var(--pine)",
+                color: "#f4f2ec",
+              }}
+            >
+              <ArrowUpCircle size={14} /> Upgrade plan
+            </Link>
           </div>
         )}
         {children}

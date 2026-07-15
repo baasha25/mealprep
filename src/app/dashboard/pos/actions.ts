@@ -5,6 +5,8 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { requireBusiness } from "@/lib/auth";
 import { computeOrder } from "@/lib/pricing";
+import { orderLimitStatus } from "@/lib/usage";
+import type { TierKey } from "@/lib/tiers";
 
 const PosInput = z.object({
   items: z
@@ -24,6 +26,15 @@ export async function placePosOrder(input: z.infer<typeof PosInput>): Promise<Po
   const { business } = await requireBusiness();
   const settings = await db.businessSettings.findUnique({ where: { businessId: business.id } });
   if (!settings) return { ok: false, message: "Settings missing." };
+
+  // Plan order-cap: block new sales once the monthly allowance is used up.
+  const usage = await orderLimitStatus({ id: business.id, tier: business.tier as TierKey });
+  if (usage.atLimit) {
+    return {
+      ok: false,
+      message: `You've hit your ${usage.tier} plan limit of ${usage.limit} orders this month. Upgrade in Settings to keep taking orders.`,
+    };
+  }
 
   // Authoritative prices from the DB (never trust the client).
   const meals = await db.meal.findMany({
