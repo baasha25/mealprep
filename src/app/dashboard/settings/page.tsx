@@ -33,6 +33,8 @@ export default async function SettingsPage() {
     deliveryDays: dd,
     pickupLocations: settings.pickupLocations,
     loyaltyEnabled: settings.loyaltyEnabled,
+    notifyCutoff: settings.notifyCutoff,
+    notifyDeliveryDay: settings.notifyDeliveryDay,
     loyaltyPointsPerDollar: settings.loyaltyPointsPerDollar,
     loyaltyRedeemCentsPerPoint: settings.loyaltyRedeemCentsPerPoint,
     referralBonusPoints: settings.referralBonusPoints,

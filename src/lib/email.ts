@@ -240,6 +240,50 @@ export async function sendPaymentFailed(opts: {
   });
 }
 
+/** Reminder: an upcoming delivery's edit cut-off is approaching. */
+export async function sendCutoffReminder(opts: {
+  to: string;
+  customerName: string;
+  businessName: string;
+  brandColor?: string;
+  deliveryLabel: string;
+  accountUrl: string;
+}): Promise<void> {
+  await send({
+    to: opts.to,
+    subject: `Edit your ${opts.businessName} box before cut-off`,
+    businessName: opts.businessName,
+    brandColor: opts.brandColor,
+    heading: "Last chance to change your box",
+    subheading: `Your delivery for ${escapeHtml(opts.deliveryLabel)} locks soon.`,
+    bodyHtml: `
+      <p style="margin:0 0 14px;color:${INK};font-size:14px;">Hi ${escapeHtml(opts.customerName)}, your next ${escapeHtml(opts.businessName)} delivery (${escapeHtml(opts.deliveryLabel)}) is coming up. Want to skip, swap meals, or pause? Make changes before the cut-off — after that this box is locked in.</p>
+      <a href="${opts.accountUrl}" style="display:inline-block;background:${opts.brandColor || "#2f4536"};color:#f4f2ec;text-decoration:none;font-size:14px;font-weight:500;padding:10px 18px;border-radius:8px;">Manage my plan</a>`,
+  });
+}
+
+/** Reminder: today is this subscriber's delivery day. */
+export async function sendDeliveryDayReminder(opts: {
+  to: string;
+  customerName: string;
+  businessName: string;
+  brandColor?: string;
+  deliveryLabel: string;
+  accountUrl: string;
+}): Promise<void> {
+  await send({
+    to: opts.to,
+    subject: `Your ${opts.businessName} meals arrive today`,
+    businessName: opts.businessName,
+    brandColor: opts.brandColor,
+    heading: "Your meals arrive today 🍱",
+    subheading: `${escapeHtml(opts.deliveryLabel)}`,
+    bodyHtml: `
+      <p style="margin:0 0 14px;color:${INK};font-size:14px;">Hi ${escapeHtml(opts.customerName)}, heads up — your ${escapeHtml(opts.businessName)} box is scheduled for delivery today. Enjoy your meals!</p>
+      <a href="${opts.accountUrl}" style="display:inline-block;background:${opts.brandColor || "#2f4536"};color:#f4f2ec;text-decoration:none;font-size:14px;font-weight:500;padding:10px 18px;border-radius:8px;">View my plan</a>`,
+  });
+}
+
 /** Owner marketing campaign — a free-text email to a customer segment. */
 export async function sendCampaignEmail(opts: {
   to: string;

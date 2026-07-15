@@ -31,6 +31,9 @@ const SettingsInput = z.object({
   loyaltyPointsPerDollar: z.coerce.number().int().min(0).max(1000),
   loyaltyRedeemCentsPerPoint: z.coerce.number().int().min(1).max(1000),
   referralBonusPoints: z.coerce.number().int().min(0).max(1_000_000),
+  // Customer notifications
+  notifyCutoff: z.boolean(),
+  notifyDeliveryDay: z.boolean(),
 });
 
 export type SettingsActionState = {
@@ -71,6 +74,8 @@ export async function updateSettings(
     loyaltyPointsPerDollar: formData.get("loyaltyPointsPerDollar"),
     loyaltyRedeemCentsPerPoint: formData.get("loyaltyRedeemCentsPerPoint"),
     referralBonusPoints: formData.get("referralBonusPoints"),
+    notifyCutoff: formData.get("notifyCutoff") === "on",
+    notifyDeliveryDay: formData.get("notifyDeliveryDay") === "on",
   });
 
   if (!parsed.success) {
@@ -109,6 +114,8 @@ export async function updateSettings(
         loyaltyPointsPerDollar: d.loyaltyPointsPerDollar,
         loyaltyRedeemCentsPerPoint: d.loyaltyRedeemCentsPerPoint,
         referralBonusPoints: d.referralBonusPoints,
+        notifyCutoff: d.notifyCutoff,
+        notifyDeliveryDay: d.notifyDeliveryDay,
       },
       update: {
         subDiscountBps: percentToBps(d.subDiscount),
@@ -126,6 +133,8 @@ export async function updateSettings(
         loyaltyPointsPerDollar: d.loyaltyPointsPerDollar,
         loyaltyRedeemCentsPerPoint: d.loyaltyRedeemCentsPerPoint,
         referralBonusPoints: d.referralBonusPoints,
+        notifyCutoff: d.notifyCutoff,
+        notifyDeliveryDay: d.notifyDeliveryDay,
       },
     }),
   ]);

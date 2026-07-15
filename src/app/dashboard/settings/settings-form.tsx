@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { Check, Store, Percent, Truck, Star } from "lucide-react";
+import { Check, Store, Percent, Truck, Star, Bell } from "lucide-react";
 import { Card, CardTitle, Field, INP, btnPrimary } from "@/components/ui";
 import { updateSettings, type SettingsActionState } from "./actions";
 import { TIERS, TIER_KEYS, feePctLabel, type TierKey } from "@/lib/tiers";
@@ -24,6 +24,8 @@ export type SettingsInitial = {
   deliveryDays: Record<string, boolean>;
   pickupLocations: string[];
   loyaltyEnabled: boolean;
+  notifyCutoff: boolean;
+  notifyDeliveryDay: boolean;
   loyaltyPointsPerDollar: number;
   loyaltyRedeemCentsPerPoint: number;
   referralBonusPoints: number;
@@ -300,6 +302,28 @@ export function SettingsForm({ initial }: { initial: SettingsInitial }) {
             <ErrorText msg={errors.referralBonusPoints} />
           </Field>
         </div>
+      </Card>
+
+      {/* Customer notifications */}
+      <Card>
+        <CardTitle icon={<Bell size={15} />} title="Customer notifications" />
+        <p className="text-[12.5px] mb-3" style={{ color: "var(--muted)" }}>
+          Automatic reminders emailed to your subscribers around each delivery.
+        </p>
+        <label className="flex items-start gap-2 mb-2.5 cursor-pointer select-none">
+          <input type="checkbox" name="notifyCutoff" defaultChecked={initial.notifyCutoff} className="mt-0.5" />
+          <span>
+            <span className="text-[13px] block" style={{ color: "var(--ink)" }}>Cut-off reminder</span>
+            <span className="text-[12px]" style={{ color: "var(--muted)" }}>“Edit your box before cut-off” — sent ~1 day before changes lock.</span>
+          </span>
+        </label>
+        <label className="flex items-start gap-2 cursor-pointer select-none">
+          <input type="checkbox" name="notifyDeliveryDay" defaultChecked={initial.notifyDeliveryDay} className="mt-0.5" />
+          <span>
+            <span className="text-[13px] block" style={{ color: "var(--ink)" }}>Delivery-day email</span>
+            <span className="text-[12px]" style={{ color: "var(--muted)" }}>“Your meals arrive today” — sent the morning of delivery.</span>
+          </span>
+        </label>
       </Card>
 
       <div className="flex items-center gap-3">

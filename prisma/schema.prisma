@@ -126,6 +126,10 @@ model BusinessSettings {
   loyaltyRedeemCentsPerPoint Int     @default(5) // redemption value: 1 point = 5¢
   referralBonusPoints        Int     @default(100) // points to referrer per successful referral
 
+  // Customer notifications (scheduled reminders)
+  notifyCutoff      Boolean @default(true) // "edit your box before cutoff" reminder
+  notifyDeliveryDay Boolean @default(true) // "your meals arrive today" email
+
   // Fulfillment
   cutoff          String   @default("Sat 8:00 PM")
   fulfillment     String   @default("both") // "delivery" | "pickup" | "both"
@@ -133,6 +137,20 @@ model BusinessSettings {
   pickupLocations String[] @default([])
 
   updatedAt DateTime @updatedAt
+}
+
+// Idempotency log for scheduled customer notifications — guarantees the daily
+// cron never sends the same reminder twice for the same delivery.
+model SentNotification {
+  id         String   @id @default(cuid())
+  businessId String
+  type       String // "cutoff" | "delivery_day"
+  targetId   String // subscriptionId the reminder is about
+  forDate    String // delivery date (YYYY-MM-DD) the reminder concerns
+  createdAt  DateTime @default(now())
+
+  @@unique([type, targetId, forDate])
+  @@index([businessId])
 }
 
 model User {
