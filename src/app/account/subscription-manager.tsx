@@ -119,16 +119,16 @@ export function SubscriptionManager({
     <div className="space-y-4">
       {toast && (
         <div
-          className="fade px-4 py-2.5 rounded-lg text-[13px] flex items-center gap-2"
+          className="fade fixed left-1/2 -translate-x-1/2 bottom-6 z-50 px-4 py-3 rounded-xl text-[13.5px] font-medium flex items-center gap-2"
           style={{
-            background: toast.ok
-              ? "color-mix(in srgb, var(--pine) 9%, transparent)"
-              : "color-mix(in srgb, var(--clay) 10%, transparent)",
+            background: "var(--surface)",
             color: toast.ok ? "var(--pine)" : "var(--clay)",
-            border: `1px solid ${toast.ok ? "color-mix(in srgb, var(--pine) 20%, transparent)" : "var(--clay)"}`,
+            border: `1px solid ${toast.ok ? "color-mix(in srgb, var(--pine) 35%, transparent)" : "var(--clay)"}`,
+            boxShadow: "0 14px 34px -10px rgba(31,30,26,0.28)",
           }}
+          role="status"
         >
-          {toast.ok ? <Check size={15} /> : null}
+          {toast.ok ? <Check size={16} /> : null}
           {toast.message}
         </div>
       )}
