@@ -1,6 +1,7 @@
 import type Stripe from "stripe";
 import { db } from "@/lib/db";
 import { referralCodeFrom } from "@/lib/loyalty";
+import { sendSubscriptionConfirmation } from "@/lib/email";
 
 /**
  * Create our Subscription row from a completed subscription-mode Checkout
@@ -43,6 +44,7 @@ export async function ensureSubscriptionFromCheckout(
     update: { stripeCustomerId: custId },
   });
 
+  const nextDeliveryDate = new Date(Date.now() + 5 * 86_400_000);
   await db.subscription.create({
     data: {
       businessId,
@@ -50,10 +52,33 @@ export async function ensureSubscriptionFromCheckout(
       planId: plan.id,
       status: "active",
       frequency,
-      nextDeliveryDate: new Date(Date.now() + 5 * 86_400_000),
+      nextDeliveryDate,
       stripeSubscriptionId: subId,
     },
   });
+
+  // Immediate "you're subscribed" email — best-effort, not webhook-dependent, and
+  // only here (past the idempotency check) so it sends exactly once per sub.
+  const business = await db.business.findUnique({
+    where: { id: businessId },
+    select: { name: true, brandColor: true, slug: true },
+  });
+  if (business?.slug) {
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "";
+    await sendSubscriptionConfirmation({
+      to: email,
+      customerName: customer.name,
+      businessName: business.name,
+      brandColor: business.brandColor,
+      planName: plan.name,
+      nextDeliveryLabel: nextDeliveryDate.toLocaleDateString("en-US", {
+        weekday: "long",
+        month: "short",
+        day: "numeric",
+      }),
+      accountUrl: `${appUrl}/store/${business.slug}/account`,
+    });
+  }
 
   return { planName: plan.name };
 }

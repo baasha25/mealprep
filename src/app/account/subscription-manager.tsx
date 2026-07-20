@@ -354,8 +354,8 @@ export function SubscriptionManager({
                 run(() => cancelSubscription(subscriptionId));
             }}
             disabled={pending}
-            className="text-[12.5px] font-medium disabled:opacity-50"
-            style={{ color: "var(--clay)" }}
+            className="px-3.5 py-2 rounded-lg text-[12.5px] font-medium border disabled:opacity-50"
+            style={{ color: "var(--clay)", borderColor: "var(--clay)", background: "transparent" }}
           >
             Cancel subscription
           </button>
