@@ -84,8 +84,8 @@ export default async function ProfitabilityPage() {
       <Head kicker="Profit" title="Menu profitability" sub="What each plate really costs, what it earns, and which meals to promote or fix." />
 
       <div className="grid sm:grid-cols-4 gap-3.5 mb-5">
-        <Kpi icon={<TrendingUp size={16} />} label="Avg margin" value={`${bpsToPercent(avgMarginBps).toFixed(0)}%`} />
-        <Kpi icon={<DollarSign size={16} />} label="Avg food cost" value={`${bpsToPercent(avgFoodCostBps).toFixed(0)}%`} />
+        <Kpi icon={<TrendingUp size={16} />} label="Avg margin" value={`${bpsToPercent(avgMarginBps).toFixed(1)}%`} />
+        <Kpi icon={<DollarSign size={16} />} label="Avg food cost" value={`${bpsToPercent(avgFoodCostBps).toFixed(1)}%`} />
         <Kpi icon={<ChefHat size={16} />} label="Profit contribution" value={formatCents(totalContribution)} />
         <Kpi icon={<AlertTriangle size={16} />} label="Money-losing meals" value={losers} />
       </div>
@@ -97,7 +97,7 @@ export default async function ProfitabilityPage() {
             <strong>Ingredient costs are rising.</strong>{" "}
             {alerts.map((a) => (
               <span key={a.name}>
-                {a.name} <span style={{ color: "var(--clay)" }}>+{bpsToPercent(a.changeBps).toFixed(0)}%</span>
+                {a.name} <span style={{ color: "var(--clay)" }}>+{bpsToPercent(a.changeBps).toFixed(1)}%</span>
                 {a.affected.length ? ` (${a.affected.length} meal${a.affected.length === 1 ? "" : "s"})` : ""}.{" "}
               </span>
             ))}
@@ -128,7 +128,7 @@ export default async function ProfitabilityPage() {
               <div className="text-[12.5px] text-right" style={{ color: "var(--ink-soft)" }}>{formatCents(r.priceCents)}</div>
               <div className="text-[12.5px] text-right" style={{ color: "var(--muted)" }}>{formatCents(r.costCents)}</div>
               <div className="text-[12.5px] text-right font-medium" style={{ color: r.losing ? "var(--clay)" : "var(--ink)" }}>{formatCents(r.marginCents)}</div>
-              <div className="text-[12.5px] text-right" style={{ color: r.losing ? "var(--clay)" : "var(--ink-soft)" }}>{bpsToPercent(r.marginBps).toFixed(0)}%</div>
+              <div className="text-[12.5px] text-right" style={{ color: r.losing ? "var(--clay)" : "var(--ink-soft)" }}>{bpsToPercent(r.marginBps).toFixed(1)}%</div>
               <div className="text-[12.5px] text-right" style={{ color: "var(--muted)" }}>{r.units}</div>
               <div className="disp text-[14px] font-medium text-right" style={{ color: "var(--ink)" }}>{formatCents(r.contributionCents)}</div>
             </div>

@@ -139,7 +139,7 @@ export default async function PurchasingPage() {
                   {r.name}
                 </div>
                 <div className="text-[11.5px]" style={{ color: "var(--muted)" }}>
-                  {bpsToPercent(trimOf(r)).toFixed(0)}% trim · buy cost {formatCents(r.buyCostCents)}
+                  {bpsToPercent(trimOf(r)).toFixed(1)}% trim · buy cost {formatCents(r.buyCostCents)}
                 </div>
               </div>
               <div className="text-[12.5px] text-right" style={{ color: "var(--ink-soft)" }}>

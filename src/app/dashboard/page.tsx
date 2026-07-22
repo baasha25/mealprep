@@ -1,12 +1,18 @@
-import { TrendingUp, ChefHat, Repeat, Receipt } from "lucide-react";
+import Link from "next/link";
+import { TrendingUp, ChefHat, Repeat, Receipt, Gauge, ArrowUpCircle } from "lucide-react";
 import { requireBusiness } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { Page, Head, Kpi, Card, CardTitle } from "@/components/ui";
 import { formatCents, formatCents0 } from "@/lib/money";
+import { orderLimitStatus } from "@/lib/usage";
+import { TIERS, type TierKey } from "@/lib/tiers";
 
 export default async function DashboardPage() {
   const { business } = await requireBusiness();
   const where = { businessId: business.id };
+  const usage = await orderLimitStatus({ id: business.id, tier: business.tier as TierKey });
+  const planName = TIERS[usage.tier].name;
+  const pct = usage.limit ? Math.min(100, Math.round((usage.used / usage.limit) * 100)) : 0;
 
   const [orders, subCount, agg] = await Promise.all([
     db.order.count({ where }),
@@ -56,13 +62,43 @@ export default async function DashboardPage() {
         />
       </div>
       <Card>
-        <CardTitle title="Phase 0 in progress" note="pilot build" />
-        <p className="text-[13.5px] leading-relaxed" style={{ color: "var(--ink-soft)" }}>
-          Auth seam, business settings, and the menu manager are coming online.
-          KPIs above read live from the database for{" "}
-          <strong>{business.name}</strong> ({orders} orders seeded). Next:
-          storefront, subscriptions, and Stripe Connect.
-        </p>
+        <CardTitle icon={<Gauge size={15} />} title="Plan usage" note={`${planName} plan`} />
+        {usage.limit === null ? (
+          <p className="text-[13.5px]" style={{ color: "var(--ink-soft)" }}>
+            <strong>{usage.used}</strong> orders this month · unlimited on your {planName} plan.
+          </p>
+        ) : (
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-[13.5px]" style={{ color: "var(--ink)" }}>
+                <strong>{usage.used}</strong> of {usage.limit} orders this month
+              </span>
+              <span className="text-[12.5px]" style={{ color: usage.atLimit ? "var(--clay)" : "var(--muted)" }}>
+                {usage.remaining} left
+              </span>
+            </div>
+            <div className="h-2 rounded-full overflow-hidden" style={{ background: "var(--sand)" }}>
+              <div
+                className="h-2 rounded-full"
+                style={{ width: `${pct}%`, background: usage.atLimit ? "var(--clay)" : "var(--pine)" }}
+              />
+            </div>
+            {(usage.nearLimit || usage.atLimit) && (
+              <div className="mt-3 flex items-center gap-2 flex-wrap">
+                <span className="text-[12.5px]" style={{ color: "var(--muted)" }}>
+                  {usage.atLimit ? "You've hit your monthly limit." : "You're close to your monthly limit."}
+                </span>
+                <Link
+                  href="/dashboard/settings"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12.5px] font-medium"
+                  style={{ background: "var(--pine)", color: "#f4f2ec" }}
+                >
+                  <ArrowUpCircle size={14} /> Upgrade plan
+                </Link>
+              </div>
+            )}
+          </div>
+        )}
       </Card>
     </Page>
   );
