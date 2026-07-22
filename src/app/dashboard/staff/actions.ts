@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { requireOwner, ROLE_COOKIE } from "@/lib/auth";
+import { sendStaffInvite } from "@/lib/email";
 
 export type StaffState = { ok: boolean; message?: string };
 
@@ -27,12 +28,23 @@ export async function addStaff(_prev: StaffState, formData: FormData): Promise<S
       businessId: business.id,
       email: parsed.data.email,
       role: parsed.data.role,
-      // Placeholder until real auth links the account on first sign-in.
+      // Placeholder until they sign in — claimed by email on first sign-in (auth.ts).
       authProviderId: `invite:${globalThis.crypto.randomUUID()}`,
     },
   });
+
+  // Invite email so they know to create an account with this address.
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "";
+  await sendStaffInvite({
+    to: parsed.data.email,
+    businessName: business.name,
+    brandColor: business.brandColor,
+    role: parsed.data.role,
+    signInUrl: `${appUrl}/sign-up`,
+  });
+
   revalidatePath("/dashboard/staff");
-  return { ok: true, message: `${parsed.data.email} added.` };
+  return { ok: true, message: `${parsed.data.email} invited.` };
 }
 
 export async function updateStaffRole(formData: FormData) {

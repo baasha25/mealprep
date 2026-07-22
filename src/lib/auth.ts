@@ -50,14 +50,38 @@ export const getAuthContext = cache(async (): Promise<AuthContext | null> => {
 
   // Clerk path (active once CLERK_SECRET_KEY is set). Dynamic import so the
   // dev-stub path never touches Clerk.
-  const { auth } = await import("@clerk/nextjs/server");
+  const { auth, currentUser } = await import("@clerk/nextjs/server");
   const { userId } = await auth();
   if (!userId) redirect("/sign-in");
 
-  const user = await db.user.findUnique({
+  let user = await db.user.findUnique({
     where: { authProviderId: userId },
     include: { business: true },
   });
+
+  // Not linked yet → claim a pending staff invite for this email, if one exists.
+  // (Staff are added with a placeholder `invite:` id; first sign-in links it.)
+  if (!user) {
+    const cu = await currentUser();
+    const email = (
+      cu?.primaryEmailAddress?.emailAddress ??
+      cu?.emailAddresses?.[0]?.emailAddress ??
+      ""
+    ).toLowerCase();
+    if (email) {
+      const invite = await db.user.findFirst({
+        where: { email, authProviderId: { startsWith: "invite:" } },
+      });
+      if (invite) {
+        user = await db.user.update({
+          where: { id: invite.id },
+          data: { authProviderId: userId },
+          include: { business: true },
+        });
+      }
+    }
+  }
+
   // Signed in but no kitchen yet → onboarding provisions the Business + owner User.
   if (!user) redirect("/onboarding");
 

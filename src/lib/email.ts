@@ -308,6 +308,50 @@ export async function sendDeliveryDayReminder(opts: {
   });
 }
 
+/** Sent to a gift-card recipient when the kitchen issues one with their email. */
+export async function sendGiftCard(opts: {
+  to: string;
+  businessName: string;
+  brandColor?: string;
+  code: string;
+  amountLabel: string;
+  storeUrl: string;
+}): Promise<void> {
+  await send({
+    to: opts.to,
+    subject: `You've received a ${opts.businessName} gift card 🎁`,
+    businessName: opts.businessName,
+    brandColor: opts.brandColor,
+    heading: "You've got a gift card 🎁",
+    subheading: `${escapeHtml(opts.amountLabel)} to spend at ${escapeHtml(opts.businessName)}`,
+    bodyHtml: `
+      <p style="margin:0 0 12px;color:${INK};font-size:14px;">You've been sent a ${escapeHtml(opts.businessName)} gift card worth <strong>${escapeHtml(opts.amountLabel)}</strong>. Use this code at checkout:</p>
+      <div style="font-family:monospace;font-size:20px;font-weight:700;letter-spacing:2px;color:${INK};background:#f4f2ec;border:1px solid ${LINE};border-radius:8px;padding:12px 16px;text-align:center;margin:0 0 16px;">${escapeHtml(opts.code)}</div>
+      <a href="${opts.storeUrl}" style="display:inline-block;background:${opts.brandColor || "#2f4536"};color:#f4f2ec;text-decoration:none;font-size:14px;font-weight:500;padding:10px 18px;border-radius:8px;">Order now</a>`,
+  });
+}
+
+/** Sent to a staff member when the owner adds them to the team. */
+export async function sendStaffInvite(opts: {
+  to: string;
+  businessName: string;
+  brandColor?: string;
+  role: string;
+  signInUrl: string;
+}): Promise<void> {
+  await send({
+    to: opts.to,
+    subject: `You've been added to ${opts.businessName} on PrepFlow`,
+    businessName: opts.businessName,
+    brandColor: opts.brandColor,
+    heading: "You're on the team 👋",
+    subheading: `${escapeHtml(opts.role)} access to ${escapeHtml(opts.businessName)}`,
+    bodyHtml: `
+      <p style="margin:0 0 14px;color:${INK};font-size:14px;">${escapeHtml(opts.businessName)} has added you to their PrepFlow workspace as <strong>${escapeHtml(opts.role)}</strong>. Create your account using <strong>this email address</strong> and you'll be taken straight to their kitchen.</p>
+      <a href="${opts.signInUrl}" style="display:inline-block;background:${opts.brandColor || "#2f4536"};color:#f4f2ec;text-decoration:none;font-size:14px;font-weight:500;padding:10px 18px;border-radius:8px;">Set up my account</a>`,
+  });
+}
+
 /** Owner marketing campaign — a free-text email to a customer segment. */
 export async function sendCampaignEmail(opts: {
   to: string;
