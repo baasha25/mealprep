@@ -3,10 +3,17 @@ import { Users, ChevronRight, Repeat } from "lucide-react";
 import { requireOwner } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { Page, Head, Kpi } from "@/components/ui";
+import { ListSearch } from "@/components/list-search";
 import { formatCents } from "@/lib/money";
 
-export default async function CustomersPage() {
+export default async function CustomersPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string }>;
+}) {
   const { business } = await requireOwner();
+  const term = ((await searchParams).q ?? "").trim();
+
   const customers = await db.customer.findMany({
     where: { businessId: business.id },
     orderBy: { createdAt: "desc" },
@@ -26,6 +33,14 @@ export default async function CustomersPage() {
 
   const totalSpend = rows.reduce((s, r) => s + r.spendCents, 0);
   const subscribers = rows.filter((r) => r.activeSub).length;
+
+  // Filter the table by the search term (KPIs stay full totals).
+  const t = term.toLowerCase();
+  const shown = t
+    ? rows.filter((r) =>
+        [r.name, r.email, r.phone].some((v) => (v ?? "").toLowerCase().includes(t)),
+      )
+    : rows;
 
   return (
     <Page>
@@ -54,19 +69,32 @@ export default async function CustomersPage() {
           </Link>
         </div>
       ) : (
-        <div className="rounded-xl border overflow-hidden" style={{ borderColor: "var(--line)", background: "var(--surface)" }}>
-          <div
-            className="hidden sm:grid grid-cols-[1.4fr_1fr_90px_110px_120px_28px] gap-3 px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wide"
-            style={{ color: "var(--muted)", borderBottom: "1px solid var(--line)" }}
-          >
-            <div>Name</div>
-            <div>Email</div>
-            <div className="text-right">Orders</div>
-            <div className="text-right">Spend</div>
-            <div>Subscription</div>
-            <div />
-          </div>
-          {rows.map((c) => (
+        <>
+          <ListSearch
+            placeholder="Search by name, email, or phone…"
+            basePath="/dashboard/customers"
+            initialQ={term}
+          />
+          {shown.length === 0 ? (
+            <div className="rounded-xl border p-8 text-center" style={{ borderColor: "var(--line)", background: "var(--surface)" }}>
+              <p className="text-[13.5px]" style={{ color: "var(--muted)" }}>
+                No customers match “{term}”.
+              </p>
+            </div>
+          ) : (
+            <div className="rounded-xl border overflow-hidden" style={{ borderColor: "var(--line)", background: "var(--surface)" }}>
+              <div
+                className="hidden sm:grid grid-cols-[1.4fr_1fr_90px_110px_120px_28px] gap-3 px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wide"
+                style={{ color: "var(--muted)", borderBottom: "1px solid var(--line)" }}
+              >
+                <div>Name</div>
+                <div>Email</div>
+                <div className="text-right">Orders</div>
+                <div className="text-right">Spend</div>
+                <div>Subscription</div>
+                <div />
+              </div>
+              {shown.map((c) => (
             <div
               key={c.id}
               className="grid sm:grid-cols-[1.4fr_1fr_90px_110px_120px_28px] grid-cols-2 gap-3 px-4 py-3 items-center"
@@ -97,8 +125,10 @@ export default async function CustomersPage() {
                 <ChevronRight size={14} style={{ color: "var(--muted)" }} />
               </Link>
             </div>
-          ))}
-        </div>
+              ))}
+            </div>
+          )}
+        </>
       )}
     </Page>
   );

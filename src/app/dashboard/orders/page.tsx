@@ -3,13 +3,20 @@ import { Receipt, ChevronRight } from "lucide-react";
 import { requireBusiness } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { Page, Head } from "@/components/ui";
+import { ListSearch } from "@/components/list-search";
 import { formatCents } from "@/lib/money";
 import { ORDER_TYPE_LABEL } from "@/lib/order-status";
 import { StatusControl } from "./status-control";
 import { updateOrderStatus } from "./actions";
 
-export default async function OrdersPage() {
+export default async function OrdersPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string }>;
+}) {
   const { business } = await requireBusiness();
+  const term = ((await searchParams).q ?? "").trim();
+
   const orders = await db.order.findMany({
     where: { businessId: business.id },
     orderBy: { createdAt: "desc" },
@@ -20,6 +27,14 @@ export default async function OrdersPage() {
   });
 
   const revenueCents = orders.reduce((s, o) => s + o.totalCents, 0);
+
+  // Search by order code (last-6 of the id) or customer name; totals stay full.
+  const t = term.toLowerCase();
+  const shown = t
+    ? orders.filter(
+        (o) => o.id.toLowerCase().includes(t) || (o.customer?.name ?? "").toLowerCase().includes(t),
+      )
+    : orders;
 
   return (
     <Page>
@@ -50,24 +65,35 @@ export default async function OrdersPage() {
           </p>
         </div>
       ) : (
-        <div
-          className="rounded-xl border overflow-hidden"
-          style={{ borderColor: "var(--line)", background: "var(--surface)" }}
-        >
-          {/* Header row */}
-          <div
-            className="hidden sm:grid grid-cols-[1fr_120px_90px_140px_120px_28px] gap-3 px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wide"
-            style={{ color: "var(--muted)", borderBottom: "1px solid var(--line)" }}
-          >
-            <div>Customer</div>
-            <div>Type</div>
-            <div>Meals</div>
-            <div>Status</div>
-            <div className="text-right">Total</div>
-            <div />
-          </div>
+        <>
+          <ListSearch
+            placeholder="Search by order code or customer…"
+            basePath="/dashboard/orders"
+            initialQ={term}
+          />
+          {shown.length === 0 ? (
+            <div className="rounded-xl border p-8 text-center" style={{ borderColor: "var(--line)", background: "var(--surface)" }}>
+              <p className="text-[13.5px]" style={{ color: "var(--muted)" }}>No orders match “{term}”.</p>
+            </div>
+          ) : (
+            <div
+              className="rounded-xl border overflow-hidden"
+              style={{ borderColor: "var(--line)", background: "var(--surface)" }}
+            >
+              {/* Header row */}
+              <div
+                className="hidden sm:grid grid-cols-[1fr_120px_90px_140px_120px_28px] gap-3 px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wide"
+                style={{ color: "var(--muted)", borderBottom: "1px solid var(--line)" }}
+              >
+                <div>Customer</div>
+                <div>Type</div>
+                <div>Meals</div>
+                <div>Status</div>
+                <div className="text-right">Total</div>
+                <div />
+              </div>
 
-          {orders.map((o) => (
+              {shown.map((o) => (
             <div
               key={o.id}
               className="grid sm:grid-cols-[1fr_120px_90px_140px_120px_28px] grid-cols-2 gap-3 px-4 py-3 items-center"
@@ -103,8 +129,10 @@ export default async function OrdersPage() {
                 <ChevronRight size={14} style={{ color: "var(--muted)" }} />
               </Link>
             </div>
-          ))}
-        </div>
+              ))}
+            </div>
+          )}
+        </>
       )}
     </Page>
   );
