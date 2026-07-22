@@ -11,9 +11,19 @@ export type PosMeal = { id: string; name: string; priceCents: number; diet: stri
 export function Pos({ meals, taxRateBps }: { meals: PosMeal[]; taxRateBps: number }) {
   const [cart, setCart] = useState<Record<string, number>>({});
   const [name, setName] = useState("");
+  const [discType, setDiscType] = useState<"percent" | "flat">("percent");
+  const [disc, setDisc] = useState("");
   const [done, setDone] = useState<{ code: string; total: number } | null>(null);
   const [error, setError] = useState("");
   const [pending, start] = useTransition();
+
+  const discNum = Math.max(0, Number(disc) || 0);
+  const coupon =
+    discNum > 0
+      ? discType === "percent"
+        ? { type: "percent" as const, value: discNum }
+        : { type: "flat" as const, value: Math.round(discNum * 100) }
+      : null;
 
   const byId = new Map(meals.map((m) => [m.id, m]));
   const add = (id: string) => setCart((c) => ({ ...c, [id]: (c[id] || 0) + 1 }));
@@ -28,6 +38,7 @@ export function Pos({ meals, taxRateBps }: { meals: PosMeal[]; taxRateBps: numbe
   const clear = () => {
     setCart({});
     setName("");
+    setDisc("");
   };
 
   const lines = Object.entries(cart).map(([id, qty]) => ({ priceCents: byId.get(id)?.priceCents ?? 0, qty }));
@@ -35,6 +46,7 @@ export function Pos({ meals, taxRateBps }: { meals: PosMeal[]; taxRateBps: numbe
     lines,
     settings: { subDiscountBps: 0, taxRateBps, deliveryFeeCents: 0, processingFeeCents: 0, minOrderCents: 0 },
     subscribe: false,
+    coupon,
   });
 
   const charge = () => {
@@ -43,6 +55,8 @@ export function Pos({ meals, taxRateBps }: { meals: PosMeal[]; taxRateBps: numbe
       const r = await placePosOrder({
         items: Object.entries(cart).map(([mealId, qty]) => ({ mealId, qty })),
         customerName: name,
+        discountType: discNum > 0 ? discType : undefined,
+        discountValue: discNum > 0 ? discNum : undefined,
       });
       if (r.ok) {
         setDone({ code: r.orderId.slice(-6), total: r.totalCents });
@@ -123,12 +137,40 @@ export function Pos({ meals, taxRateBps }: { meals: PosMeal[]; taxRateBps: numbe
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Customer name (optional)"
-              className="w-full px-3 py-2 rounded-md border text-[13px] outline-none mb-3"
+              className="w-full px-3 py-2 rounded-md border text-[13px] outline-none mb-2"
               style={{ borderColor: "var(--line)", background: "var(--paper)", color: "var(--ink)" }}
             />
 
+            {/* Discount */}
+            <div className="flex items-center gap-2 mb-3">
+              <div className="flex rounded-md border overflow-hidden" style={{ borderColor: "var(--line)" }}>
+                {(["percent", "flat"] as const).map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => setDiscType(t)}
+                    className="px-2.5 py-2 text-[12.5px] font-medium"
+                    style={{ background: discType === t ? "var(--pine)" : "var(--paper)", color: discType === t ? "#f4f2ec" : "var(--muted)" }}
+                  >
+                    {t === "percent" ? "%" : "$"}
+                  </button>
+                ))}
+              </div>
+              <input
+                value={disc}
+                onChange={(e) => setDisc(e.target.value)}
+                inputMode="decimal"
+                placeholder="Discount (optional)"
+                className="flex-1 px-3 py-2 rounded-md border text-[13px] outline-none"
+                style={{ borderColor: "var(--line)", background: "var(--paper)", color: "var(--ink)" }}
+              />
+            </div>
+
             <div className="space-y-1.5 text-[13px] py-3 border-t border-b mb-3" style={{ borderColor: "var(--line)" }}>
               <div className="flex justify-between"><span style={{ color: "var(--muted)" }}>Subtotal</span><span style={{ color: "var(--ink)" }}>{formatCents(totals.subtotalCents)}</span></div>
+              {totals.couponCents > 0 && (
+                <div className="flex justify-between"><span style={{ color: "var(--muted)" }}>Discount</span><span style={{ color: "var(--clay)" }}>−{formatCents(totals.couponCents)}</span></div>
+              )}
               <div className="flex justify-between"><span style={{ color: "var(--muted)" }}>Tax</span><span style={{ color: "var(--ink)" }}>{formatCents(totals.taxCents)}</span></div>
             </div>
             <div className="flex justify-between items-baseline mb-3">

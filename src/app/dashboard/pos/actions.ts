@@ -13,6 +13,8 @@ const PosInput = z.object({
     .array(z.object({ mealId: z.string().min(1), qty: z.number().int().min(1).max(99) }))
     .min(1, "Add at least one item."),
   customerName: z.string().trim().max(120).optional().default(""),
+  discountType: z.enum(["percent", "flat"]).optional(),
+  discountValue: z.coerce.number().min(0).max(100000).optional(),
 });
 
 export type PosResult =
@@ -48,6 +50,15 @@ export async function placePosOrder(input: z.infer<typeof PosInput>): Promise<Po
     return { mealId: meal.id, qty: i.qty, unitPriceCentsSnapshot: meal.priceCents, nameSnapshot: meal.name };
   });
 
+  // Optional cashier discount (percent or flat dollars), applied authoritatively.
+  const d = parsed.data;
+  const coupon =
+    d.discountValue && d.discountValue > 0 && d.discountType
+      ? d.discountType === "percent"
+        ? { type: "percent" as const, value: d.discountValue }
+        : { type: "flat" as const, value: Math.round(d.discountValue * 100) }
+      : null;
+
   // In-store sale: tax applies, no delivery/processing fees, no minimum or sub discount.
   const totals = computeOrder({
     lines: lineItems.map((li) => ({ priceCents: li.unitPriceCentsSnapshot, qty: li.qty })),
@@ -59,6 +70,7 @@ export async function placePosOrder(input: z.infer<typeof PosInput>): Promise<Po
       minOrderCents: 0,
     },
     subscribe: false,
+    coupon,
   });
 
   const order = await db.order.create({
