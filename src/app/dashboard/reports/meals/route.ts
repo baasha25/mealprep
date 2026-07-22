@@ -1,6 +1,7 @@
 import { requireOwner } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { toCsv } from "@/lib/csv";
+import { slugify } from "@/lib/slug";
 
 const money = (cents: number) => (cents / 100).toFixed(2);
 const isoDate = (d: Date) => d.toISOString().slice(0, 10);
@@ -21,7 +22,12 @@ export async function GET() {
     byMeal.set(it.nameSnapshot, cur);
   }
 
-  const rows: (string | number)[][] = [["Meal", "Units sold", "Revenue", "Avg price"]];
+  const rows: (string | number)[][] = [
+    [business.name],
+    [`Meal sales report — generated ${isoDate(new Date())}`],
+    [],
+    ["Meal", "Units sold", "Revenue", "Avg price"],
+  ];
   for (const [name, v] of [...byMeal.entries()].sort((a, b) => b[1].revenueCents - a[1].revenueCents)) {
     rows.push([name, v.units, money(v.revenueCents), money(v.units ? v.revenueCents / v.units : 0)]);
   }
@@ -29,7 +35,7 @@ export async function GET() {
   return new Response(toCsv(rows), {
     headers: {
       "content-type": "text/csv; charset=utf-8",
-      "content-disposition": `attachment; filename="prepflow-meal-sales-${isoDate(new Date())}.csv"`,
+      "content-disposition": `attachment; filename="${slugify(business.name)}-meal-sales-${isoDate(new Date())}.csv"`,
     },
   });
 }

@@ -1,6 +1,7 @@
 import { requireOwner } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { toCsv } from "@/lib/csv";
+import { slugify } from "@/lib/slug";
 import { ORDER_TYPE_LABEL } from "@/lib/order-status";
 
 const money = (cents: number) => (cents / 100).toFixed(2);
@@ -16,6 +17,9 @@ export async function GET() {
   });
 
   const rows: (string | number)[][] = [
+    [business.name],
+    [`Orders report — generated ${isoDate(new Date())}`],
+    [],
     ["Order", "Date", "Customer", "Email", "Type", "Status", "Fulfillment", "Zone", "Meals", "Subtotal", "Tax", "Fees", "Gift redeemed", "Total", "Amount due"],
   ];
   for (const o of orders) {
@@ -41,7 +45,7 @@ export async function GET() {
   return new Response(toCsv(rows), {
     headers: {
       "content-type": "text/csv; charset=utf-8",
-      "content-disposition": `attachment; filename="prepflow-orders-${isoDate(new Date())}.csv"`,
+      "content-disposition": `attachment; filename="${slugify(business.name)}-orders-${isoDate(new Date())}.csv"`,
     },
   });
 }
