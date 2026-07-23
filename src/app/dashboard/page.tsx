@@ -14,8 +14,19 @@ export default async function DashboardPage({
 }: {
   searchParams: Promise<{ range?: string }>;
 }) {
-  const { business } = await requireBusiness();
+  const { business, role } = await requireBusiness();
   const range = toRangeKey((await searchParams).range);
+
+  // Personalized, role-aware greeting so it's clear who's signed in.
+  let displayName = "Chef";
+  if (process.env.CLERK_SECRET_KEY) {
+    const { currentUser } = await import("@clerk/nextjs/server");
+    const cu = await currentUser();
+    displayName =
+      cu?.firstName || cu?.primaryEmailAddress?.emailAddress?.split("@")[0] || "Chef";
+  }
+  const hr = new Date().getHours();
+  const greeting = hr < 12 ? "Good morning" : hr < 18 ? "Good afternoon" : "Good evening";
   // Orders in the selected period (active subs are point-in-time, not period-scoped).
   const where = { businessId: business.id, ...rangeWhere(range) };
 
@@ -45,9 +56,22 @@ export default async function DashboardPage({
     <Page>
       <Head
         kicker="Overview"
-        title="Good morning, Chef"
+        title={`${greeting}, ${displayName}`}
         sub={`How ${business.name} is performing — ${rangeLabel(range).toLowerCase()}.`}
-        right={<RangeFilter basePath="/dashboard" current={range} />}
+        right={
+          <div className="flex items-center gap-2 flex-wrap">
+            <span
+              className="px-2 py-1 rounded-md text-[10.5px] font-semibold uppercase tracking-wide"
+              style={{
+                background: role === "owner" ? "var(--pine)" : "var(--sand)",
+                color: role === "owner" ? "#f4f2ec" : "var(--muted)",
+              }}
+            >
+              {role === "owner" ? "Owner" : "Staff"}
+            </span>
+            <RangeFilter basePath="/dashboard" current={range} />
+          </div>
+        }
       />
       <div className="grid sm:grid-cols-4 gap-3.5 mb-4">
         <Kpi
