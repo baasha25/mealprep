@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { requireBusiness, requireOwner } from "@/lib/auth";
 import { dollarsToCents, formatCents } from "@/lib/money";
+import { appUrl } from "@/lib/app-url";
 import { sendCampaignEmail, sendGiftCard } from "@/lib/email";
 
 export type FormState = { ok: boolean; message?: string };
@@ -185,14 +186,14 @@ export async function createGiftCard(_prev: FormState, formData: FormData): Prom
 
   // Email the recipient their code (best-effort; requires a recipient email).
   if (parsed.data.recipientEmail) {
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "";
+    const base = await appUrl();
     await sendGiftCard({
       to: parsed.data.recipientEmail,
       businessName: business.name,
       brandColor: business.brandColor,
       code,
       amountLabel: formatCents(amountCents),
-      storeUrl: business.slug ? `${appUrl}/store/${business.slug}` : appUrl,
+      storeUrl: business.slug ? `${base}/store/${business.slug}` : base,
     });
   }
 

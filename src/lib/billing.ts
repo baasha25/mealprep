@@ -1,6 +1,7 @@
 import type Stripe from "stripe";
 import { db } from "@/lib/db";
 import { referralCodeFrom } from "@/lib/loyalty";
+import { appUrl } from "@/lib/app-url";
 import { sendSubscriptionConfirmation } from "@/lib/email";
 
 /**
@@ -64,7 +65,7 @@ export async function ensureSubscriptionFromCheckout(
     select: { name: true, brandColor: true, slug: true },
   });
   if (business?.slug) {
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "";
+    const base = await appUrl();
     await sendSubscriptionConfirmation({
       to: email,
       customerName: customer.name,
@@ -76,7 +77,7 @@ export async function ensureSubscriptionFromCheckout(
         month: "short",
         day: "numeric",
       }),
-      accountUrl: `${appUrl}/store/${business.slug}/account`,
+      accountUrl: `${base}/store/${business.slug}/account`,
     });
   }
 

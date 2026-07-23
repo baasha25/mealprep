@@ -43,7 +43,8 @@ export async function runDailyNotifications(now: Date = new Date()): Promise<Run
   // Lazy imports so dueReminders stays unit-testable without Prisma/email.
   const { db } = await import("@/lib/db");
   const { sendCutoffReminder, sendDeliveryDayReminder } = await import("@/lib/email");
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "";
+  const { appUrl } = await import("@/lib/app-url");
+  const origin = await appUrl();
 
   const subs = await db.subscription.findMany({
     where: { status: "active", nextDeliveryDate: { not: null } },
@@ -108,7 +109,7 @@ export async function runDailyNotifications(now: Date = new Date()): Promise<Run
       month: "short",
       day: "numeric",
     });
-    const accountUrl = `${appUrl}/store/${biz.slug}/account`;
+    const accountUrl = `${origin}/store/${biz.slug}/account`;
     const base = {
       to: sub.customer.email,
       customerName: sub.customer.name,

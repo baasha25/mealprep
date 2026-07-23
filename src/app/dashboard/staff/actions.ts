@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { requireOwner, ROLE_COOKIE } from "@/lib/auth";
+import { appUrl } from "@/lib/app-url";
 import { sendStaffInvite } from "@/lib/email";
 
 export type StaffState = { ok: boolean; message?: string };
@@ -34,13 +35,13 @@ export async function addStaff(_prev: StaffState, formData: FormData): Promise<S
   });
 
   // Invite email so they know to create an account with this address.
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "";
+  const base = await appUrl();
   await sendStaffInvite({
     to: parsed.data.email,
     businessName: business.name,
     brandColor: business.brandColor,
     role: parsed.data.role,
-    signInUrl: `${appUrl}/sign-up`,
+    signInUrl: `${base}/sign-up`,
   });
 
   revalidatePath("/dashboard/staff");
