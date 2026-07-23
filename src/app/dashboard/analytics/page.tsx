@@ -4,15 +4,22 @@ import { db } from "@/lib/db";
 import { Page, Head, Kpi, Card, CardTitle } from "@/components/ui";
 import { formatCents, formatCents0 } from "@/lib/money";
 import { ORDER_TYPE_LABEL } from "@/lib/order-status";
+import { RangeFilter } from "@/components/range-filter";
+import { toRangeKey, rangeWhere, rangeLabel } from "@/lib/date-range";
 
-export default async function AnalyticsPage() {
+export default async function AnalyticsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ range?: string }>;
+}) {
   const { business } = await requireOwner();
-  const where = { businessId: business.id };
+  const range = toRangeKey((await searchParams).range);
+  const where = { businessId: business.id, ...rangeWhere(range) };
 
   const [orders, customerCount, activeSubs, orderItems] = await Promise.all([
     db.order.findMany({ where, select: { totalCents: true, type: true, zone: true } }),
-    db.customer.count({ where }),
-    db.subscription.count({ where: { ...where, status: "active" } }),
+    db.customer.count({ where: { businessId: business.id } }),
+    db.subscription.count({ where: { businessId: business.id, status: "active" } }),
     db.orderItem.findMany({
       where: { order: where },
       select: { nameSnapshot: true, qty: true, unitPriceCentsSnapshot: true },
@@ -56,7 +63,12 @@ export default async function AnalyticsPage() {
 
   return (
     <Page>
-      <Head kicker="Insights" title="Analytics" sub="Sales, menu performance, and subscriber mix across all orders." />
+      <Head
+        kicker="Insights"
+        title="Analytics"
+        sub={`Sales, menu performance, and subscriber mix — ${rangeLabel(range).toLowerCase()}.`}
+        right={<RangeFilter basePath="/dashboard/analytics" current={range} />}
+      />
 
       <div className="grid sm:grid-cols-4 gap-3.5 mb-4">
         <Kpi icon={<TrendingUp size={16} />} label="Total revenue" value={formatCents0(revenueCents)} />

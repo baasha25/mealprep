@@ -6,17 +6,26 @@ import { Page, Head, Kpi, Card, CardTitle } from "@/components/ui";
 import { formatCents, formatCents0 } from "@/lib/money";
 import { orderLimitStatus } from "@/lib/usage";
 import { TIERS, type TierKey } from "@/lib/tiers";
+import { RangeFilter } from "@/components/range-filter";
+import { toRangeKey, rangeWhere, rangeLabel } from "@/lib/date-range";
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ range?: string }>;
+}) {
   const { business } = await requireBusiness();
-  const where = { businessId: business.id };
+  const range = toRangeKey((await searchParams).range);
+  // Orders in the selected period (active subs are point-in-time, not period-scoped).
+  const where = { businessId: business.id, ...rangeWhere(range) };
+
   const usage = await orderLimitStatus({ id: business.id, tier: business.tier as TierKey });
   const planName = TIERS[usage.tier].name;
   const pct = usage.limit ? Math.min(100, Math.round((usage.used / usage.limit) * 100)) : 0;
 
   const [orders, subCount, agg] = await Promise.all([
     db.order.count({ where }),
-    db.subscription.count({ where: { ...where, status: "active" } }),
+    db.subscription.count({ where: { businessId: business.id, status: "active" } }),
     db.order.aggregate({
       where,
       _sum: { subtotalCents: true, totalCents: true },
@@ -37,7 +46,8 @@ export default async function DashboardPage() {
       <Head
         kicker="Overview"
         title="Good morning, Chef"
-        sub={`How ${business.name} is performing this period.`}
+        sub={`How ${business.name} is performing — ${rangeLabel(range).toLowerCase()}.`}
+        right={<RangeFilter basePath="/dashboard" current={range} />}
       />
       <div className="grid sm:grid-cols-4 gap-3.5 mb-4">
         <Kpi
