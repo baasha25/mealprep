@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Printer, Tag, ClipboardList, AlertTriangle } from "lucide-react";
+import { Printer, Tag, ClipboardList, AlertTriangle, Check } from "lucide-react";
 
 export type PackingSlip = {
   id: string;
@@ -37,7 +37,13 @@ export function Fulfillment({
   bestByLabel: string;
 }) {
   const [tab, setTab] = useState<"packing" | "labels">("packing");
-  const totalLabels = labels.reduce((s, l) => s + l.qty, 0);
+  const [size, setSize] = useState<"small" | "medium" | "large">("small");
+  const [excluded, setExcluded] = useState<Record<string, boolean>>({});
+  const shownLabels = labels.filter((l) => !excluded[l.name]);
+  const totalLabels = shownLabels.reduce((s, l) => s + l.qty, 0);
+  const gridCols =
+    size === "large" ? "grid-cols-1" : size === "medium" ? "sm:grid-cols-2" : "sm:grid-cols-2 lg:grid-cols-3";
+  const toggleMeal = (name: string) => setExcluded((e) => ({ ...e, [name]: !e[name] }));
 
   if (slips.length === 0 && labels.length === 0) {
     return (
@@ -120,14 +126,60 @@ export function Fulfillment({
           ))}
         </div>
       ) : (
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 print-full">
-          {labels.flatMap((l) =>
-            Array.from({ length: l.qty }, (_, i) => (
-              <div
-                key={`${l.name}-${i}`}
-                className="rounded-lg border p-3"
-                style={{ borderColor: "var(--line)", background: "var(--surface)", breakInside: "avoid" }}
-              >
+        <>
+          {/* Label controls (hidden when printing) */}
+          <div className="no-print mb-4 space-y-3">
+            <div>
+              <div className="text-[12px] mb-1.5" style={{ color: "var(--muted)" }}>Which meals to print</div>
+              <div className="flex flex-wrap gap-2">
+                {labels.map((l) => {
+                  const on = !excluded[l.name];
+                  return (
+                    <button
+                      key={l.name}
+                      onClick={() => toggleMeal(l.name)}
+                      className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[12.5px] border"
+                      style={{
+                        borderColor: on ? "var(--pine)" : "var(--line)",
+                        background: on ? "color-mix(in srgb, var(--pine) 8%, transparent)" : "var(--surface)",
+                        color: on ? "var(--pine)" : "var(--muted)",
+                      }}
+                    >
+                      {on ? <Check size={13} /> : <span style={{ width: 13 }} />} {l.name}
+                      <span style={{ opacity: 0.7 }}>×{l.qty}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[12px]" style={{ color: "var(--muted)" }}>Label size</span>
+              <div className="inline-flex rounded-lg border p-0.5" style={{ borderColor: "var(--line)" }}>
+                {([["small", "3-up"], ["medium", "2-up"], ["large", "1-up"]] as const).map(([k, lab]) => (
+                  <button
+                    key={k}
+                    onClick={() => setSize(k)}
+                    className="px-2.5 py-1 rounded-md text-[12px] font-medium"
+                    style={{ background: size === k ? "var(--pine)" : "transparent", color: size === k ? "#f4f2ec" : "var(--muted)" }}
+                  >
+                    {lab}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {shownLabels.length === 0 ? (
+            <p className="text-[13px] no-print" style={{ color: "var(--muted)" }}>Select at least one meal to print labels.</p>
+          ) : (
+            <div className={`grid ${gridCols} gap-3 print-full`}>
+              {shownLabels.flatMap((l) =>
+                Array.from({ length: l.qty }, (_, i) => (
+                  <div
+                    key={`${l.name}-${i}`}
+                    className="rounded-lg border p-3"
+                    style={{ borderColor: "var(--line)", background: "var(--surface)", breakInside: "avoid" }}
+                  >
                 <div className="flex items-center gap-2 mb-2">
                   <span className="w-2.5 h-2.5 rounded-full" style={{ background: l.swatch }} />
                   <span className="text-[13px] font-semibold leading-tight" style={{ color: "var(--ink)" }}>{l.name}</span>
@@ -146,10 +198,12 @@ export function Fulfillment({
                     <span className="capitalize" style={{ color: "var(--clay)" }}>{l.allergens.join(", ")}</span>
                   )}
                 </div>
-              </div>
-            )),
+                  </div>
+                )),
+              )}
+            </div>
           )}
-        </div>
+        </>
       )}
     </div>
   );

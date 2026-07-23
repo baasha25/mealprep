@@ -77,11 +77,13 @@ export default async function FulfillmentPage() {
 
   return (
     <Page>
-      <Head
-        kicker="Kitchen OS"
-        title="Labels & packing"
-        sub="Print nutrition/allergen labels and per-order packing slips for the production queue."
-      />
+      <div className="no-print">
+        <Head
+          kicker="Kitchen OS"
+          title="Labels & packing"
+          sub="Print nutrition/allergen labels and per-order packing slips for the production queue."
+        />
+      </div>
       <Fulfillment
         businessName={business.name}
         slips={slips}
