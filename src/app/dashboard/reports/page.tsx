@@ -4,11 +4,21 @@ import { db } from "@/lib/db";
 import { Page, Head, Kpi, Card, CardTitle, Row } from "@/components/ui";
 import { formatCents } from "@/lib/money";
 import { ORDER_TYPE_LABEL } from "@/lib/order-status";
+import { RangeFilter } from "@/components/range-filter";
+import { PrintButton } from "@/components/print-button";
+import { toRangeKey, rangeWhere, rangeLabel } from "@/lib/date-range";
 
-export default async function ReportsPage() {
+export default async function ReportsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ range?: string }>;
+}) {
   const { business } = await requireOwner();
+  const range = toRangeKey((await searchParams).range, "all");
+  const rangeQ = range !== "all" ? `?range=${range}` : "";
+
   const orders = await db.order.findMany({
-    where: { businessId: business.id },
+    where: { businessId: business.id, ...rangeWhere(range) },
     select: { type: true, subtotalCents: true, taxCents: true, feesCents: true, totalCents: true, giftRedeemedCents: true },
   });
 
@@ -33,7 +43,13 @@ export default async function ReportsPage() {
       <Head
         kicker="Finance"
         title="Reports & exports"
-        sub="Sales, tax, and order data — summarized here, and downloadable for your bookkeeper."
+        sub={`Sales, tax, and order data — ${rangeLabel(range).toLowerCase()}. Summarized here and downloadable.`}
+        right={
+          <div className="no-print flex items-center gap-2 flex-wrap">
+            <RangeFilter basePath="/dashboard/reports" current={range} />
+            <PrintButton />
+          </div>
+        }
       />
 
       <div className="grid sm:grid-cols-4 gap-3.5 mb-5">
@@ -45,7 +61,7 @@ export default async function ReportsPage() {
 
       <div className="grid lg:grid-cols-2 gap-4">
         <Card>
-          <CardTitle title="Financial summary" note="All-time" />
+          <CardTitle title="Financial summary" note={rangeLabel(range)} />
           <div className="space-y-1.5 text-[13px]">
             <Row l="Gross sales (menu value)" v={formatCents(grossSales)} />
             <Row l="Discounts given" v={`−${formatCents(discounts)}`} green />
@@ -84,11 +100,11 @@ export default async function ReportsPage() {
       </div>
 
       {/* Exports */}
-      <Card className="mt-4">
+      <Card className="mt-4 no-print">
         <CardTitle icon={<FileSpreadsheet size={15} />} title="Download reports (CSV)" note="Opens in Excel / Google Sheets" />
         <div className="flex flex-wrap gap-3">
           <a
-            href="/dashboard/reports/orders"
+            href={`/dashboard/reports/orders${rangeQ}`}
             download
             className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-[13px] font-medium border"
             style={{ borderColor: "var(--line)", color: "var(--ink)", background: "var(--paper)" }}
@@ -96,7 +112,7 @@ export default async function ReportsPage() {
             <Download size={15} /> Orders ledger
           </a>
           <a
-            href="/dashboard/reports/meals"
+            href={`/dashboard/reports/meals${rangeQ}`}
             download
             className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-[13px] font-medium border"
             style={{ borderColor: "var(--line)", color: "var(--ink)", background: "var(--paper)" }}
@@ -105,7 +121,7 @@ export default async function ReportsPage() {
           </a>
         </div>
         <p className="text-[11.5px] mt-3" style={{ color: "var(--muted)" }}>
-          The orders ledger includes a date on every row, so your bookkeeper can filter to any period in a spreadsheet.
+          Exports cover the selected period ({rangeLabel(range).toLowerCase()}), with the kitchen name on the file. For a PDF, use “Print / Save as PDF” above.
         </p>
       </Card>
     </Page>

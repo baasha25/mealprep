@@ -2,15 +2,18 @@ import { requireOwner } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { toCsv } from "@/lib/csv";
 import { slugify } from "@/lib/slug";
+import { toRangeKey, rangeWhere, rangeLabel } from "@/lib/date-range";
 
 const money = (cents: number) => (cents / 100).toFixed(2);
 const isoDate = (d: Date) => d.toISOString().slice(0, 10);
 
-// Downloadable meal-sales report: units and revenue per meal.
-export async function GET() {
+// Downloadable meal-sales report: units and revenue per meal (respects ?range=).
+export async function GET(request: Request) {
   const { business } = await requireOwner();
+  const range = toRangeKey(new URL(request.url).searchParams.get("range"), "all");
+
   const items = await db.orderItem.findMany({
-    where: { order: { businessId: business.id } },
+    where: { order: { businessId: business.id, ...rangeWhere(range) } },
     select: { nameSnapshot: true, qty: true, unitPriceCentsSnapshot: true },
   });
 
@@ -24,7 +27,7 @@ export async function GET() {
 
   const rows: (string | number)[][] = [
     [business.name],
-    [`Meal sales report — generated ${isoDate(new Date())}`],
+    [`Meal sales report (${rangeLabel(range)}) — generated ${isoDate(new Date())}`],
     [],
     ["Meal", "Units sold", "Revenue", "Avg price"],
   ];
