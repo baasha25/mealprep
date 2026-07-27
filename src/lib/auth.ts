@@ -2,6 +2,7 @@ import { cache } from "react";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
+import { isSuperAdmin } from "@/lib/admin";
 import type { Business } from "@/generated/prisma/client";
 import type { Role } from "@/lib/permissions";
 
@@ -82,6 +83,9 @@ export const getAuthContext = cache(async (): Promise<AuthContext | null> => {
         });
       }
     }
+    // A platform operator (super-admin) with no kitchen goes to the admin panel,
+    // not the "create your kitchen" onboarding flow.
+    if (!user && isSuperAdmin(email)) redirect("/admin");
   }
 
   // Signed in but no kitchen yet → onboarding provisions the Business + owner User.

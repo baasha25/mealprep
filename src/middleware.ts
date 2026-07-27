@@ -14,6 +14,7 @@ import type { NextFetchEvent } from "next/server";
 const isProtected = createRouteMatcher([
   "/dashboard(.*)",
   "/onboarding(.*)",
+  "/admin(.*)",
 ]);
 
 const clerkHandler = process.env.CLERK_SECRET_KEY
