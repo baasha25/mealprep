@@ -15,7 +15,8 @@ export default async function OrderDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const { business } = await requireBusiness();
+  const { business, role } = await requireBusiness();
+  const isStaff = role !== "owner";
 
   const order = await db.order.findFirst({
     where: { id, businessId: business.id },
@@ -58,12 +59,15 @@ export default async function OrderDetailPage({
                 <span style={{ color: "var(--ink)" }}>
                   {it.qty}× {it.nameSnapshot}
                 </span>
-                <span style={{ color: "var(--muted)" }}>
-                  {formatCents(it.unitPriceCentsSnapshot * it.qty)}
-                </span>
+                {!isStaff && (
+                  <span style={{ color: "var(--muted)" }}>
+                    {formatCents(it.unitPriceCentsSnapshot * it.qty)}
+                  </span>
+                )}
               </div>
             ))}
           </div>
+          {!isStaff && (
           <div
             className="mt-4 pt-4 space-y-1.5 text-[13px]"
             style={{ borderTop: "1px solid var(--line)" }}
@@ -97,6 +101,7 @@ export default async function OrderDetailPage({
               </div>
             )}
           </div>
+          )}
         </Card>
 
         <Card>

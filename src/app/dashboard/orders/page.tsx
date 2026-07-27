@@ -14,8 +14,17 @@ export default async function OrdersPage({
 }: {
   searchParams: Promise<{ q?: string }>;
 }) {
-  const { business } = await requireBusiness();
+  const { business, role } = await requireBusiness();
+  const isStaff = role !== "owner";
   const term = ((await searchParams).q ?? "").trim();
+
+  // Staff don't see revenue: drop the total figure + the per-order $ column.
+  const headerCols = isStaff
+    ? "grid-cols-[1fr_120px_90px_140px_28px]"
+    : "grid-cols-[1fr_120px_90px_140px_120px_28px]";
+  const rowCols = isStaff
+    ? "sm:grid-cols-[1fr_120px_90px_140px_28px]"
+    : "sm:grid-cols-[1fr_120px_90px_140px_120px_28px]";
 
   const orders = await db.order.findMany({
     where: { businessId: business.id },
@@ -44,9 +53,11 @@ export default async function OrdersPage({
         sub="Every order across the storefront, POS, and subscriptions."
         right={
           <div className="text-right">
-            <div className="disp text-[20px] font-medium" style={{ color: "var(--ink)" }}>
-              {formatCents(revenueCents)}
-            </div>
+            {!isStaff && (
+              <div className="disp text-[20px] font-medium" style={{ color: "var(--ink)" }}>
+                {formatCents(revenueCents)}
+              </div>
+            )}
             <div className="text-[11.5px]" style={{ color: "var(--muted)" }}>
               {orders.length} order{orders.length === 1 ? "" : "s"}
             </div>
@@ -82,21 +93,21 @@ export default async function OrdersPage({
             >
               {/* Header row */}
               <div
-                className="hidden sm:grid grid-cols-[1fr_120px_90px_140px_120px_28px] gap-3 px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wide"
+                className={`hidden sm:grid ${headerCols} gap-3 px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wide`}
                 style={{ color: "var(--muted)", borderBottom: "1px solid var(--line)" }}
               >
                 <div>Customer</div>
                 <div>Type</div>
                 <div>Meals</div>
                 <div>Status</div>
-                <div className="text-right">Total</div>
+                {!isStaff && <div className="text-right">Total</div>}
                 <div />
               </div>
 
               {shown.map((o) => (
             <div
               key={o.id}
-              className="grid sm:grid-cols-[1fr_120px_90px_140px_120px_28px] grid-cols-2 gap-3 px-4 py-3 items-center"
+              className={`grid ${rowCols} grid-cols-2 gap-3 px-4 py-3 items-center`}
               style={{ borderBottom: "1px solid var(--line)" }}
             >
               <div className="min-w-0">
@@ -117,9 +128,11 @@ export default async function OrdersPage({
               <div>
                 <StatusControl orderId={o.id} status={o.status} action={updateOrderStatus} />
               </div>
-              <div className="disp text-[15px] font-medium text-right" style={{ color: "var(--ink)" }}>
-                {formatCents(o.totalCents)}
-              </div>
+              {!isStaff && (
+                <div className="disp text-[15px] font-medium text-right" style={{ color: "var(--ink)" }}>
+                  {formatCents(o.totalCents)}
+                </div>
+              )}
               <Link
                 href={`/dashboard/orders/${o.id}`}
                 className="justify-self-end grid place-items-center w-7 h-7 rounded-md"
