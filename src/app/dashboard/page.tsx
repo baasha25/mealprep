@@ -7,6 +7,7 @@ import { formatCents, formatCents0 } from "@/lib/money";
 import { orderLimitStatus } from "@/lib/usage";
 import { TIERS, type TierKey } from "@/lib/tiers";
 import { RangeFilter } from "@/components/range-filter";
+import { Greeting } from "@/components/greeting";
 import { toRangeKey, rangeWhere, rangeLabel } from "@/lib/date-range";
 
 const STAFF_LINKS: [string, string, typeof ChefHat][] = [
@@ -26,16 +27,14 @@ export default async function DashboardPage({
   const isOwner = role === "owner";
   const range = toRangeKey((await searchParams).range);
 
-  // Personalized, role-aware greeting so it's clear who's signed in.
-  let displayName = "Chef";
+  // Only greet by a REAL first name (never the raw email prefix). The time-of-day
+  // part is computed client-side in <Greeting> so it matches the viewer's timezone.
+  let firstName: string | undefined;
   if (process.env.CLERK_SECRET_KEY) {
     const { currentUser } = await import("@clerk/nextjs/server");
     const cu = await currentUser();
-    displayName =
-      cu?.firstName || cu?.primaryEmailAddress?.emailAddress?.split("@")[0] || "Chef";
+    firstName = cu?.firstName ?? undefined;
   }
-  const hr = new Date().getHours();
-  const greeting = hr < 12 ? "Good morning" : hr < 18 ? "Good afternoon" : "Good evening";
 
   // Financials are OWNER-ONLY. Staff never see revenue, KPIs, or plan/billing —
   // so we don't even run the money queries for them.
@@ -74,7 +73,7 @@ export default async function DashboardPage({
     <Page>
       <Head
         kicker="Overview"
-        title={`${greeting}, ${displayName}`}
+        title={<Greeting name={firstName} />}
         sub={
           isOwner
             ? `How ${business.name} is performing — ${rangeLabel(range).toLowerCase()}.`

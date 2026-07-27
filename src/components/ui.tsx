@@ -18,7 +18,7 @@ export function Head({
   right,
 }: {
   kicker?: string;
-  title: string;
+  title: ReactNode;
   sub?: string;
   right?: ReactNode;
 }) {

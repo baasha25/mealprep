@@ -23,10 +23,13 @@ export default async function DashboardLayout({
   const usage = await orderLimitStatus({ id: business.id, tier: business.tier as TierKey });
   const showCap = role === "owner" && (usage.atLimit || usage.nearLimit);
   const planLabel = TIERS[usage.tier].name;
+  // Staff never see plan/order metrics — give them a neutral footer line.
   const sidebarStats =
-    usage.limit === null
-      ? `${planLabel} plan · ${usage.used} orders this month`
-      : `${planLabel} · ${usage.used}/${usage.limit} orders this month`;
+    role !== "owner"
+      ? "Staff access · kitchen & fulfillment"
+      : usage.limit === null
+        ? `${planLabel} plan · ${usage.used} orders this month`
+        : `${planLabel} · ${usage.used}/${usage.limit} orders this month`;
 
   return (
     // Inject the per-business brand color so --pine cascades through the dashboard.
