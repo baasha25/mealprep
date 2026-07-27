@@ -32,6 +32,8 @@ export type AuthContext = {
   /** Clerk user id once auth is wired; null under the dev stub. */
   userId: string | null;
   role: Role;
+  /** Owner-set display name for this user (for greetings); null if unset/dev. */
+  userName: string | null;
 };
 
 // Memoized per server request (React cache): the layout, the page, and any
@@ -45,7 +47,7 @@ export const getAuthContext = cache(async (): Promise<AuthContext | null> => {
     if (!business) return null;
     const store = await cookies();
     const role: Role = store.get(ROLE_COOKIE)?.value === "staff" ? "staff" : "owner";
-    return { business, userId: null, role };
+    return { business, userId: null, role, userName: null };
   }
 
   // Clerk path (active once CLERK_SECRET_KEY is set). Dynamic import so the
@@ -85,7 +87,7 @@ export const getAuthContext = cache(async (): Promise<AuthContext | null> => {
   // Signed in but no kitchen yet → onboarding provisions the Business + owner User.
   if (!user) redirect("/onboarding");
 
-  return { business: user.business, userId, role: user.role as Role };
+  return { business: user.business, userId, role: user.role as Role, userName: user.name };
 });
 
 /**

@@ -158,6 +158,7 @@ model User {
   businessId     String
   business       Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
   email          String
+  name           String? // set by the owner at invite; used for the dashboard greeting
   role           UserRole @default(owner)
   authProviderId String   @unique // Clerk user id
   createdAt      DateTime @default(now())

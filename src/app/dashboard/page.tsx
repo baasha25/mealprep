@@ -23,14 +23,14 @@ export default async function DashboardPage({
 }: {
   searchParams: Promise<{ range?: string }>;
 }) {
-  const { business, role } = await requireBusiness();
+  const { business, role, userName } = await requireBusiness();
   const isOwner = role === "owner";
   const range = toRangeKey((await searchParams).range);
 
-  // Only greet by a REAL first name (never the raw email prefix). The time-of-day
-  // part is computed client-side in <Greeting> so it matches the viewer's timezone.
-  let firstName: string | undefined;
-  if (process.env.CLERK_SECRET_KEY) {
+  // Greet by the owner-set name first (first word of it), else Clerk's first name.
+  // Never the raw email prefix. Time-of-day is computed client-side in <Greeting>.
+  let firstName: string | undefined = userName?.trim().split(/\s+/)[0] || undefined;
+  if (!firstName && process.env.CLERK_SECRET_KEY) {
     const { currentUser } = await import("@clerk/nextjs/server");
     const cu = await currentUser();
     firstName = cu?.firstName ?? undefined;

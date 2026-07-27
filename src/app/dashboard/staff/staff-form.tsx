@@ -10,7 +10,10 @@ const inputStyle = { borderColor: "var(--line)", background: "var(--paper)", col
 export function StaffForm() {
   const [state, action, pending] = useActionState<StaffState, FormData>(addStaff, { ok: false });
   return (
-    <form action={action} className="grid sm:grid-cols-[1.8fr_120px_auto] gap-3 items-end">
+    <form action={action} className="grid sm:grid-cols-[1.2fr_1.6fr_110px_auto] gap-3 items-end">
+      <Field label="Name">
+        <input name="name" placeholder="Alex Rivera" className={INP} style={inputStyle} />
+      </Field>
       <Field label="Email">
         <input name="email" type="email" placeholder="chef@yourkitchen.com" className={INP} style={inputStyle} />
       </Field>
@@ -26,7 +29,7 @@ export function StaffForm() {
         </button>
       </div>
       {state.message && (
-        <div className="sm:col-span-3 text-[12.5px] flex items-center gap-1" style={{ color: state.ok ? "#5e7350" : "var(--clay)" }}>
+        <div className="sm:col-span-4 text-[12.5px] flex items-center gap-1" style={{ color: state.ok ? "#5e7350" : "var(--clay)" }}>
           {state.ok && <Check size={14} />} {state.message}
         </div>
       )}

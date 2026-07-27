@@ -12,13 +12,18 @@ import { sendStaffInvite } from "@/lib/email";
 export type StaffState = { ok: boolean; message?: string };
 
 const InviteInput = z.object({
+  name: z.string().trim().max(80).optional().default(""),
   email: z.string().trim().toLowerCase().email("Enter a valid email"),
   role: z.enum(["owner", "staff"]),
 });
 
 export async function addStaff(_prev: StaffState, formData: FormData): Promise<StaffState> {
   const { business } = await requireOwner();
-  const parsed = InviteInput.safeParse({ email: formData.get("email"), role: formData.get("role") });
+  const parsed = InviteInput.safeParse({
+    name: formData.get("name"),
+    email: formData.get("email"),
+    role: formData.get("role"),
+  });
   if (!parsed.success) return { ok: false, message: parsed.error.issues[0]?.message ?? "Invalid." };
 
   const exists = await db.user.findFirst({ where: { businessId: business.id, email: parsed.data.email }, select: { id: true } });
@@ -28,6 +33,7 @@ export async function addStaff(_prev: StaffState, formData: FormData): Promise<S
     data: {
       businessId: business.id,
       email: parsed.data.email,
+      name: parsed.data.name || null,
       role: parsed.data.role,
       // Placeholder until they sign in — claimed by email on first sign-in (auth.ts).
       authProviderId: `invite:${globalThis.crypto.randomUUID()}`,

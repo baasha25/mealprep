@@ -50,7 +50,10 @@ export default async function StaffPage() {
             const isOwner = u.role === "owner";
             return (
               <div key={u.id} className="grid sm:grid-cols-[1fr_110px_180px] grid-cols-2 gap-3 px-4 py-3 items-center" style={{ borderBottom: "1px solid var(--line)" }}>
-                <div className="text-[13.5px] font-medium truncate" style={{ color: "var(--ink)" }}>{u.email}</div>
+                <div className="min-w-0">
+                  <div className="text-[13.5px] font-medium truncate" style={{ color: "var(--ink)" }}>{u.name || u.email}</div>
+                  {u.name && <div className="text-[11.5px] truncate" style={{ color: "var(--muted)" }}>{u.email}</div>}
+                </div>
                 <div>
                   <span className="inline-flex items-center gap-1 text-[11.5px] px-2 py-0.5 rounded-md font-medium" style={{ background: isOwner ? "color-mix(in srgb, var(--pine) 12%, transparent)" : "var(--sand)", color: isOwner ? "var(--pine)" : "var(--muted)" }}>
                     {isOwner && <ShieldCheck size={11} />} {isOwner ? "Owner" : "Staff"}
