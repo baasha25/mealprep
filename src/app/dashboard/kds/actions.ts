@@ -51,19 +51,23 @@ export async function startProductionRun() {
   revalidatePath("/dashboard/kds");
 }
 
-/** Tap a ticket to advance it: todo → cooking → done → todo. */
-export async function advanceTicket(formData: FormData) {
+/** Advance a ticket by id: todo → cooking → done → todo. */
+export async function bumpTicket(ticketId: string) {
   const { business } = await requireBusiness();
-  const id = String(formData.get("ticketId"));
   const ticket = await db.productionTicket.findFirst({
-    where: { id, businessId: business.id },
+    where: { id: ticketId, businessId: business.id },
     select: { status: true },
   });
   if (!ticket) return;
 
   const next = ticket.status === "todo" ? "cooking" : ticket.status === "cooking" ? "done" : "todo";
-  await db.productionTicket.update({ where: { id }, data: { status: next } });
+  await db.productionTicket.update({ where: { id: ticketId }, data: { status: next } });
   revalidatePath("/dashboard/kds");
+}
+
+/** Form-action wrapper (progressive enhancement / no-JS fallback). */
+export async function advanceTicket(formData: FormData) {
+  await bumpTicket(String(formData.get("ticketId")));
 }
 
 export async function clearTickets() {

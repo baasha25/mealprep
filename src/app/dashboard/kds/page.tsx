@@ -1,10 +1,11 @@
-import { Monitor, Flame, Soup, Salad, Boxes, Play, RotateCcw, Check } from "lucide-react";
+import { Monitor, Flame, Soup, Salad, Boxes, Play, RotateCcw } from "lucide-react";
 import { requireBusiness } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { Page, Head } from "@/components/ui";
 import { STATIONS } from "@/lib/stations";
 import { AutoRefresh } from "./auto-refresh";
-import { startProductionRun, advanceTicket, clearTickets } from "./actions";
+import { Ticket } from "./ticket";
+import { startProductionRun, clearTickets } from "./actions";
 
 const STATION_ICON: Record<string, typeof Flame> = {
   Grill: Flame,
@@ -97,27 +98,15 @@ export default async function KdsPage() {
                   </div>
                   <div className="space-y-2.5">
                     {stationTickets.map((t) => {
-                      const s = STATUS[t.status];
-                      const done = t.status === "done";
                       return (
-                        <form key={t.id} action={advanceTicket}>
-                          <input type="hidden" name="ticketId" value={t.id} />
-                          <button
-                            type="submit"
-                            className="w-full text-left rounded-xl border p-3.5 transition-transform active:scale-[0.98]"
-                            style={{ background: s.card, borderColor: s.border, borderWidth: t.status === "todo" ? 1 : 1.5 }}
-                          >
-                            <div className="flex items-start justify-between gap-3">
-                              <span className="disp text-[26px] font-medium leading-none" style={{ color: done ? "var(--muted)" : "var(--ink)" }}>{t.qty}</span>
-                              <span className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wide" style={{ color: s.accent }}>
-                                {done && <Check size={12} />} {s.label}
-                              </span>
-                            </div>
-                            <div className="mt-1.5 text-[13.5px] font-medium leading-snug" style={{ color: done ? "var(--muted)" : "var(--ink)", textDecoration: done ? "line-through" : "none" }}>
-                              {t.mealName}
-                            </div>
-                          </button>
-                        </form>
+                        <Ticket
+                          key={t.id}
+                          id={t.id}
+                          mealName={t.mealName}
+                          qty={t.qty}
+                          status={t.status}
+                          styles={STATUS}
+                        />
                       );
                     })}
                   </div>

@@ -200,7 +200,7 @@ export default async function KitchenPage() {
                   >
                     <div className="flex items-center justify-between mb-1.5">
                       <span className="text-[13.5px] font-medium" style={{ color: "var(--ink)" }}>{p.customer}</span>
-                      <span className="text-[11.5px]" style={{ color: "var(--muted)" }}>{p.deliveryLabel}</span>
+                      <span className="text-[11.5px]" style={{ color: "var(--muted)" }}>Delivery: {p.deliveryLabel}</span>
                     </div>
                     <div className="flex flex-wrap gap-1.5">
                       {p.items.map((it, j) => (
