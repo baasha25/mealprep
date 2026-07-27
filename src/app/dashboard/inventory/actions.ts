@@ -61,6 +61,26 @@ export async function receiveStock(_prev: ReceiveState, formData: FormData): Pro
   return { ok: true, message: "Delivery received." };
 }
 
+const ReorderInput = z.object({
+  ingredientId: z.string().min(1),
+  threshold: z.coerce.number().min(0).max(1_000_000),
+});
+
+/** Set (or clear, with 0) an ingredient's low-stock reorder threshold. */
+export async function setReorderThreshold(input: z.infer<typeof ReorderInput>): Promise<{ ok: boolean }> {
+  const { business } = await requireBusiness();
+  const parsed = ReorderInput.safeParse(input);
+  if (!parsed.success) return { ok: false };
+  const ing = await db.ingredient.findFirst({
+    where: { id: parsed.data.ingredientId, businessId: business.id },
+    select: { id: true },
+  });
+  if (!ing) return { ok: false };
+  await db.ingredient.update({ where: { id: ing.id }, data: { reorderThreshold: parsed.data.threshold } });
+  revalidatePath("/dashboard/inventory");
+  return { ok: true };
+}
+
 const CountInput = z.object({
   ingredientId: z.string().min(1),
   counted: z.coerce.number().min(0).max(1_000_000),
