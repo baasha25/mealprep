@@ -16,10 +16,12 @@ export type ImportResult = {
   updated: number;
   skipped: number;
   errors: { row: number; message: string }[];
+  // Non-blocking notices — the row still imported, but an optional field was missing.
+  warnings: { row: number; message: string }[];
   message?: string;
 };
 
-const empty = (): ImportResult => ({ ok: true, created: 0, updated: 0, skipped: 0, errors: [] });
+const empty = (): ImportResult => ({ ok: true, created: 0, updated: 0, skipped: 0, errors: [], warnings: [] });
 
 const DIET_SET = new Set<string>(DIET_OPTS);
 const ALLERGEN_SET = new Set<string>(ALLERGENS);
@@ -72,6 +74,11 @@ async function importMenu(csvText: string): Promise<ImportResult> {
       result.errors.push({ row: rowNo, message: parsed.error.issues[0]?.message ?? "invalid row" });
       continue;
     }
+    // Optional fields — import anyway, but flag what's missing.
+    if (!(rec.calories ?? "").trim()) {
+      result.warnings.push({ row: rowNo, message: `${parsed.data.name}: no calories (optional)` });
+    }
+
     const dietRaw = (rec.diet ?? "").trim();
     const diet = DIET_SET.has(dietRaw) ? dietRaw : null;
     const allergens = splitList(rec.allergens).filter((a) => ALLERGEN_SET.has(a));
@@ -130,6 +137,10 @@ async function importCustomers(csvText: string): Promise<ImportResult> {
       result.errors.push({ row: rowNo, message: parsed.error.issues[0]?.message ?? "invalid row" });
       continue;
     }
+    if (!(rec.phone ?? "").trim()) {
+      result.warnings.push({ row: rowNo, message: `${parsed.data.name}: no phone number (optional)` });
+    }
+
     const data = {
       name: parsed.data.name,
       phone: (rec.phone ?? "").trim() || null,

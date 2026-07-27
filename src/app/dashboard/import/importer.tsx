@@ -236,6 +236,25 @@ export function Importer() {
                   </ul>
                 </div>
               )}
+              {result.warnings.length > 0 && (
+                <div className="mt-3 pt-3" style={{ borderTop: "1px solid var(--line)" }}>
+                  <div className="text-[12px] mb-1.5" style={{ color: "var(--muted)" }}>
+                    Imported, but missing optional info ({result.warnings.length}):
+                  </div>
+                  <ul className="space-y-1">
+                    {result.warnings.slice(0, 12).map((w, i) => (
+                      <li key={i} className="text-[12px]" style={{ color: "#8a6d1f" }}>
+                        Row {w.row}: {w.message}
+                      </li>
+                    ))}
+                    {result.warnings.length > 12 && (
+                      <li className="text-[12px]" style={{ color: "var(--muted)" }}>
+                        …and {result.warnings.length - 12} more
+                      </li>
+                    )}
+                  </ul>
+                </div>
+              )}
             </>
           )}
         </div>
