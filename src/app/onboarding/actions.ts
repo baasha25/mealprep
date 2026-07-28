@@ -74,11 +74,23 @@ export async function createKitchen(
     },
   });
 
-  // Welcome the new owner (best-effort; never blocks onboarding).
-  if (email) {
-    const { sendWelcome } = await import("@/lib/email");
-    await sendWelcome({ to: email, businessName: parsed.data.name, brandColor });
-  }
+  // Welcome the new owner + alert the platform operator(s) that a kitchen
+  // signed up (both best-effort; neither blocks onboarding).
+  const { sendWelcome, sendNewKitchenAdminAlert } = await import("@/lib/email");
+  const { appUrl } = await import("@/lib/app-url");
+  const origin = await appUrl();
+  await Promise.allSettled([
+    email
+      ? sendWelcome({ to: email, businessName: parsed.data.name, brandColor })
+      : Promise.resolve(),
+    sendNewKitchenAdminAlert({
+      kitchenName: parsed.data.name,
+      ownerEmail: email || "—",
+      planName: TIERS[tier].name,
+      slug,
+      adminUrl: `${origin}/admin`,
+    }),
+  ]);
 
   redirect("/dashboard");
 }

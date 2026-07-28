@@ -47,7 +47,7 @@ function layout(opts: {
 
 /** Send one email through the shared layout. Gated + never throws. */
 async function send(opts: {
-  to: string;
+  to: string | string[];
   subject: string;
   businessName: string;
   brandColor?: string;
@@ -56,7 +56,7 @@ async function send(opts: {
   bodyHtml: string;
 }): Promise<void> {
   try {
-    if (!opts.to) return;
+    if (!opts.to || (Array.isArray(opts.to) && opts.to.length === 0)) return;
     const html = layout(opts);
     if (!resend) {
       console.log(`[email:disabled] would send "${opts.subject}" to ${opts.to}`);
@@ -193,6 +193,47 @@ export async function sendWelcome(opts: {
       </table>
       <a href="${APP_URL}/dashboard" style="display:inline-block;margin-top:16px;background:${opts.brandColor || "#2f4536"};color:#f4f2ec;text-decoration:none;font-size:14px;font-weight:500;padding:10px 18px;border-radius:8px;">Go to your dashboard</a>
       <p style="margin:20px 0 0;color:${SOFT};font-size:13px;">Need a hand? Just reply — we're happy to help you get set up.</p>`,
+  });
+}
+
+/**
+ * Internal alert to the platform operator(s) — fired when a new kitchen signs
+ * up. Recipients come from the ADMIN_EMAILS allowlist (same list that gates
+ * /admin), so no customer/kitchen ever receives it. Best-effort; never throws.
+ */
+export async function sendNewKitchenAdminAlert(opts: {
+  kitchenName: string;
+  ownerEmail: string;
+  planName: string;
+  slug: string;
+  adminUrl: string;
+}): Promise<void> {
+  const admins = (process.env.ADMIN_EMAILS ?? "")
+    .split(",")
+    .map((e) => e.trim())
+    .filter(Boolean);
+  if (admins.length === 0) return;
+
+  const row = (label: string, value: string, strong = false) => `
+    <tr>
+      <td style="padding:8px 0;color:${SOFT};font-size:13px;">${label}</td>
+      <td style="padding:8px 0;color:${INK};font-size:14px;text-align:right;font-weight:${strong ? "600" : "400"};">${value}</td>
+    </tr>`;
+
+  await send({
+    to: admins,
+    subject: `🎉 New kitchen on PrepFlow — ${opts.kitchenName}`,
+    businessName: "PrepFlow",
+    heading: "New kitchen signed up 🎉",
+    subheading: `${escapeHtml(opts.kitchenName)} just created an account.`,
+    bodyHtml: `
+      <table style="width:100%;border-collapse:collapse;border-top:1px solid ${LINE};border-bottom:1px solid ${LINE};margin-bottom:16px;">
+        ${row("Kitchen", escapeHtml(opts.kitchenName), true)}
+        ${row("Owner", escapeHtml(opts.ownerEmail))}
+        ${row("Plan", escapeHtml(opts.planName))}
+        ${row("Storefront", `/${escapeHtml(opts.slug)}`)}
+      </table>
+      <a href="${opts.adminUrl}" style="display:inline-block;background:#2f4536;color:#f4f2ec;text-decoration:none;font-size:14px;font-weight:500;padding:10px 18px;border-radius:8px;">Open admin panel</a>`,
   });
 }
 
