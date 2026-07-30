@@ -8,6 +8,7 @@ export const OWNER_ONLY: string[] = [
   "/dashboard/analytics",
   "/dashboard/profitability",
   "/dashboard/reports",
+  "/dashboard/waste",
   "/dashboard/marketing",
   "/dashboard/customers",
   "/dashboard/settings",

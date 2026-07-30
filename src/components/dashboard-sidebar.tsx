@@ -29,6 +29,7 @@ import {
   Share2,
   Landmark,
   CalendarClock,
+  Trash2,
   type LucideIcon,
 } from "lucide-react";
 
@@ -63,6 +64,7 @@ const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
       ["/dashboard/kds", "Kitchen Display", Monitor],
       ["/dashboard/purchasing", "Purchasing", Carrot],
       ["/dashboard/inventory", "Inventory", Boxes],
+      ["/dashboard/waste", "Waste & Loss", Trash2],
       ["/dashboard/fulfillment", "Labels & packing", Tag],
       ["/dashboard/routes", "Delivery Routes", Truck],
     ],
