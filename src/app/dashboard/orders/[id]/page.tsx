@@ -8,6 +8,7 @@ import { formatCents } from "@/lib/money";
 import { ORDER_TYPE_LABEL } from "@/lib/order-status";
 import { StatusControl } from "../status-control";
 import { updateOrderStatus } from "../actions";
+import { OrderLossControl } from "./order-loss-control";
 
 export default async function OrderDetailPage({
   params,
@@ -102,6 +103,13 @@ export default async function OrderDetailPage({
             )}
           </div>
           )}
+
+          <OrderLossControl
+            orderId={order.id}
+            items={order.items
+              .filter((it) => it.mealId)
+              .map((it) => ({ mealId: it.mealId as string, name: it.nameSnapshot, qty: it.qty }))}
+          />
         </Card>
 
         <Card>
