@@ -27,6 +27,11 @@ const MealInput = z.object({
   allergens: z.array(z.enum(ALLERGENS)),
   active: z.boolean(),
   swatch: z.string().regex(/^#[0-9a-fA-F]{6}$/),
+  // Days the finished meal keeps; blank = use the kitchen default on labels.
+  shelfLifeDays: z.preprocess(
+    (v) => (v === "" || v == null || v === "0" ? null : v),
+    z.coerce.number().int().min(1).max(60).nullable(),
+  ),
 });
 
 export type MealActionState = {
@@ -65,6 +70,7 @@ function parseMealForm(formData: FormData) {
       allergens: formData.getAll("allergens").map(String),
       active: formData.get("active") === "on",
       swatch: formData.get("swatch"),
+      shelfLifeDays: formData.get("shelfLifeDays") ?? "",
     },
     ingredientRows,
   };
@@ -142,6 +148,7 @@ export async function createMeal(
         fatG: d.fatG,
         allergens: d.allergens,
         active: d.active,
+        shelfLifeDays: d.shelfLifeDays,
       },
     });
     await syncIngredients(tx, business.id, meal.id, ingParsed.data);
@@ -193,6 +200,7 @@ export async function updateMeal(
         fatG: d.fatG,
         allergens: d.allergens,
         active: d.active,
+        shelfLifeDays: d.shelfLifeDays,
       },
     });
     await syncIngredients(tx, business.id, mealId, ingParsed.data);

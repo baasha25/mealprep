@@ -23,18 +23,17 @@ export type MealLabel = {
   fatG: number;
   allergens: string[];
   swatch: string;
+  bestByLabel: string; // per-meal "best by" from its shelf life
 };
 
 export function Fulfillment({
   businessName,
   slips,
   labels,
-  bestByLabel,
 }: {
   businessName: string;
   slips: PackingSlip[];
   labels: MealLabel[];
-  bestByLabel: string;
 }) {
   const [tab, setTab] = useState<"packing" | "labels">("packing");
   const [size, setSize] = useState<"small" | "medium" | "large">("small");
@@ -193,7 +192,7 @@ export function Fulfillment({
                   ))}
                 </div>
                 <div className="flex items-center justify-between text-[10.5px]">
-                  <span style={{ color: "var(--muted)" }}>Best by {bestByLabel}</span>
+                  <span style={{ color: "var(--muted)" }}>Best by {l.bestByLabel}</span>
                   {l.allergens.length > 0 && (
                     <span className="capitalize" style={{ color: "var(--clay)" }}>{l.allergens.join(", ")}</span>
                   )}

@@ -43,6 +43,7 @@ export type MealFormInitial = {
   allergens: string[];
   active: boolean;
   swatch: string;
+  shelfLifeDays: string;
   ingredients: IngredientRow[];
 };
 
@@ -235,6 +236,19 @@ export function MealForm({
               defaultValue={initial.swatch}
               className="h-9 w-12 rounded-md border cursor-pointer"
               style={{ borderColor: "var(--line)" }}
+            />
+          </Field>
+          <Field label="Shelf life (days)">
+            <input
+              name="shelfLifeDays"
+              type="number"
+              step="1"
+              min="1"
+              max="60"
+              defaultValue={initial.shelfLifeDays}
+              placeholder="5"
+              className={`${INP} w-24`}
+              style={inputStyle}
             />
           </Field>
           <label className="flex items-center gap-2 mt-5 cursor-pointer select-none">

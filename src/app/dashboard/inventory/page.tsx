@@ -11,6 +11,8 @@ import { ReceiveForm } from "./receive-form";
 import { CountForm } from "./count-form";
 import { InvoiceScanner } from "./invoice-scanner";
 import { ReorderCell } from "./reorder-cell";
+import { ShelfLifeCell } from "./shelf-life-cell";
+import { daysUntilExpiry } from "@/lib/loss";
 import { consumeProductionQueue } from "./actions";
 
 const PRODUCING = ["paid", "in_production"] as const;
@@ -23,7 +25,7 @@ export default async function InventoryPage() {
   const ingredients = await db.ingredient.findMany({
     where: { businessId: business.id },
     orderBy: { name: "asc" },
-    select: { id: true, name: true, unit: true, stockQty: true, costPerUnitCents: true, defaultTrimBps: true, reorderThreshold: true },
+    select: { id: true, name: true, unit: true, stockQty: true, costPerUnitCents: true, defaultTrimBps: true, reorderThreshold: true, shelfLifeDays: true },
   });
 
   // Production-queue requirement (gross) per ingredient — reuse the purchasing engine.
@@ -72,6 +74,25 @@ export default async function InventoryPage() {
     take: 8,
   });
   const ingName = new Map(ingredients.map((i) => [i.id, i.name]));
+
+  // Expiring soon: for each ingredient that tracks a shelf life, take its most
+  // recent delivery and count down. Surfaces stock to use before it spoils.
+  const lastReceipt = await db.ingredientReceipt.groupBy({
+    by: ["ingredientId"],
+    where: { businessId: business.id },
+    _max: { receivedAt: true },
+  });
+  const lastReceivedAt = new Map(lastReceipt.map((r) => [r.ingredientId, r._max.receivedAt]));
+  const expiring = ingredients
+    .map((ing) => {
+      const received = lastReceivedAt.get(ing.id) ?? null;
+      if (!received || ing.stockQty <= 0) return null;
+      const days = daysUntilExpiry(received, ing.shelfLifeDays);
+      if (days == null || days > 2) return null; // only ≤2 days out (incl. expired)
+      return { id: ing.id, name: ing.name, unit: ing.unit, stockQty: ing.stockQty, days };
+    })
+    .filter((x): x is NonNullable<typeof x> => x !== null)
+    .sort((a, b) => a.days - b.days);
 
   // Waste variance from recent stock counts (measured loss beyond recipe trim).
   const counts = await db.stockCount.findMany({
@@ -149,30 +170,57 @@ export default async function InventoryPage() {
 
       {/* Inventory table */}
       <div className="rounded-xl border overflow-hidden mb-4" style={{ borderColor: "var(--line)", background: "var(--surface)" }}>
-        <div className="hidden sm:grid grid-cols-[1.4fr_100px_100px_100px_110px_96px_90px] gap-3 px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wide" style={{ color: "var(--muted)", borderBottom: "1px solid var(--line)" }}>
+        <div className="hidden sm:grid grid-cols-[1.4fr_92px_92px_92px_104px_88px_66px_88px] gap-3 px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wide" style={{ color: "var(--muted)", borderBottom: "1px solid var(--line)" }}>
           <div>Ingredient</div>
           <div className="text-right">On hand</div>
           <div className="text-right">Need</div>
           <div className="text-right">To buy</div>
           <div className="text-right">Stock value</div>
           <div className="text-right">Reorder at</div>
+          <div className="text-right">Shelf life</div>
           <div>Status</div>
         </div>
         {rows.map((r) => {
           const st = statusStyle[r.displayStatus];
           return (
-            <div key={r.id} className="grid sm:grid-cols-[1.4fr_100px_100px_100px_110px_96px_90px] grid-cols-2 gap-3 px-4 py-3 items-center" style={{ borderBottom: "1px solid var(--line)" }}>
+            <div key={r.id} className="grid sm:grid-cols-[1.4fr_92px_92px_92px_104px_88px_66px_88px] grid-cols-2 gap-3 px-4 py-3 items-center" style={{ borderBottom: "1px solid var(--line)" }}>
               <div className="text-[13.5px] font-medium" style={{ color: "var(--ink)" }}>{r.name}</div>
               <div className="text-[12.5px] text-right" style={{ color: "var(--ink)" }}>{round2(r.stockQty)} {r.unit}</div>
               <div className="text-[12.5px] text-right" style={{ color: "var(--muted)" }}>{r.neededQty ? `${round2(r.neededQty)} ${r.unit}` : "—"}</div>
               <div className="text-[12.5px] text-right font-medium" style={{ color: r.buyQty > 0 ? "var(--clay)" : "var(--muted)" }}>{r.buyQty > 0 ? `${round2(r.buyQty)} ${r.unit}` : "—"}</div>
               <div className="text-[12.5px] text-right" style={{ color: "var(--ink-soft)" }}>{formatCents(r.valueCents)}</div>
               <div><ReorderCell ingredientId={r.id} unit={r.unit} value={r.reorderThreshold} /></div>
+              <div><ShelfLifeCell ingredientId={r.id} value={r.shelfLifeDays} /></div>
               <div><span className="text-[11px] px-2 py-0.5 rounded-md font-medium" style={{ background: st.bg, color: st.fg }}>{st.label}</span></div>
             </div>
           );
         })}
       </div>
+
+      {/* Expiring soon — use it or lose it (from shelf life + last delivery) */}
+      {expiring.length > 0 && (
+        <Card className="mb-4">
+          <CardTitle icon={<TriangleAlert size={15} />} title="Expiring soon" note="Use before it spoils" />
+          <div className="space-y-2">
+            {expiring.map((e) => {
+              const expired = e.days < 0;
+              const today = e.days === 0;
+              const label = expired ? `expired ${-e.days}d ago` : today ? "expires today" : `${e.days}d left`;
+              return (
+                <div key={e.id} className="flex items-center justify-between text-[13px]">
+                  <span style={{ color: "var(--ink)" }}>
+                    {e.name} <span style={{ color: "var(--muted)" }}>· {round2(e.stockQty)} {e.unit} on hand</span>
+                  </span>
+                  <span className="font-medium" style={{ color: expired || today ? "var(--clay)" : "#8a6d1f" }}>{label}</span>
+                </div>
+              );
+            })}
+          </div>
+          <p className="text-[11.5px] mt-3" style={{ color: "var(--muted)" }}>
+            Based on each ingredient&apos;s shelf life and its most recent delivery. Log anything you toss in <strong>Waste &amp; Loss</strong>.
+          </p>
+        </Card>
+      )}
 
       {/* Waste variance — measured loss vs the recipe forecast */}
       <Card className="mb-4">

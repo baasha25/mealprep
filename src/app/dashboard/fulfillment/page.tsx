@@ -5,8 +5,14 @@ import { Fulfillment, type PackingSlip, type MealLabel } from "./fulfillment";
 
 const PRODUCING = ["paid", "in_production"] as const;
 
-// Meal-prep shelf life — "best by" on labels.
-const SHELF_LIFE_DAYS = 5;
+// Fallback shelf life for meals that don't set their own — "best by" on labels.
+const DEFAULT_SHELF_LIFE_DAYS = 5;
+
+function bestByLabelFor(shelfLifeDays: number | null): string {
+  const d = new Date();
+  d.setDate(d.getDate() + (shelfLifeDays ?? DEFAULT_SHELF_LIFE_DAYS));
+  return new Intl.DateTimeFormat("en-US", { dateStyle: "medium" }).format(d);
+}
 
 export default async function FulfillmentPage() {
   const { business } = await requireBusiness();
@@ -47,6 +53,7 @@ export default async function FulfillmentPage() {
           fatG: true,
           allergens: true,
           swatch: true,
+          shelfLifeDays: true,
         },
       },
     },
@@ -67,13 +74,10 @@ export default async function FulfillmentPage() {
         fatG: it.meal.fatG,
         allergens: it.meal.allergens,
         swatch: it.meal.swatch,
+        bestByLabel: bestByLabelFor(it.meal.shelfLifeDays),
       });
   }
   const labels = [...byMeal.values()].sort((a, b) => b.qty - a.qty);
-
-  const bestBy = new Date();
-  bestBy.setDate(bestBy.getDate() + SHELF_LIFE_DAYS);
-  const bestByLabel = new Intl.DateTimeFormat("en-US", { dateStyle: "medium" }).format(bestBy);
 
   return (
     <Page>
@@ -88,7 +92,6 @@ export default async function FulfillmentPage() {
         businessName={business.name}
         slips={slips}
         labels={labels}
-        bestByLabel={bestByLabel}
       />
     </Page>
   );

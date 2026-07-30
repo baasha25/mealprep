@@ -34,6 +34,7 @@ export default async function EditMealPage({
     allergens: meal.allergens,
     active: meal.active,
     swatch: meal.swatch,
+    shelfLifeDays: meal.shelfLifeDays != null ? String(meal.shelfLifeDays) : "",
     ingredients: meal.ingredients.map((mi) => ({
       name: mi.ingredient.name,
       qty: String(mi.qty),

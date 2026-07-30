@@ -81,6 +81,29 @@ export async function setReorderThreshold(input: z.infer<typeof ReorderInput>): 
   return { ok: true };
 }
 
+const ShelfLifeInput = z.object({
+  ingredientId: z.string().min(1),
+  days: z.coerce.number().int().min(0).max(365),
+});
+
+/** Set (or clear, with 0) an ingredient's shelf life in days — drives "expiring soon". */
+export async function setIngredientShelfLife(input: z.infer<typeof ShelfLifeInput>): Promise<{ ok: boolean }> {
+  const { business } = await requireBusiness();
+  const parsed = ShelfLifeInput.safeParse(input);
+  if (!parsed.success) return { ok: false };
+  const ing = await db.ingredient.findFirst({
+    where: { id: parsed.data.ingredientId, businessId: business.id },
+    select: { id: true },
+  });
+  if (!ing) return { ok: false };
+  await db.ingredient.update({
+    where: { id: ing.id },
+    data: { shelfLifeDays: parsed.data.days > 0 ? parsed.data.days : null },
+  });
+  revalidatePath("/dashboard/inventory");
+  return { ok: true };
+}
+
 const CountInput = z.object({
   ingredientId: z.string().min(1),
   counted: z.coerce.number().min(0).max(1_000_000),
