@@ -9,6 +9,7 @@ import { TIERS, type TierKey } from "@/lib/tiers";
 import { RangeFilter } from "@/components/range-filter";
 import { Greeting } from "@/components/greeting";
 import { toRangeKey, rangeWhere, rangeLabel } from "@/lib/date-range";
+import { revenueStatusWhere } from "@/lib/order-status";
 
 const STAFF_LINKS: [string, string, typeof ChefHat][] = [
   ["/dashboard/kitchen", "Kitchen OS", ChefHat],
@@ -49,7 +50,8 @@ export default async function DashboardPage({
   } | null = null;
 
   if (isOwner) {
-    const where = { businessId: business.id, ...rangeWhere(range) };
+    // Revenue KPIs exclude canceled/refunded orders — those were never earned.
+    const where = { businessId: business.id, ...rangeWhere(range), ...revenueStatusWhere };
     const usage = await orderLimitStatus({ id: business.id, tier: business.tier as TierKey });
     const [orders, subCount, agg] = await Promise.all([
       db.order.count({ where }),

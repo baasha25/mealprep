@@ -3,7 +3,7 @@ import { requireOwner } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { Page, Head, Kpi, Card, CardTitle } from "@/components/ui";
 import { formatCents, formatCents0 } from "@/lib/money";
-import { ORDER_TYPE_LABEL } from "@/lib/order-status";
+import { ORDER_TYPE_LABEL, revenueStatusWhere } from "@/lib/order-status";
 import { RangeFilter } from "@/components/range-filter";
 import { toRangeKey, rangeWhere, rangeLabel } from "@/lib/date-range";
 
@@ -14,7 +14,8 @@ export default async function AnalyticsPage({
 }) {
   const { business } = await requireOwner();
   const range = toRangeKey((await searchParams).range);
-  const where = { businessId: business.id, ...rangeWhere(range) };
+  // Sales analytics exclude canceled/refunded orders.
+  const where = { businessId: business.id, ...rangeWhere(range), ...revenueStatusWhere };
 
   const [orders, customerCount, activeSubs, orderItems] = await Promise.all([
     db.order.findMany({ where, select: { totalCents: true, type: true, zone: true } }),

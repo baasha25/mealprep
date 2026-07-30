@@ -33,3 +33,18 @@ export const ORDER_TYPE_LABEL: Record<string, string> = {
   one_time: "One-time",
   pos: "POS",
 };
+
+/**
+ * Statuses that must NOT count toward revenue / sales / P&L. A canceled or
+ * refunded order still exists (for the audit trail and the orders ledger) but
+ * its money was never earned — including it overstates every revenue figure.
+ */
+export const NON_REVENUE_STATUSES: OrderStatus[] = ["canceled", "refunded"];
+
+/** Prisma `where` fragment selecting only orders that count as real revenue. */
+export const revenueStatusWhere = { status: { notIn: NON_REVENUE_STATUSES } };
+
+/** Whether an order in this status contributes to revenue / P&L. */
+export function countsAsRevenue(status: OrderStatus): boolean {
+  return !NON_REVENUE_STATUSES.includes(status);
+}

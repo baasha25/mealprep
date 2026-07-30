@@ -3,7 +3,7 @@ import { requireOwner } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { Page, Head, Kpi, Card, CardTitle, Row } from "@/components/ui";
 import { formatCents } from "@/lib/money";
-import { ORDER_TYPE_LABEL } from "@/lib/order-status";
+import { ORDER_TYPE_LABEL, revenueStatusWhere } from "@/lib/order-status";
 import { RangeFilter } from "@/components/range-filter";
 import { PrintButton } from "@/components/print-button";
 import { toRangeKey, rangeWhere, rangeLabel } from "@/lib/date-range";
@@ -17,8 +17,9 @@ export default async function ReportsPage({
   const range = toRangeKey((await searchParams).range, "all");
   const rangeQ = range !== "all" ? `?range=${range}` : "";
 
+  // Financial summary reflects earned revenue only — canceled/refunded excluded.
   const orders = await db.order.findMany({
-    where: { businessId: business.id, ...rangeWhere(range) },
+    where: { businessId: business.id, ...rangeWhere(range), ...revenueStatusWhere },
     select: { type: true, subtotalCents: true, taxCents: true, feesCents: true, totalCents: true, giftRedeemedCents: true },
   });
 
@@ -75,6 +76,7 @@ export default async function ReportsPage({
           </div>
           <p className="text-[11.5px] mt-3" style={{ color: "var(--muted)" }}>
             Tax collected is what you&apos;ve charged customers — hand this to your bookkeeper for remittance.
+            Canceled and refunded orders are excluded from these totals (they still appear, labelled, in the orders ledger CSV).
           </p>
         </Card>
 

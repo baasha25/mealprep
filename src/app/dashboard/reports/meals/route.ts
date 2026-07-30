@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { toCsv } from "@/lib/csv";
 import { slugify } from "@/lib/slug";
 import { toRangeKey, rangeWhere, rangeLabel } from "@/lib/date-range";
+import { revenueStatusWhere } from "@/lib/order-status";
 
 const money = (cents: number) => (cents / 100).toFixed(2);
 const isoDate = (d: Date) => d.toISOString().slice(0, 10);
@@ -13,7 +14,7 @@ export async function GET(request: Request) {
   const range = toRangeKey(new URL(request.url).searchParams.get("range"), "all");
 
   const items = await db.orderItem.findMany({
-    where: { order: { businessId: business.id, ...rangeWhere(range) } },
+    where: { order: { businessId: business.id, ...rangeWhere(range), ...revenueStatusWhere } },
     select: { nameSnapshot: true, qty: true, unitPriceCentsSnapshot: true },
   });
 

@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { Page, Head, Kpi, Card, CardTitle } from "@/components/ui";
 import { formatCents, bpsToPercent } from "@/lib/money";
 import { costPerUnitFromReceipt } from "@/lib/inventory";
+import { revenueStatusWhere } from "@/lib/order-status";
 import {
   plateCostCents,
   mealEconomics,
@@ -35,7 +36,7 @@ export default async function ProfitabilityPage() {
 
   const unitsAgg = await db.orderItem.groupBy({
     by: ["mealId"],
-    where: { order: { businessId: business.id }, mealId: { not: null } },
+    where: { order: { businessId: business.id, ...revenueStatusWhere }, mealId: { not: null } },
     _sum: { qty: true },
   });
   const unitsByMeal = new Map(unitsAgg.map((u) => [u.mealId, u._sum.qty ?? 0]));
