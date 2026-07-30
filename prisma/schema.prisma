@@ -81,6 +81,24 @@ enum BusinessTier {
   pro
 }
 
+// Whether a logged loss is raw inventory or a finished meal.
+enum LossKind {
+  ingredient
+  meal
+}
+
+// Why food was lost — the reason code on every LossEvent. Drives the P&L
+// breakdown so an owner can see where margin actually leaks.
+enum LossReason {
+  spoilage // perished in storage (wilted, molded, sprouted, expired on shelf)
+  dropped_in_transit // damaged/lost between kitchen and customer
+  order_error // wrong/incomplete order remade or written off
+  pest // insect/rodent/contamination
+  remake // cooked twice for one sale (quality reject, etc.)
+  expired // passed its use-by / shelf life
+  other
+}
+
 /* ============================== Tenant ============================== */
 
 model Business {
@@ -228,6 +246,7 @@ model Meal {
   fatG      Int      @default(0)
   allergens String[] @default([])
   active    Boolean  @default(true)
+  shelfLifeDays Int?  // days the finished meal keeps; drives label "best by" (null = use kitchen default)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -266,6 +285,7 @@ model Ingredient {
   costPerUnitCents Int      @default(0) // purchase cost per `unit`, integer cents (powers the margin/waste engine)
   stockQty         Float    @default(0) // current on-hand quantity, in `unit`
   reorderThreshold Float    @default(0) // low-stock alert threshold (0 = off)
+  shelfLifeDays    Int?     // days this ingredient keeps once received (null = not tracked); drives "expiring soon"
 
   mealIngredients MealIngredient[]
   receipts        IngredientReceipt[]
@@ -309,6 +329,34 @@ model StockCount {
 
   @@index([businessId])
   @@index([ingredientId])
+}
+
+// An explicit, reason-coded food loss: raw ingredient (spoilage, pests) or a
+// finished meal (dropped in transit, remade, order error). Unlike StockCount
+// variance — which is inferred and undifferentiated — this is intentional and
+// categorized, so the P&L can show exactly where margin leaks. Ids are scalar +
+// name/cost snapshotted, so a loss stays accurate even if the meal/ingredient is
+// later edited or deleted (same philosophy as OrderItem snapshots).
+model LossEvent {
+  id           String     @id @default(cuid())
+  businessId   String
+  kind         LossKind
+  reason       LossReason
+  mealId       String? // set when kind = meal
+  ingredientId String? // set when kind = ingredient
+  orderId      String? // set when the loss traces to a specific order (dropped/remake/error)
+  itemName     String // snapshot of the meal or ingredient name
+  qty          Float // meals lost, or ingredient units lost
+  unit         String? // ingredient unit; null for meals
+  costCents    Int // booked food-cost value of the loss (integer cents)
+  restockedFromInventory Boolean @default(false) // true if this decremented ingredient stock
+  note         String?
+  createdByUserId String?
+  createdAt    DateTime   @default(now())
+
+  @@index([businessId])
+  @@index([orderId])
+  @@index([businessId, createdAt])
 }
 
 // A batch of one meal to produce on the line, tracked to done on the KDS board.
