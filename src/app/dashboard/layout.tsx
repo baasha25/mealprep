@@ -4,7 +4,7 @@ import { requireBusiness } from "@/lib/auth";
 import { orderLimitStatus } from "@/lib/usage";
 import { TIERS, type TierKey } from "@/lib/tiers";
 import { trialStatus } from "@/lib/trial";
-import { kitchenAccess, type BillingStatus } from "@/lib/kitchen-billing";
+import { kitchenAccess, KITCHEN_BILLING_ENABLED, type BillingStatus } from "@/lib/kitchen-billing";
 import { Lock } from "lucide-react";
 import { DashboardSidebar } from "@/components/dashboard-sidebar";
 import { exitStaffPreview } from "./staff/actions";
@@ -34,8 +34,11 @@ export default async function DashboardLayout({
     billingComped: business.billingComped,
     billingSubscriptionId: business.billingSubscriptionId,
   });
-  const showLock = role === "owner" && access.locked;
-  const showTrial = role === "owner" && trial.active && !access.locked;
+  // The lock only bites once billing is switched on (otherwise there's no way
+  // to pay). Until then the trial is purely informational.
+  const locked = access.locked && KITCHEN_BILLING_ENABLED;
+  const showLock = role === "owner" && locked;
+  const showTrial = role === "owner" && trial.active && !locked;
   // Staff never see plan/order metrics — give them a neutral footer line.
   const sidebarStats =
     role !== "owner"

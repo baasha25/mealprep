@@ -123,7 +123,9 @@ export async function requireOwner(): Promise<AuthContext> {
  * the kitchen keeps running. Comped/trialing/subscribed kitchens pass through.
  */
 export async function assertWritable(business: Business): Promise<void> {
-  const { kitchenAccess } = await import("@/lib/kitchen-billing");
+  const { kitchenAccess, KITCHEN_BILLING_ENABLED } = await import("@/lib/kitchen-billing");
+  // Never lock while billing isn't switched on — there'd be no way to pay.
+  if (!KITCHEN_BILLING_ENABLED) return;
   const access = kitchenAccess({
     trialEndsAt: business.trialEndsAt,
     billingStatus: business.billingStatus as import("@/lib/kitchen-billing").BillingStatus,
