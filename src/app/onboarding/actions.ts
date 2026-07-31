@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { slugify } from "@/lib/slug";
 import { TIERS } from "@/lib/tiers";
+import { trialEndFrom } from "@/lib/trial";
 
 const Input = z.object({
   name: z.string().trim().min(2, "Enter your kitchen's name").max(80),
@@ -67,6 +68,8 @@ export async function createKitchen(
       slug,
       brandColor,
       tier,
+      // Every kitchen starts a 30-day free trial (informational until billing).
+      trialEndsAt: trialEndFrom(),
       // Chosen plan drives the platform fee; other pricing/fulfillment
       // fields fall back to the schema defaults.
       settings: { create: { platformFeeBps: TIERS[tier].platformFeeBps } },

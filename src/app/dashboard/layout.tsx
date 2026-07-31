@@ -1,8 +1,9 @@
 import Link from "next/link";
-import { Eye, AlertTriangle, ArrowUpCircle } from "lucide-react";
+import { Eye, AlertTriangle, ArrowUpCircle, Clock } from "lucide-react";
 import { requireBusiness } from "@/lib/auth";
 import { orderLimitStatus } from "@/lib/usage";
 import { TIERS, type TierKey } from "@/lib/tiers";
+import { trialStatus } from "@/lib/trial";
 import { DashboardSidebar } from "@/components/dashboard-sidebar";
 import { exitStaffPreview } from "./staff/actions";
 
@@ -23,6 +24,9 @@ export default async function DashboardLayout({
   const usage = await orderLimitStatus({ id: business.id, tier: business.tier as TierKey });
   const showCap = role === "owner" && (usage.atLimit || usage.nearLimit);
   const planLabel = TIERS[usage.tier].name;
+  // Free-trial countdown (owner-only, informational — no lockout until billing).
+  const trial = trialStatus(business.trialEndsAt);
+  const showTrial = role === "owner" && trial.active;
   // Staff never see plan/order metrics — give them a neutral footer line.
   const sidebarStats =
     role !== "owner"
@@ -67,6 +71,32 @@ export default async function DashboardLayout({
                 Exit staff view
               </button>
             </form>
+          </div>
+        )}
+        {showTrial && (
+          <div
+            className="no-print flex items-center gap-3 px-6 py-2.5 text-[13px] flex-wrap"
+            style={{
+              background: trial.nudge ? "var(--sand)" : "color-mix(in srgb, var(--pine) 8%, transparent)",
+              color: "var(--ink)",
+            }}
+          >
+            <span className="flex items-center gap-1.5 font-medium">
+              <Clock size={14} style={{ color: trial.nudge ? "var(--clay)" : "var(--pine)" }} />
+              {trial.daysLeft === 1 ? "1 day left in your free trial" : `${trial.daysLeft} days left in your free trial`}
+            </span>
+            <span style={{ color: "var(--muted)" }}>
+              {trial.nudge
+                ? `Pick your plan before it ends to keep ${business.name} running without a break.`
+                : `Full access to everything — you're previewing the ${planLabel} plan.`}
+            </span>
+            <Link
+              href="/dashboard/settings"
+              className="ml-auto flex items-center gap-1.5 px-3 py-1 rounded-md text-[12.5px] font-medium"
+              style={{ background: "var(--pine)", color: "#f4f2ec" }}
+            >
+              See plans
+            </Link>
           </div>
         )}
         {showCap && (

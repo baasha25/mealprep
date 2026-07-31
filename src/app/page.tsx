@@ -100,7 +100,8 @@ function Hero() {
               Book a demo
             </a>
           </div>
-          <div className="mt-6 flex items-center gap-5 text-[12.5px]" style={{ color: "var(--muted)" }}>
+          <div className="mt-6 flex items-center gap-5 text-[12.5px] flex-wrap" style={{ color: "var(--muted)" }}>
+            <span className="flex items-center gap-1.5"><Check size={14} style={{ color: "var(--pine)" }} /> 30-day free trial</span>
             <span className="flex items-center gap-1.5"><Check size={14} style={{ color: "var(--pine)" }} /> No card required</span>
             <span className="flex items-center gap-1.5"><Check size={14} style={{ color: "var(--pine)" }} /> Migrate in an afternoon</span>
           </div>
@@ -387,7 +388,7 @@ function Pricing() {
       </div>
 
       <p className="text-center text-[12.5px] mt-8" style={{ color: "var(--muted)" }}>
-        Annual billing saves about two months. Start free — no card required. Prices in USD.
+        Annual billing saves about two months. 30-day free trial — no card required. Prices in USD.
       </p>
     </section>
   );
@@ -420,7 +421,7 @@ function CtaBand() {
           Stop losing money you can&apos;t see.
         </h2>
         <p className="mt-4 text-[15px] max-w-lg mx-auto" style={{ color: "#ffffffc0" }}>
-          Bring your kitchen onto PrepFlow this week. Start free — no card, no contract.
+          Bring your kitchen onto PrepFlow this week. 30 days free — no card, no contract.
         </p>
         <div className="mt-8 flex flex-wrap justify-center gap-3">
           <Link href="/sign-up" className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-[14.5px] font-medium" style={{ background: "#f4f2ec", color: "var(--pine)" }}>
