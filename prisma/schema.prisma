@@ -81,6 +81,16 @@ enum BusinessTier {
   pro
 }
 
+// A kitchen's software-subscription (Option B) status on PrepFlow's own Stripe
+// account — separate from the diner→kitchen Connect payments. `none` = never
+// subscribed (trialing or lapsed); access is gated by trial + this together.
+enum BillingStatus {
+  none
+  active
+  past_due
+  canceled
+}
+
 // Whether a logged loss is raw inventory or a finished meal.
 enum LossKind {
   ingredient
@@ -108,9 +118,14 @@ model Business {
   customDomain    String?  @unique // white-label: serve the storefront on the kitchen's own domain
   brandColor      String   @default("#2f4536")
   tier            BusinessTier @default(starter) // PrepFlow plan; sets the platform fee (see src/lib/tiers.ts)
-  trialEndsAt     DateTime? // end of the 30-day free trial (null = no trial set, e.g. legacy). Informational until kitchen billing is wired.
+  trialEndsAt     DateTime? // end of the 30-day free trial (null = no trial set, e.g. legacy)
   stripeAccountId String?  @unique // Stripe Connect (Express) connected account
   stripeChargesEnabled Boolean @default(false) // true once Stripe clears them to take payments
+  // Software billing (kitchen pays PrepFlow, on the PLATFORM Stripe account):
+  billingCustomerId     String? // kitchen's Stripe Customer id for the software subscription
+  billingSubscriptionId String? // the software subscription id
+  billingStatus         BillingStatus @default(none)
+  billingComped         Boolean @default(false) // founding-customer / demo: full access, never charged
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 

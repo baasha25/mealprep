@@ -17,6 +17,7 @@ export const OWNER_ONLY: string[] = [
   "/dashboard/payouts",
   "/dashboard/import",
   "/dashboard/staff",
+  "/dashboard/billing",
 ];
 
 export function isOwnerOnly(path: string): boolean {

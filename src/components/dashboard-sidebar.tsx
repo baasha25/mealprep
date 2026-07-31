@@ -30,6 +30,7 @@ import {
   Landmark,
   CalendarClock,
   Trash2,
+  CreditCard,
   type LucideIcon,
 } from "lucide-react";
 
@@ -79,6 +80,7 @@ const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
   {
     label: "Admin",
     items: [
+      ["/dashboard/billing", "Billing & plan", CreditCard],
       ["/dashboard/payouts", "Payouts", Landmark],
       ["/dashboard/staff", "Staff", Users],
       ["/dashboard/import", "Import data", Upload],

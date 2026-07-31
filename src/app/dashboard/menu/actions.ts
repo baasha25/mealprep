@@ -4,7 +4,7 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
-import { requireBusiness } from "@/lib/auth";
+import { requireBusiness, assertWritable } from "@/lib/auth";
 import { dollarsToCents, percentToBps } from "@/lib/money";
 import { DIET_OPTS, ALLERGENS, UNITS } from "@/lib/menu-constants";
 
@@ -120,6 +120,7 @@ export async function createMeal(
   formData: FormData,
 ): Promise<MealActionState> {
   const { business } = await requireBusiness();
+  await assertWritable(business);
   const { base, ingredientRows } = parseMealForm(formData);
 
   const parsed = MealInput.safeParse(base);
@@ -165,6 +166,7 @@ export async function updateMeal(
   formData: FormData,
 ): Promise<MealActionState> {
   const { business } = await requireBusiness();
+  await assertWritable(business);
 
   // Tenant check: the meal must belong to this business.
   const existing = await db.meal.findFirst({

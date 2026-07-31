@@ -3,7 +3,7 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
-import { requireBusiness, requireOwner } from "@/lib/auth";
+import { requireBusiness, requireOwner, assertWritable } from "@/lib/auth";
 import { dollarsToCents, formatCents } from "@/lib/money";
 import { appUrl } from "@/lib/app-url";
 import { sendCampaignEmail, sendGiftCard } from "@/lib/email";
@@ -93,6 +93,7 @@ const CouponInput = z
 
 export async function createCoupon(_prev: FormState, formData: FormData): Promise<FormState> {
   const { business } = await requireBusiness();
+  await assertWritable(business);
   const parsed = CouponInput.safeParse({
     code: formData.get("code"),
     type: formData.get("type"),

@@ -3,7 +3,7 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
-import { requireOwner } from "@/lib/auth";
+import { requireOwner, assertWritable } from "@/lib/auth";
 import { dollarsToCents } from "@/lib/money";
 
 export type PlanActionState = { ok: boolean; message?: string };
@@ -20,6 +20,7 @@ export type PlanInputT = z.infer<typeof PlanInput>;
 /** Create a new plan, or update an existing one when `id` is present. */
 export async function savePlan(input: PlanInputT): Promise<PlanActionState> {
   const { business } = await requireOwner();
+  await assertWritable(business);
   const parsed = PlanInput.safeParse(input);
   if (!parsed.success) {
     return { ok: false, message: parsed.error.issues[0]?.message ?? "Invalid plan." };

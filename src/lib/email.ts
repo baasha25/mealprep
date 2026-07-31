@@ -237,6 +237,24 @@ export async function sendNewKitchenAdminAlert(opts: {
   });
 }
 
+/** Dunning to the KITCHEN OWNER when their PrepFlow software charge fails. */
+export async function sendKitchenBillingPaymentFailed(opts: {
+  to: string;
+  kitchenName: string;
+  billingUrl: string;
+}): Promise<void> {
+  await send({
+    to: opts.to,
+    subject: "Action needed — your PrepFlow payment didn't go through",
+    businessName: "PrepFlow",
+    heading: "We couldn't process your payment",
+    subheading: `${escapeHtml(opts.kitchenName)} · PrepFlow subscription`,
+    bodyHtml: `
+      <p style="margin:0 0 14px;color:${INK};font-size:14px;">Your latest PrepFlow subscription charge didn't go through. Please update your card so your dashboard stays active — we'll retry automatically. Your storefront and customer orders are unaffected.</p>
+      <a href="${opts.billingUrl}" style="display:inline-block;background:#2f4536;color:#f4f2ec;text-decoration:none;font-size:14px;font-weight:500;padding:10px 18px;border-radius:8px;">Update payment</a>`,
+  });
+}
+
 /** Recurring-charge receipt — sent when a subscription invoice is paid. */
 export async function sendSubscriptionReceipt(opts: {
   to: string;

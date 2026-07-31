@@ -114,3 +114,21 @@ export async function requireOwner(): Promise<AuthContext> {
   if (ctx.role !== "owner") redirect("/dashboard");
   return ctx;
 }
+
+/**
+ * Soft read-only lock: once a kitchen's trial has ended with no active plan, its
+ * owner can still VIEW the dashboard but can't change configuration. Call this in
+ * config-mutation server actions (menu, plans, settings, marketing). Operational
+ * flows (orders, KDS, POS, inventory) and the customer storefront stay open so
+ * the kitchen keeps running. Comped/trialing/subscribed kitchens pass through.
+ */
+export async function assertWritable(business: Business): Promise<void> {
+  const { kitchenAccess } = await import("@/lib/kitchen-billing");
+  const access = kitchenAccess({
+    trialEndsAt: business.trialEndsAt,
+    billingStatus: business.billingStatus as import("@/lib/kitchen-billing").BillingStatus,
+    billingComped: business.billingComped,
+    billingSubscriptionId: business.billingSubscriptionId,
+  });
+  if (access.locked) redirect("/dashboard/billing?locked=1");
+}

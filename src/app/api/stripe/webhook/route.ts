@@ -4,7 +4,19 @@ import { stripe, STRIPE_ENABLED } from "@/lib/stripe";
 import { db } from "@/lib/db";
 import { ensureSubscriptionFromCheckout } from "@/lib/billing";
 import { advanceDeliveryDate } from "@/lib/subscriptions";
-import { sendSubscriptionReceipt, sendPaymentFailed } from "@/lib/email";
+import { sendSubscriptionReceipt, sendPaymentFailed, sendKitchenBillingPaymentFailed } from "@/lib/email";
+import { isTierKey } from "@/lib/tiers";
+import { tierFromPriceId, type BillingStatus } from "@/lib/kitchen-billing";
+import { activateKitchenSubscription, setKitchenBillingStatus } from "@/lib/kitchen-billing-sync";
+
+/** Find the kitchen whose SOFTWARE subscription this Stripe sub id belongs to. */
+async function kitchenForSub(stripeSubId: string | undefined) {
+  if (!stripeSubId) return null;
+  return db.business.findFirst({
+    where: { billingSubscriptionId: stripeSubId },
+    select: { id: true, name: true, brandColor: true, slug: true },
+  });
+}
 
 export const dynamic = "force-dynamic";
 
@@ -38,6 +50,17 @@ export async function POST(req: NextRequest) {
     switch (event.type) {
       case "checkout.session.completed": {
         const session = event.data.object as Stripe.Checkout.Session;
+        // Kitchen software billing (kitchen → PrepFlow) vs diner meal-plans.
+        if (session.metadata?.kind === "kitchen_billing") {
+          const businessId = session.metadata.businessId;
+          const subId =
+            typeof session.subscription === "string" ? session.subscription : session.subscription?.id;
+          const tier = session.metadata.tier;
+          if (businessId && subId && isTierKey(tier)) {
+            await activateKitchenSubscription({ businessId, subscriptionId: subId, tier });
+          }
+          break;
+        }
         if (session.mode === "subscription") {
           await ensureSubscriptionFromCheckout(session);
         }
@@ -49,6 +72,14 @@ export async function POST(req: NextRequest) {
           subscription?: string | { id: string } | null;
           billing_reason?: string;
         };
+        const stripeSubIdAny =
+          typeof invoice.subscription === "string" ? invoice.subscription : invoice.subscription?.id;
+        // Kitchen software renewal → keep the kitchen active.
+        const kbiz = await kitchenForSub(stripeSubIdAny);
+        if (kbiz) {
+          await setKitchenBillingStatus(stripeSubIdAny!, "active");
+          break;
+        }
         // Only act on recurring cycles — the first charge is covered at signup.
         if (invoice.billing_reason === "subscription_cycle") {
           const stripeSubId =
@@ -91,6 +122,23 @@ export async function POST(req: NextRequest) {
         };
         const stripeSubId =
           typeof invoice.subscription === "string" ? invoice.subscription : invoice.subscription?.id;
+        // Kitchen software charge failed → past_due + owner dunning.
+        const kbizFail = await kitchenForSub(stripeSubId);
+        if (kbizFail) {
+          await setKitchenBillingStatus(stripeSubId!, "past_due");
+          const owner = await db.user.findFirst({
+            where: { businessId: kbizFail.id, role: "owner" },
+            select: { email: true },
+          });
+          if (owner?.email) {
+            await sendKitchenBillingPaymentFailed({
+              to: owner.email,
+              kitchenName: kbizFail.name,
+              billingUrl: `${APP_URL}/dashboard/billing`,
+            });
+          }
+          break;
+        }
         if (stripeSubId) {
           const sub = await db.subscription.findFirst({
             where: { stripeSubscriptionId: stripeSubId },
@@ -114,6 +162,10 @@ export async function POST(req: NextRequest) {
 
       case "customer.subscription.deleted": {
         const stripeSub = event.data.object as Stripe.Subscription;
+        if (await kitchenForSub(stripeSub.id)) {
+          await setKitchenBillingStatus(stripeSub.id, "canceled");
+          break;
+        }
         await db.subscription.updateMany({
           where: { stripeSubscriptionId: stripeSub.id },
           data: { status: "canceled" },
@@ -125,6 +177,15 @@ export async function POST(req: NextRequest) {
         const stripeSub = event.data.object as Stripe.Subscription & {
           pause_collection?: { behavior: string } | null;
         };
+        // Kitchen software subscription: sync status + tier (portal plan switches).
+        if (await kitchenForSub(stripeSub.id)) {
+          const s = stripeSub.status;
+          const status: BillingStatus =
+            s === "active" || s === "trialing" ? "active" : s === "past_due" || s === "unpaid" ? "past_due" : s === "canceled" ? "canceled" : "none";
+          const tier = tierFromPriceId(stripeSub.items?.data?.[0]?.price?.id);
+          await setKitchenBillingStatus(stripeSub.id, status, tier);
+          break;
+        }
         // Reflect Stripe-side pause/resume (e.g. from the dashboard) in our status.
         const paused = Boolean(stripeSub.pause_collection);
         const status = stripeSub.status === "canceled" ? "canceled" : paused ? "paused" : "active";

@@ -3,7 +3,7 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
-import { requireBusiness } from "@/lib/auth";
+import { requireBusiness, assertWritable } from "@/lib/auth";
 import { dollarsToCents, percentToBps } from "@/lib/money";
 import { TIERS } from "@/lib/tiers";
 
@@ -47,6 +47,7 @@ export async function updateSettings(
   formData: FormData,
 ): Promise<SettingsActionState> {
   const { business } = await requireBusiness();
+  await assertWritable(business);
 
   const deliveryDays = Object.fromEntries(
     DAYS.map((d) => [d, formData.get(`day_${d}`) === "on"]),
@@ -89,11 +90,15 @@ export async function updateSettings(
 
   const d = parsed.data;
 
+  // When the kitchen has a paid subscription, the plan is owned by Stripe — a
+  // tier change must go through the billing portal, not this form (else desync).
+  const effectiveTier = business.billingStatus === "active" ? (business.tier as typeof d.tier) : d.tier;
+
   // Business identity + settings updated atomically, scoped to this tenant.
   await db.$transaction([
     db.business.update({
       where: { id: business.id },
-      data: { name: d.name, brandColor: d.brandColor, tier: d.tier },
+      data: { name: d.name, brandColor: d.brandColor, tier: effectiveTier },
     }),
     db.businessSettings.upsert({
       where: { businessId: business.id },
@@ -101,7 +106,7 @@ export async function updateSettings(
         businessId: business.id,
         subDiscountBps: percentToBps(d.subDiscount),
         taxRateBps: percentToBps(d.taxRate),
-        platformFeeBps: TIERS[d.tier].platformFeeBps,
+        platformFeeBps: TIERS[effectiveTier].platformFeeBps,
         deliveryFeeCents: dollarsToCents(d.deliveryFee),
         processingFeeCents: dollarsToCents(d.processingFee),
         minOrderCents: dollarsToCents(d.minOrder),
@@ -120,7 +125,7 @@ export async function updateSettings(
       update: {
         subDiscountBps: percentToBps(d.subDiscount),
         taxRateBps: percentToBps(d.taxRate),
-        platformFeeBps: TIERS[d.tier].platformFeeBps,
+        platformFeeBps: TIERS[effectiveTier].platformFeeBps,
         deliveryFeeCents: dollarsToCents(d.deliveryFee),
         processingFeeCents: dollarsToCents(d.processingFee),
         minOrderCents: dollarsToCents(d.minOrder),

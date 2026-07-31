@@ -4,6 +4,8 @@ import { requireBusiness } from "@/lib/auth";
 import { orderLimitStatus } from "@/lib/usage";
 import { TIERS, type TierKey } from "@/lib/tiers";
 import { trialStatus } from "@/lib/trial";
+import { kitchenAccess, type BillingStatus } from "@/lib/kitchen-billing";
+import { Lock } from "lucide-react";
 import { DashboardSidebar } from "@/components/dashboard-sidebar";
 import { exitStaffPreview } from "./staff/actions";
 
@@ -26,7 +28,14 @@ export default async function DashboardLayout({
   const planLabel = TIERS[usage.tier].name;
   // Free-trial countdown (owner-only, informational — no lockout until billing).
   const trial = trialStatus(business.trialEndsAt);
-  const showTrial = role === "owner" && trial.active;
+  const access = kitchenAccess({
+    trialEndsAt: business.trialEndsAt,
+    billingStatus: business.billingStatus as BillingStatus,
+    billingComped: business.billingComped,
+    billingSubscriptionId: business.billingSubscriptionId,
+  });
+  const showLock = role === "owner" && access.locked;
+  const showTrial = role === "owner" && trial.active && !access.locked;
   // Staff never see plan/order metrics — give them a neutral footer line.
   const sidebarStats =
     role !== "owner"
@@ -73,6 +82,26 @@ export default async function DashboardLayout({
             </form>
           </div>
         )}
+        {showLock && (
+          <div
+            className="no-print flex items-center gap-3 px-6 py-2.5 text-[13px] flex-wrap"
+            style={{ background: "var(--clay)", color: "#fff" }}
+          >
+            <span className="flex items-center gap-1.5 font-medium">
+              <Lock size={14} /> Your free trial has ended.
+            </span>
+            <span style={{ color: "#ffffffcc" }}>
+              Your storefront and existing orders are still live — pick a plan to make changes again.
+            </span>
+            <Link
+              href="/dashboard/billing"
+              className="ml-auto flex items-center gap-1.5 px-3 py-1 rounded-md text-[12.5px] font-medium"
+              style={{ background: "#ffffff26", color: "#f4f2ec" }}
+            >
+              <ArrowUpCircle size={14} /> Reactivate
+            </Link>
+          </div>
+        )}
         {showTrial && (
           <div
             className="no-print flex items-center gap-3 px-6 py-2.5 text-[13px] flex-wrap"
@@ -91,7 +120,7 @@ export default async function DashboardLayout({
                 : `Full access to everything — you're previewing the ${planLabel} plan.`}
             </span>
             <Link
-              href="/dashboard/settings"
+              href="/dashboard/billing"
               className="ml-auto flex items-center gap-1.5 px-3 py-1 rounded-md text-[12.5px] font-medium"
               style={{ background: "var(--pine)", color: "#f4f2ec" }}
             >
@@ -119,7 +148,7 @@ export default async function DashboardLayout({
                 : "Upgrade for unlimited orders before you hit the cap."}
             </span>
             <Link
-              href="/dashboard/settings"
+              href="/dashboard/billing"
               className="ml-auto flex items-center gap-1.5 px-3 py-1 rounded-md text-[12.5px] font-medium"
               style={{
                 background: usage.atLimit ? "#ffffff26" : "var(--pine)",
