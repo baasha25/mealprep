@@ -465,8 +465,12 @@ function Footer() {
         </div>
       </div>
       <div className="border-t" style={{ borderColor: "var(--line)" }}>
-        <div className="max-w-6xl mx-auto px-6 py-5 text-[12px]" style={{ color: "var(--muted)" }}>
-          © 2026 PrepFlow. All rights reserved.
+        <div className="max-w-6xl mx-auto px-6 py-5 flex items-center justify-between flex-wrap gap-3 text-[12px]" style={{ color: "var(--muted)" }}>
+          <span>© 2026 PrepFlow. All rights reserved.</span>
+          <span className="flex items-center gap-4">
+            <Link href="/terms">Terms</Link>
+            <Link href="/privacy">Privacy</Link>
+          </span>
         </div>
       </div>
     </footer>

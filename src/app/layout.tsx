@@ -4,6 +4,7 @@ import { ClerkProvider } from "@clerk/nextjs";
 import "./globals.css";
 import { AttributionCapture } from "@/components/attribution-capture";
 import { Analytics } from "@/components/analytics";
+import { ConsentBanner } from "@/components/consent-banner";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -37,6 +38,7 @@ export default function RootLayout({
         <AttributionCapture />
         <Analytics />
         {children}
+        <ConsentBanner />
       </body>
     </html>
   );

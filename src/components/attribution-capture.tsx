@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { ATTRIB_COOKIE, deriveAttribution } from "@/lib/attribution";
+import { readConsent } from "@/lib/consent";
 
 /**
  * First-touch attribution: on the first page a visitor lands on, record where
@@ -12,6 +13,7 @@ import { ATTRIB_COOKIE, deriveAttribution } from "@/lib/attribution";
 export function AttributionCapture() {
   useEffect(() => {
     try {
+      if (readConsent() === "declined") return; // respect an explicit opt-out
       if (document.cookie.split("; ").some((c) => c.startsWith(`${ATTRIB_COOKIE}=`))) return;
 
       const referrer = document.referrer || "";

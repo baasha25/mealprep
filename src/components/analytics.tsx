@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { usePathname } from "next/navigation";
+import { readConsent } from "@/lib/consent";
 
 /**
  * PostHog product + traffic analytics. Entirely gated on NEXT_PUBLIC_POSTHOG_KEY
@@ -19,6 +20,7 @@ export function Analytics() {
 
   useEffect(() => {
     if (!KEY) return;
+    if (readConsent() !== "accepted") return; // third-party analytics is opt-in
     let cancelled = false;
     import("posthog-js").then(({ default: posthog }) => {
       if (cancelled) return;
