@@ -2,10 +2,12 @@
 
 import { z } from "zod";
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
 import { db } from "@/lib/db";
 import { slugify } from "@/lib/slug";
 import { TIERS } from "@/lib/tiers";
 import { trialEndFrom } from "@/lib/trial";
+import { ATTRIB_COOKIE, parseAttributionCookie } from "@/lib/attribution";
 
 const Input = z.object({
   name: z.string().trim().min(2, "Enter your kitchen's name").max(80),
@@ -62,6 +64,8 @@ export async function createKitchen(
 
   const brandColor = parsed.data.brandColor ?? "#2f4536";
   const tier = parsed.data.tier;
+  // First-touch acquisition (captured client-side into a cookie on landing).
+  const attrib = parseAttributionCookie((await cookies()).get(ATTRIB_COOKIE)?.value);
   await db.business.create({
     data: {
       name: parsed.data.name,
@@ -70,6 +74,10 @@ export async function createKitchen(
       tier,
       // Every kitchen starts a 30-day free trial (informational until billing).
       trialEndsAt: trialEndFrom(),
+      acqSource: attrib?.source ?? null,
+      acqMedium: attrib?.medium ?? null,
+      acqCampaign: attrib?.campaign || null,
+      acqReferrer: attrib?.referrer || null,
       // Chosen plan drives the platform fee; other pricing/fulfillment
       // fields fall back to the schema defaults.
       settings: { create: { platformFeeBps: TIERS[tier].platformFeeBps } },

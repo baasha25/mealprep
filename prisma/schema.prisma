@@ -126,6 +126,11 @@ model Business {
   billingSubscriptionId String? // the software subscription id
   billingStatus         BillingStatus @default(none)
   billingComped         Boolean @default(false) // founding-customer / demo: full access, never charged
+  // First-touch acquisition attribution (captured at signup):
+  acqSource   String? // e.g. google, instagram, direct, producthunt
+  acqMedium   String? // e.g. referral, cpc, social, direct
+  acqCampaign String? // utm_campaign
+  acqReferrer String? // raw referring URL
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 

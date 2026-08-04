@@ -1,10 +1,11 @@
-import { Store, Repeat, Users, DollarSign } from "lucide-react";
+import { Store, Repeat, Users, DollarSign, Compass } from "lucide-react";
 import { requireSuperAdmin } from "@/lib/admin";
 import { db } from "@/lib/db";
 import { Kpi } from "@/components/ui";
 import { formatCents } from "@/lib/money";
 import { TIERS, type TierKey } from "@/lib/tiers";
 import { monthStart } from "@/lib/usage";
+import { sourceLabel } from "@/lib/attribution";
 import { TierSelect } from "./tier-select";
 
 export const dynamic = "force-dynamic";
@@ -35,6 +36,23 @@ export default async function AdminPage() {
   const totalCustomers = businesses.reduce((s, b) => s + b._count.customers, 0);
   const planMrrCents = businesses.reduce((s, b) => s + TIERS[b.tier as TierKey].priceCents, 0);
 
+  // Acquisition — first-touch source of each kitchen + plan value it represents.
+  const acqMap = new Map<string, { count: number; planCents: number }>();
+  for (const b of businesses) {
+    const key = b.acqSource || "direct";
+    const cur = acqMap.get(key) ?? { count: 0, planCents: 0 };
+    cur.count += 1;
+    cur.planCents += TIERS[b.tier as TierKey].priceCents;
+    acqMap.set(key, cur);
+  }
+  const acqRows = [...acqMap.entries()].map(([source, v]) => ({ source, ...v })).sort((a, b) => b.count - a.count);
+  const maxAcq = Math.max(1, ...acqRows.map((r) => r.count));
+  const nowMs = Date.now();
+  const signupsWithin = (days: number) =>
+    businesses.filter((b) => nowMs - new Date(b.createdAt).getTime() <= days * 86_400_000).length;
+  const new7 = signupsWithin(7);
+  const new30 = signupsWithin(30);
+
   const fmtDate = new Intl.DateTimeFormat("en-US", { dateStyle: "medium" });
   const ownerEmail = (b: (typeof businesses)[number]) =>
     b.users.find((u) => u.role === "owner")?.email ?? b.users[0]?.email ?? "—";
@@ -58,6 +76,39 @@ export default async function AdminPage() {
         <Kpi icon={<DollarSign size={16} />} label="Plan value / mo (potential)" value={formatCents(planMrrCents)} />
         <Kpi icon={<Repeat size={16} />} label="Active subscriptions" value={totalActiveSubs} />
         <Kpi icon={<Users size={16} />} label="Total customers" value={totalCustomers} />
+      </div>
+
+      {/* Acquisition — where kitchens come from (first-touch attribution) */}
+      <div className="rounded-xl border p-5 mb-6" style={{ borderColor: "var(--line)", background: "var(--surface)" }}>
+        <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+          <div className="flex items-center gap-2">
+            <Compass size={15} style={{ color: "var(--pine)" }} />
+            <span className="text-[14px] font-semibold" style={{ color: "var(--ink)" }}>Where kitchens come from</span>
+          </div>
+          <span className="text-[12px]" style={{ color: "var(--muted)" }}>
+            first-touch · <strong style={{ color: "var(--ink-soft)" }}>{new7}</strong> new this week · <strong style={{ color: "var(--ink-soft)" }}>{new30}</strong> this month
+          </span>
+        </div>
+        {acqRows.length === 0 ? (
+          <p className="text-[13px]" style={{ color: "var(--muted)" }}>No signups yet.</p>
+        ) : (
+          <div className="space-y-2.5">
+            {acqRows.map((r) => (
+              <div key={r.source} className="grid grid-cols-[130px_1fr_auto] items-center gap-3">
+                <span className="text-[12.5px] font-medium truncate" style={{ color: "var(--ink)" }}>{sourceLabel(r.source)}</span>
+                <div className="h-2 rounded-full" style={{ background: "var(--sand)" }}>
+                  <div className="h-2 rounded-full" style={{ width: `${(r.count / maxAcq) * 100}%`, background: "var(--pine)" }} />
+                </div>
+                <span className="text-[12px] tabular-nums text-right whitespace-nowrap" style={{ color: "var(--muted)" }}>
+                  {r.count} kitchen{r.count === 1 ? "" : "s"} · {formatCents(r.planCents)}/mo
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+        <p className="text-[11px] mt-3" style={{ color: "var(--muted)" }}>
+          Plan value is the potential MRR each channel represents. Full visitor traffic (page views, referrers, geography) lives in PostHog once connected.
+        </p>
       </div>
 
       <div className="rounded-xl border overflow-hidden" style={{ borderColor: "var(--line)", background: "var(--surface)" }}>
