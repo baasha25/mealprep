@@ -57,6 +57,7 @@ export function MealForm({
   action,
   initial,
   submitLabel,
+  ingredientOptions = [],
 }: {
   action: (
     prev: MealActionState,
@@ -64,6 +65,9 @@ export function MealForm({
   ) => Promise<MealActionState>;
   initial: MealFormInitial;
   submitLabel: string;
+  /** Existing ingredients (name + unit) to autocomplete against, so a recipe
+   *  reuses a costed ingredient instead of creating a $0-cost duplicate. */
+  ingredientOptions?: { name: string; unit: string }[];
 }) {
   const [state, formAction, pending] = useActionState<
     MealActionState,
@@ -85,6 +89,18 @@ export function MealForm({
     );
   const updRow = (i: number, k: keyof IngredientRow, v: string) =>
     setRows((cur) => cur.map((r, x) => (x === i ? { ...r, [k]: v } : r)));
+
+  // Existing-ingredient name → its unit, so picking a known ingredient snaps the
+  // recipe to the same unit its cost is stored in (correct plate cost).
+  const optUnit = new Map(ingredientOptions.map((o) => [o.name.toLowerCase(), o.unit]));
+  const setIngName = (i: number, v: string) =>
+    setRows((cur) =>
+      cur.map((r, x) => {
+        if (x !== i) return r;
+        const unit = optUnit.get(v.trim().toLowerCase());
+        return unit ? { ...r, name: v, unit } : { ...r, name: v };
+      }),
+    );
   const addRow = () =>
     setRows((cur) => [...cur, { name: "", qty: "", unit: "oz", trimPercent: "" }]);
   const remRow = (i: number) =>
@@ -266,6 +282,18 @@ export function MealForm({
           title="Ingredients"
           note="Trim % powers the zero-waste shopping list"
         />
+        {ingredientOptions.length > 0 && (
+          <p className="text-[11.5px] mb-2 -mt-1" style={{ color: "var(--muted)" }}>
+            Start typing to reuse an ingredient you already have — it keeps that ingredient&apos;s cost and unit,
+            so your margins and P&amp;L are accurate. A brand-new name is added at $0 cost until you price it.
+          </p>
+        )}
+        {/* Autocomplete source: existing costed ingredients for this kitchen. */}
+        <datalist id="pf-ingredients">
+          {ingredientOptions.map((o) => (
+            <option key={o.name} value={o.name} />
+          ))}
+        </datalist>
         <div className="space-y-2">
           {rows.map((ing, i) => (
             <div
@@ -275,8 +303,10 @@ export function MealForm({
               <input
                 name="ingName"
                 value={ing.name}
-                onChange={(e) => updRow(i, "name", e.target.value)}
+                onChange={(e) => setIngName(i, e.target.value)}
                 placeholder="Ingredient"
+                list="pf-ingredients"
+                autoComplete="off"
                 className={INP}
                 style={inputStyle}
               />

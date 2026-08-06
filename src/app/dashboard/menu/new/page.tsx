@@ -8,6 +8,11 @@ import { swatchForIndex } from "@/lib/menu-constants";
 export default async function NewMealPage() {
   const { business } = await requireBusiness();
   const count = await db.meal.count({ where: { businessId: business.id } });
+  const ingredientOptions = await db.ingredient.findMany({
+    where: { businessId: business.id },
+    orderBy: { name: "asc" },
+    select: { name: true, unit: true },
+  });
 
   const initial: MealFormInitial = {
     name: "",
@@ -32,7 +37,7 @@ export default async function NewMealPage() {
         title="New menu item"
         sub="Add a meal to your storefront."
       />
-      <MealForm action={createMeal} initial={initial} submitLabel="Save to menu" />
+      <MealForm action={createMeal} initial={initial} submitLabel="Save to menu" ingredientOptions={ingredientOptions} />
     </Page>
   );
 }

@@ -45,11 +45,16 @@ export default async function EditMealPage({
 
   // Bind the meal id so the client form gets a (prev, formData) action.
   const action = updateMeal.bind(null, meal.id);
+  const ingredientOptions = await db.ingredient.findMany({
+    where: { businessId: business.id },
+    orderBy: { name: "asc" },
+    select: { name: true, unit: true },
+  });
 
   return (
     <Page>
       <Head kicker="Menu" title={`Edit ${meal.name}`} sub="Update this meal." />
-      <MealForm action={action} initial={initial} submitLabel="Save changes" />
+      <MealForm action={action} initial={initial} submitLabel="Save changes" ingredientOptions={ingredientOptions} />
     </Page>
   );
 }
