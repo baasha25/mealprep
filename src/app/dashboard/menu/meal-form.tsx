@@ -7,6 +7,7 @@ import {
   Plus,
   Trash2,
   AlertTriangle,
+  Info,
   UtensilsCrossed,
   Wheat,
   Milk,
@@ -293,12 +294,12 @@ export function MealForm({
           title="Ingredients"
           note="Trim % powers the zero-waste shopping list"
         />
-        {ingredientOptions.length > 0 && (
-          <p className="text-[11.5px] mb-2 -mt-1" style={{ color: "var(--muted)" }}>
-            Start typing to reuse an ingredient you already have — it keeps that ingredient&apos;s cost and unit,
-            so your margins and P&amp;L are accurate. A brand-new name is added at $0 cost until you price it.
-          </p>
-        )}
+        <p className="flex items-start gap-1.5 text-[11.5px] mb-2 -mt-1" style={{ color: "var(--muted)" }}>
+          <Info size={13} style={{ marginTop: 1, flexShrink: 0, color: "var(--pine)" }} />
+          <span>
+            <strong>Pick an ingredient from the dropdown</strong> so the recipe uses its real cost &amp; unit — you can buy in lb and use in oz, it converts. Typing a brand-new name adds it at <strong>$0 cost</strong> until you price it in Inventory (which shows $0 / 100% margin).
+          </span>
+        </p>
         {/* Autocomplete source: existing costed ingredients for this kitchen. */}
         <datalist id="pf-ingredients">
           {ingredientOptions.map((o) => (
@@ -318,6 +319,7 @@ export function MealForm({
                 placeholder="Ingredient"
                 list="pf-ingredients"
                 autoComplete="off"
+                title="Pick an existing ingredient from the list so the recipe uses its real cost & unit. A brand-new name is added at $0 cost until you price it in Inventory."
                 className={INP}
                 style={inputStyle}
               />
