@@ -338,6 +338,7 @@ export function MealForm({
                 name="ingUnit"
                 value={ing.unit}
                 onChange={(e) => updRow(i, "unit", e.target.value)}
+                title="Unit for this recipe amount. It can differ from how the ingredient is priced — the cost converts (e.g. buy per lb, use per oz)."
                 className={INP}
                 style={inputStyle}
               >
@@ -354,6 +355,7 @@ export function MealForm({
                 value={ing.trimPercent}
                 onChange={(e) => updRow(i, "trimPercent", e.target.value)}
                 placeholder="Trim%"
+                title="Prep waste for this ingredient — peels, stalks, fat, ends. It grosses up how much you buy and shows the 'over-bought' dollars in Purchasing."
                 className={INP}
                 style={inputStyle}
               />

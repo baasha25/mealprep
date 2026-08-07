@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { PackagePlus } from "lucide-react";
 import { UNITS } from "@/lib/menu-constants";
+import { Hint } from "@/components/ui";
 import { setOpeningStock } from "./actions";
 
 const INP = "w-full rounded-lg border px-3 py-2 text-[13.5px] outline-none";
@@ -63,7 +64,7 @@ export function OpeningStockForm({ ingredients }: { ingredients: { name: string;
           </datalist>
         </div>
         <div>
-          <label className="text-[11px] block mb-1" style={{ color: "var(--muted)" }}>Unit</label>
+          <label className="text-[11px] mb-1 flex items-center gap-1" style={{ color: "var(--muted)" }}>Unit <Hint text="The unit you buy/stock this ingredient in. Recipes can use any compatible unit (e.g. buy in lb, use in oz) — it converts automatically." /></label>
           <select className={INP} style={ST} value={unit} onChange={(e) => setUnit(e.target.value as (typeof UNITS)[number])}>
             {UNITS.map((u) => <option key={u} value={u}>{u}</option>)}
           </select>
@@ -73,11 +74,11 @@ export function OpeningStockForm({ ingredients }: { ingredients: { name: string;
           <input className={INP} style={ST} type="number" min="0" step="0.01" value={qty} onChange={(e) => setQty(e.target.value)} placeholder="0" />
         </div>
         <div>
-          <label className="text-[11px] block mb-1" style={{ color: "var(--muted)" }}>Cost / unit ($)</label>
+          <label className="text-[11px] mb-1 flex items-center gap-1" style={{ color: "var(--muted)" }}>Cost / unit ($) <Hint text="What you pay per unit (e.g. $3.20 per lb). This is what your plate cost, margins, and P&L are calculated from." /></label>
           <input className={INP} style={ST} type="number" min="0" step="0.01" value={cost} onChange={(e) => setCost(e.target.value)} placeholder="0.00" />
         </div>
         <div>
-          <label className="text-[11px] block mb-1" style={{ color: "var(--muted)" }}>Trim %</label>
+          <label className="text-[11px] mb-1 flex items-center gap-1" style={{ color: "var(--muted)" }}>Trim % <Hint text="Share of this ingredient lost to prep — peels, stalks, fat, ends. Drives the 'over-bought' figure: you buy more than a recipe nets to cover the waste." /></label>
           <input className={INP} style={ST} type="number" min="0" max="100" step="0.1" value={trim} onChange={(e) => setTrim(e.target.value)} placeholder="0" />
         </div>
         <button

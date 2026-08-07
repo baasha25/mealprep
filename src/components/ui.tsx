@@ -1,4 +1,20 @@
 import type { ReactNode } from "react";
+import { Info } from "lucide-react";
+
+/** A small hover-tooltip info icon (ⓘ) for explaining a field or term. */
+export function Hint({ text }: { text: string }) {
+  return (
+    <span
+      title={text}
+      role="img"
+      aria-label={text}
+      className="inline-flex items-center align-middle cursor-help"
+      style={{ color: "var(--muted)" }}
+    >
+      <Info size={12} />
+    </span>
+  );
+}
 
 /* Shared presentational primitives ported from the Vite demo's design system.
    No hooks → safe to use in server or client components. */
@@ -107,7 +123,7 @@ export function Kpi({
   delta,
 }: {
   icon?: ReactNode;
-  label: string;
+  label: ReactNode;
   value: ReactNode;
   delta?: string;
 }) {

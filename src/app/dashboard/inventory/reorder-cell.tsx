@@ -35,6 +35,7 @@ export function ReorderCell({
         }}
         inputMode="decimal"
         placeholder="—"
+        title="Low-stock alert: flag this ingredient when on-hand drops to this level. Leave blank / 0 to turn off."
         className="w-12 px-1.5 py-1 rounded-md border text-[12px] text-right outline-none"
         style={{ borderColor: "var(--line)", background: "var(--paper)", color: "var(--ink)", opacity: pending ? 0.6 : 1 }}
       />

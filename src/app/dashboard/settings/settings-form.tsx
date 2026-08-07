@@ -203,7 +203,7 @@ export function SettingsForm({ initial }: { initial: SettingsInitial }) {
       <Card>
         <CardTitle icon={<Truck size={15} />} title="Fulfillment" />
         <div className="grid sm:grid-cols-2 gap-4 mb-4">
-          <Field label="Order cut-off">
+          <Field label="Order cut-off" hint="The deadline before a delivery when customers can still change, skip, or swap meals. After it, that delivery is locked so you can shop and prep.">
             <input
               name="cutoff"
               defaultValue={initial.cutoff}

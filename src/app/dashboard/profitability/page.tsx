@@ -2,7 +2,7 @@ import { TrendingUp, DollarSign, AlertTriangle, ChefHat, ArrowUpRight, Trash2 } 
 import Link from "next/link";
 import { requireOwner } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { Page, Head, Kpi, Card, CardTitle, Row } from "@/components/ui";
+import { Page, Head, Kpi, Card, CardTitle, Row, Hint } from "@/components/ui";
 import { formatCents, bpsToPercent } from "@/lib/money";
 import { costPerUnitFromReceipt } from "@/lib/inventory";
 import { revenueStatusWhere } from "@/lib/order-status";
@@ -177,7 +177,7 @@ export default async function ProfitabilityPage({
       <div className="grid sm:grid-cols-4 gap-3.5 mb-5">
         <Kpi icon={<TrendingUp size={16} />} label="Avg margin" value={`${bpsToPercent(avgMarginBps).toFixed(1)}%`} />
         <Kpi icon={<DollarSign size={16} />} label="Avg food cost" value={`${bpsToPercent(avgFoodCostBps).toFixed(1)}%`} />
-        <Kpi icon={<ChefHat size={16} />} label="Menu contribution (pre-loss)" value={formatCents(totalContribution)} />
+        <Kpi icon={<ChefHat size={16} />} label={<span className="inline-flex items-center gap-1">Menu contribution (pre-loss) <Hint text="Each meal's margin × how many sold, added up — BEFORE food losses. Your true bottom line is 'Net contribution' in the P&L above, which subtracts losses." /></span>} value={formatCents(totalContribution)} />
         <Kpi icon={<AlertTriangle size={16} />} label="Money-losing meals" value={losers} />
       </div>
 
@@ -214,7 +214,7 @@ export default async function ProfitabilityPage({
             <div key={r.id} className="grid sm:grid-cols-[1.5fr_80px_80px_90px_70px_70px_110px] grid-cols-2 gap-3 px-4 py-3 items-center" style={{ borderBottom: "1px solid var(--line)" }}>
               <div className="min-w-0">
                 <div className="text-[13.5px] font-medium truncate" style={{ color: "var(--ink)" }}>{r.name}</div>
-                <span className="inline-block mt-0.5 text-[10.5px] px-1.5 py-0.5 rounded font-medium" style={{ background: cs.bg, color: cs.fg }}>{MENU_CLASS_LABEL[r.menuClass]}</span>
+                <span title={cs.blurb} className="inline-block mt-0.5 text-[10.5px] px-1.5 py-0.5 rounded font-medium cursor-help" style={{ background: cs.bg, color: cs.fg }}>{MENU_CLASS_LABEL[r.menuClass]}</span>
               </div>
               <div className="text-[12.5px] text-right" style={{ color: "var(--ink-soft)" }}>{formatCents(r.priceCents)}</div>
               <div className="text-[12.5px] text-right" style={{ color: "var(--muted)" }}>{formatCents(r.costCents)}</div>

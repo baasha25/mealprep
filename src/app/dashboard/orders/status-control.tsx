@@ -22,6 +22,7 @@ export function StatusControl({
         name="status"
         defaultValue={status}
         onChange={() => ref.current?.requestSubmit()}
+        title="Order status. Canceled and refunded orders are excluded from revenue, sales, and P&L — they were never earned."
         className="text-[12px] font-medium px-2 py-1 rounded-md border cursor-pointer outline-none"
         style={{
           color: meta?.fg ?? "var(--ink)",

@@ -22,7 +22,7 @@ export function ReceiveForm({ ingredients }: { ingredients: { id: string; name: 
       <Field label="Qty received">
         <input name="qty" type="number" step="0.01" min="0" placeholder="40" className={INP} style={inputStyle} />
       </Field>
-      <Field label="Total paid ($)">
+      <Field label="Total paid ($)" hint="What you paid for this delivery. We divide by the quantity to set the ingredient's real cost/unit — which flows into your margins & P&L.">
         <input name="totalCost" type="number" step="0.01" min="0" placeholder="34.00" className={INP} style={inputStyle} />
       </Field>
       <div className="flex items-center gap-3">
