@@ -6,6 +6,7 @@ import {
   Check,
   Plus,
   Trash2,
+  AlertTriangle,
   UtensilsCrossed,
   Wheat,
   Milk,
@@ -15,6 +16,7 @@ import {
 } from "lucide-react";
 import { Card, CardTitle, Field, INP, btnPrimary } from "@/components/ui";
 import { DIET_OPTS, ALLERGENS, UNITS } from "@/lib/menu-constants";
+import { canConvert } from "@/lib/units";
 import type { MealActionState } from "./actions";
 
 const ALLERGEN_ICON: Record<string, LucideIcon> = {
@@ -65,9 +67,10 @@ export function MealForm({
   ) => Promise<MealActionState>;
   initial: MealFormInitial;
   submitLabel: string;
-  /** Existing ingredients (name + unit) to autocomplete against, so a recipe
-   *  reuses a costed ingredient instead of creating a $0-cost duplicate. */
-  ingredientOptions?: { name: string; unit: string }[];
+  /** Existing ingredients to autocomplete against, so a recipe reuses a costed
+   *  ingredient instead of creating a $0-cost duplicate. Unit + density let us
+   *  flag rows whose unit can't be converted to how the ingredient is priced. */
+  ingredientOptions?: { name: string; unit: string; densityGPerMl?: number | null }[];
 }) {
   const [state, formAction, pending] = useActionState<
     MealActionState,
@@ -90,9 +93,17 @@ export function MealForm({
   const updRow = (i: number, k: keyof IngredientRow, v: string) =>
     setRows((cur) => cur.map((r, x) => (x === i ? { ...r, [k]: v } : r)));
 
-  // Existing-ingredient name → its unit, so picking a known ingredient snaps the
-  // recipe to the same unit its cost is stored in (correct plate cost).
+  // Existing-ingredient name → its unit + density, so picking a known ingredient
+  // snaps the recipe to a compatible unit and we can flag rows that don't convert.
+  const optMeta = new Map(ingredientOptions.map((o) => [o.name.toLowerCase(), o]));
   const optUnit = new Map(ingredientOptions.map((o) => [o.name.toLowerCase(), o.unit]));
+
+  // Rows referencing a known ingredient whose unit can't be reconciled with how
+  // it's priced (e.g. a lb-priced item measured in cups with no pack size set).
+  const mismatches = rows.filter((r) => {
+    const meta = optMeta.get(r.name.trim().toLowerCase());
+    return meta && r.unit && !canConvert(r.unit, meta.unit, meta.densityGPerMl);
+  });
   const setIngName = (i: number, v: string) =>
     setRows((cur) =>
       cur.map((r, x) => {
@@ -364,6 +375,15 @@ export function MealForm({
         >
           <Plus size={13} /> Add ingredient
         </button>
+
+        {mismatches.length > 0 && (
+          <div className="mt-3 flex items-start gap-2 px-3 py-2 rounded-lg text-[11.5px]" style={{ background: "#f3e9c9", color: "#7a5a1a" }}>
+            <AlertTriangle size={14} style={{ marginTop: 1, flexShrink: 0 }} />
+            <span>
+              <strong>{[...new Set(mismatches.map((m) => m.name))].join(", ")}</strong>: this unit can&apos;t be converted to how the ingredient is priced (weight vs. volume). Use a matching unit, or set a &ldquo;grams per cup&rdquo; pack size on the ingredient in Inventory — otherwise its cost won&apos;t count correctly.
+            </span>
+          </div>
+        )}
       </Card>
 
       <div className="flex items-center gap-3">

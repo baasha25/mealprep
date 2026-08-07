@@ -307,6 +307,7 @@ model Ingredient {
   stockQty         Float    @default(0) // current on-hand quantity, in `unit`
   reorderThreshold Float    @default(0) // low-stock alert threshold (0 = off)
   shelfLifeDays    Int?     // days this ingredient keeps once received (null = not tracked); drives "expiring soon"
+  densityGPerMl    Float?   // grams per ml — lets a recipe use a volume unit for an ingredient priced by weight (or vice-versa)
 
   mealIngredients MealIngredient[]
   receipts        IngredientReceipt[]

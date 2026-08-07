@@ -11,7 +11,7 @@ export default async function NewMealPage() {
   const ingredientOptions = await db.ingredient.findMany({
     where: { businessId: business.id },
     orderBy: { name: "asc" },
-    select: { name: true, unit: true },
+    select: { name: true, unit: true, densityGPerMl: true },
   });
 
   const initial: MealFormInitial = {

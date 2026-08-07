@@ -14,6 +14,7 @@ import { InvoiceScanner } from "./invoice-scanner";
 import { ReorderCell } from "./reorder-cell";
 import { ShelfLifeCell } from "./shelf-life-cell";
 import { daysUntilExpiry } from "@/lib/loss";
+import { toPurchaseQty } from "@/lib/units";
 import { consumeProductionQueue } from "./actions";
 
 const PRODUCING = ["paid", "in_production"] as const;
@@ -34,14 +35,16 @@ export default async function InventoryPage() {
     where: { order: { businessId: business.id, status: { in: [...PRODUCING] } }, mealId: { not: null } },
     select: {
       qty: true,
-      meal: { select: { ingredients: { select: { qty: true, unit: true, trimBps: true, ingredient: { select: { id: true } } } } } },
+      meal: { select: { ingredients: { select: { qty: true, unit: true, trimBps: true, ingredient: { select: { id: true, unit: true, densityGPerMl: true } } } } } },
     },
   });
   const lines: PurchaseLine[] = [];
   for (const oi of orderItems) {
     if (!oi.meal) continue;
     for (const mi of oi.meal.ingredients) {
-      lines.push({ ingredientId: mi.ingredient.id, name: "", unit: mi.unit, costPerUnitCents: 0, netQty: mi.qty * oi.qty, trimBps: mi.trimBps });
+      // Need in the ingredient's stock unit, so it lines up with on-hand qty.
+      const net = toPurchaseQty(mi.qty * oi.qty, mi.unit, mi.ingredient.unit, mi.ingredient.densityGPerMl).qty;
+      lines.push({ ingredientId: mi.ingredient.id, name: "", unit: mi.ingredient.unit, costPerUnitCents: 0, netQty: net, trimBps: mi.trimBps });
     }
   }
   const need = new Map(buildShoppingList(lines).rows.map((r) => [r.ingredientId, r.grossQty]));

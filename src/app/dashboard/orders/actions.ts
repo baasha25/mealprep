@@ -4,7 +4,7 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { requireBusiness } from "@/lib/auth";
-import { plateCostCents } from "@/lib/profitability";
+import { plateCostFromRecipe } from "@/lib/profitability";
 import { mealLossCents } from "@/lib/loss";
 
 const ORDER_STATUSES = [
@@ -86,14 +86,12 @@ export async function logOrderLoss(input: z.infer<typeof OrderLossInput>): Promi
     where: { id: d.mealId, businessId: business.id },
     select: {
       name: true,
-      ingredients: { select: { qty: true, trimBps: true, ingredient: { select: { costPerUnitCents: true } } } },
+      ingredients: { select: { qty: true, unit: true, trimBps: true, ingredient: { select: { unit: true, costPerUnitCents: true, densityGPerMl: true } } } },
     },
   });
   if (!meal) return { ok: false, message: "Meal not found." };
 
-  const plateCost = plateCostCents(
-    meal.ingredients.map((mi) => ({ qty: mi.qty, trimBps: mi.trimBps, costPerUnitCents: mi.ingredient.costPerUnitCents })),
-  );
+  const plateCost = plateCostFromRecipe(meal.ingredients);
   const costCents = mealLossCents(d.qty, plateCost);
 
   await db.lossEvent.create({

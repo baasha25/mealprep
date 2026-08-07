@@ -1,11 +1,14 @@
 // Menu profitability engine — costs every plate from its recipe (incl. trim),
 // derives margin, and classifies the menu. Pure integer-cents math (§9).
 
+import { toPurchaseQty } from "@/lib/units";
+
 export type RecipeCostLine = { qty: number; trimBps: number; costPerUnitCents: number };
 
 /**
  * True cost to produce one plate: each ingredient grossed up for its trim
- * (you pay for what you trim away), valued at its cost/unit.
+ * (you pay for what you trim away), valued at its cost/unit. `qty` must already
+ * be in the ingredient's cost unit — use `plateCostFromRecipe` to convert.
  */
 export function plateCostCents(lines: RecipeCostLine[]): number {
   let total = 0;
@@ -14,6 +17,29 @@ export function plateCostCents(lines: RecipeCostLine[]): number {
     total += (l.qty / (1 - trim)) * l.costPerUnitCents;
   }
   return Math.round(total);
+}
+
+export type RecipeSource = {
+  qty: number;
+  unit: string;
+  trimBps: number;
+  ingredient: { unit: string; costPerUnitCents: number; densityGPerMl?: number | null };
+};
+
+/**
+ * Plate cost straight from recipe rows — converts each recipe quantity into the
+ * ingredient's purchase unit first (8 oz of a $/lb ingredient becomes 0.5 lb),
+ * so cost/unit finally lines up. Unconvertible units fall back to raw qty (the
+ * recipe editor warns about those).
+ */
+export function plateCostFromRecipe(lines: RecipeSource[]): number {
+  return plateCostCents(
+    lines.map((l) => ({
+      qty: toPurchaseQty(l.qty, l.unit, l.ingredient.unit, l.ingredient.densityGPerMl).qty,
+      trimBps: l.trimBps,
+      costPerUnitCents: l.ingredient.costPerUnitCents,
+    })),
+  );
 }
 
 export type MealEconomics = {

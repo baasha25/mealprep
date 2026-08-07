@@ -4,7 +4,7 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { requireOwner } from "@/lib/auth";
-import { plateCostCents } from "@/lib/profitability";
+import { plateCostFromRecipe } from "@/lib/profitability";
 import { ingredientLossCents, mealLossCents, LOSS_REASONS } from "@/lib/loss";
 
 export type LogLossResult = { ok: boolean; message?: string };
@@ -92,14 +92,12 @@ export async function logMealLoss(input: z.infer<typeof MealLoss>): Promise<LogL
     select: {
       id: true,
       name: true,
-      ingredients: { select: { qty: true, trimBps: true, ingredient: { select: { costPerUnitCents: true } } } },
+      ingredients: { select: { qty: true, unit: true, trimBps: true, ingredient: { select: { unit: true, costPerUnitCents: true, densityGPerMl: true } } } },
     },
   });
   if (!meal) return { ok: false, message: "Meal not found." };
 
-  const plateCost = plateCostCents(
-    meal.ingredients.map((mi) => ({ qty: mi.qty, trimBps: mi.trimBps, costPerUnitCents: mi.ingredient.costPerUnitCents })),
-  );
+  const plateCost = plateCostFromRecipe(meal.ingredients);
   const costCents = mealLossCents(d.qty, plateCost);
 
   await db.lossEvent.create({

@@ -7,6 +7,7 @@ import { requireBusiness } from "@/lib/auth";
 import { dollarsToCents, percentToBps } from "@/lib/money";
 import { parseCsvRecords, splitList } from "@/lib/csv";
 import { DIET_OPTS, ALLERGENS, UNITS, swatchForIndex } from "@/lib/menu-constants";
+import { densityFromGramsPerCup } from "@/lib/units";
 
 export type ImportKind = "menu" | "customers" | "subscriptions" | "inventory";
 
@@ -213,6 +214,7 @@ async function importInventory(csvText: string): Promise<ImportResult> {
       result.warnings.push({ row: rowNo, message: `${parsed.data.name}: no cost — margins/P&L stay $0 until you price it` });
     }
     const trimStr = (rec.trim ?? "").trim();
+    const gpcStr = (rec.gramspercup ?? rec["grams per cup"] ?? "").trim();
 
     // Fields that are always set from an opening balance.
     const data: {
@@ -220,9 +222,15 @@ async function importInventory(csvText: string): Promise<ImportResult> {
       stockQty: number;
       costPerUnitCents?: number;
       defaultTrimBps?: number;
+      densityGPerMl?: number;
     } = { unit: parsed.data.unit, stockQty: parsed.data.quantity };
     if (hasCost) data.costPerUnitCents = dollarsToCents(Number(costStr));
     if (trimStr.length) data.defaultTrimBps = percentToBps(num(trimStr));
+    // Optional pack density (grams per cup) → lets recipes use volume units.
+    if (gpcStr.length && Number.isFinite(Number(gpcStr))) {
+      const dens = densityFromGramsPerCup(Number(gpcStr));
+      if (dens) data.densityGPerMl = dens;
+    }
 
     const existing = await db.ingredient.findFirst({
       where: { businessId: business.id, name: parsed.data.name },
@@ -240,6 +248,7 @@ async function importInventory(csvText: string): Promise<ImportResult> {
           stockQty: data.stockQty,
           costPerUnitCents: data.costPerUnitCents ?? 0,
           defaultTrimBps: data.defaultTrimBps ?? 0,
+          densityGPerMl: data.densityGPerMl ?? null,
         },
       });
       result.created++;

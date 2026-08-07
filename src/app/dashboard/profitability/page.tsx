@@ -10,7 +10,7 @@ import { RangeFilter } from "@/components/range-filter";
 import { toRangeKey, rangeWhere, rangeLabel } from "@/lib/date-range";
 import { summarizeLosses, LOSS_REASON_META, type LossReason } from "@/lib/loss";
 import {
-  plateCostCents,
+  plateCostFromRecipe,
   mealEconomics,
   classifyMenu,
   priceChangeBps,
@@ -39,7 +39,7 @@ export default async function ProfitabilityPage({
       id: true,
       name: true,
       priceCents: true,
-      ingredients: { select: { qty: true, trimBps: true, ingredient: { select: { costPerUnitCents: true } } } },
+      ingredients: { select: { qty: true, unit: true, trimBps: true, ingredient: { select: { unit: true, costPerUnitCents: true, densityGPerMl: true } } } },
     },
   });
 
@@ -57,9 +57,7 @@ export default async function ProfitabilityPage({
   }
 
   const base = meals.map((m) => {
-    const cost = plateCostCents(
-      m.ingredients.map((mi) => ({ qty: mi.qty, trimBps: mi.trimBps, costPerUnitCents: mi.ingredient.costPerUnitCents })),
-    );
+    const cost = plateCostFromRecipe(m.ingredients);
     const econ = mealEconomics(m.priceCents, cost);
     const units = unitsByMeal.get(m.id) ?? 0;
     return { id: m.id, name: m.name, priceCents: m.priceCents, costCents: cost, ...econ, units, contributionCents: econ.marginCents * units };

@@ -7,6 +7,7 @@ import { requireBusiness } from "@/lib/auth";
 import { dollarsToCents, percentToBps } from "@/lib/money";
 import { costPerUnitFromReceipt, stockCountVariance } from "@/lib/inventory";
 import { buildShoppingList, type PurchaseLine } from "@/lib/purchasing";
+import { toPurchaseQty } from "@/lib/units";
 import { UNITS } from "@/lib/menu-constants";
 
 export type ReceiveState = { ok: boolean; message?: string };
@@ -220,7 +221,7 @@ export async function consumeProductionQueue() {
       meal: {
         select: {
           ingredients: {
-            select: { qty: true, unit: true, trimBps: true, ingredient: { select: { id: true, name: true, costPerUnitCents: true } } },
+            select: { qty: true, unit: true, trimBps: true, ingredient: { select: { id: true, name: true, unit: true, costPerUnitCents: true, densityGPerMl: true } } },
           },
         },
       },
@@ -231,12 +232,14 @@ export async function consumeProductionQueue() {
   for (const oi of items) {
     if (!oi.meal) continue;
     for (const mi of oi.meal.ingredients) {
+      // Deduct in the ingredient's stock unit (convert from the recipe unit).
+      const net = toPurchaseQty(mi.qty * oi.qty, mi.unit, mi.ingredient.unit, mi.ingredient.densityGPerMl).qty;
       lines.push({
         ingredientId: mi.ingredient.id,
         name: mi.ingredient.name,
-        unit: mi.unit,
+        unit: mi.ingredient.unit,
         costPerUnitCents: mi.ingredient.costPerUnitCents,
-        netQty: mi.qty * oi.qty,
+        netQty: net,
         trimBps: mi.trimBps,
       });
     }

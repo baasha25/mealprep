@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { Page, Head, Kpi } from "@/components/ui";
 import { formatCents, bpsToPercent } from "@/lib/money";
 import { buildShoppingList, type PurchaseLine } from "@/lib/purchasing";
+import { toPurchaseQty } from "@/lib/units";
 import { CostCell } from "./cost-cell";
 
 // Demand comes from orders awaiting production (same set as the production report).
@@ -28,7 +29,7 @@ export default async function PurchasingPage() {
               unit: true,
               trimBps: true,
               ingredient: {
-                select: { id: true, name: true, unit: true, costPerUnitCents: true },
+                select: { id: true, name: true, unit: true, costPerUnitCents: true, densityGPerMl: true },
               },
             },
           },
@@ -37,17 +38,20 @@ export default async function PurchasingPage() {
     },
   });
 
-  // Explode into per-recipe-line purchase needs (net qty = recipe qty × meals).
+  // Explode into per-recipe-line purchase needs (net qty = recipe qty × meals),
+  // converting the recipe quantity into the ingredient's PURCHASE unit so buy
+  // amounts and costs are correct (e.g. 8 oz of a $/lb ingredient → 0.5 lb).
   const lines: PurchaseLine[] = [];
   for (const oi of orderItems) {
     if (!oi.meal) continue;
     for (const mi of oi.meal.ingredients) {
+      const net = toPurchaseQty(mi.qty * oi.qty, mi.unit, mi.ingredient.unit, mi.ingredient.densityGPerMl).qty;
       lines.push({
         ingredientId: mi.ingredient.id,
         name: mi.ingredient.name,
-        unit: mi.unit,
+        unit: mi.ingredient.unit,
         costPerUnitCents: mi.ingredient.costPerUnitCents,
-        netQty: mi.qty * oi.qty,
+        netQty: net,
         trimBps: mi.trimBps,
       });
     }
