@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState, useTransition } from "react";
-import { Upload, FileText, Check, AlertTriangle, Download, ChefHat, Users, Repeat } from "lucide-react";
+import { Upload, FileText, Check, AlertTriangle, Download, ChefHat, Users, Repeat, Boxes } from "lucide-react";
 import { parseCsvRecords } from "@/lib/csv";
 import { runImport, type ImportKind, type ImportResult } from "./actions";
 
@@ -35,6 +35,17 @@ const KINDS: { id: ImportKind; label: string; icon: typeof ChefHat; cols: string
       "email,plan,frequency\n" +
       "jane@example.com,Pro,weekly\n" +
       "sam@example.com,Starter,biweekly",
+  },
+  {
+    id: "inventory",
+    label: "Inventory",
+    icon: Boxes,
+    cols: "name, unit, quantity, cost, trim",
+    template:
+      "name,unit,quantity,cost,trim\n" +
+      "Chicken breast,lb,18,3.20,5\n" +
+      "Quinoa,lb,9,2.40,0\n" +
+      "Broccoli,lb,14,1.60,8",
   },
 ];
 

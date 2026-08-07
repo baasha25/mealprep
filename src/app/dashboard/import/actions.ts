@@ -4,11 +4,11 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { requireBusiness } from "@/lib/auth";
-import { dollarsToCents } from "@/lib/money";
+import { dollarsToCents, percentToBps } from "@/lib/money";
 import { parseCsvRecords, splitList } from "@/lib/csv";
-import { DIET_OPTS, ALLERGENS, swatchForIndex } from "@/lib/menu-constants";
+import { DIET_OPTS, ALLERGENS, UNITS, swatchForIndex } from "@/lib/menu-constants";
 
-export type ImportKind = "menu" | "customers" | "subscriptions";
+export type ImportKind = "menu" | "customers" | "subscriptions" | "inventory";
 
 export type ImportResult = {
   ok: boolean;
@@ -39,6 +39,8 @@ export async function runImport(kind: ImportKind, csvText: string): Promise<Impo
       return importCustomers(csvText);
     case "subscriptions":
       return importSubscriptions(csvText);
+    case "inventory":
+      return importInventory(csvText);
     default:
       return { ...empty(), ok: false, message: "Unknown import type." };
   }
@@ -163,6 +165,89 @@ async function importCustomers(csvText: string): Promise<ImportResult> {
     }
   }
 
+  revalidatePath("/dashboard");
+  return result;
+}
+
+/* ------------------------------ Inventory ------------------------------ */
+// Opening / standing inventory: what a switching kitchen ALREADY has on the
+// shelf right now, priced. Sets the current stock level + cost directly (not a
+// delivery), so margins, purchasing, waste, and P&L reflect reality from day one.
+
+const UNIT_SET = new Set<string>(UNITS);
+
+const InventoryRow = z.object({
+  name: z.string().trim().min(1, "name is required").max(120),
+  unit: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .refine((u) => UNIT_SET.has(u), `unit must be one of: ${UNITS.join(", ")}`),
+  quantity: z
+    .string()
+    .trim()
+    .min(1, "quantity is required")
+    .transform((s) => Number(s))
+    .refine((n) => Number.isFinite(n) && n >= 0 && n <= 1_000_000, "quantity must be a number"),
+});
+
+async function importInventory(csvText: string): Promise<ImportResult> {
+  const { business } = await requireBusiness();
+  const records = parseCsvRecords(csvText);
+  const result = empty();
+  if (records.length === 0) return { ...result, ok: false, message: "No rows found. Include a header row." };
+
+  for (let i = 0; i < records.length; i++) {
+    const rowNo = i + 2;
+    const rec = records[i];
+    const parsed = InventoryRow.safeParse({ name: rec.name, unit: rec.unit, quantity: rec.quantity });
+    if (!parsed.success) {
+      result.skipped++;
+      result.errors.push({ row: rowNo, message: parsed.error.issues[0]?.message ?? "invalid row" });
+      continue;
+    }
+
+    const costStr = (rec.cost ?? "").trim();
+    const hasCost = costStr.length > 0 && Number.isFinite(Number(costStr));
+    if (!hasCost) {
+      result.warnings.push({ row: rowNo, message: `${parsed.data.name}: no cost — margins/P&L stay $0 until you price it` });
+    }
+    const trimStr = (rec.trim ?? "").trim();
+
+    // Fields that are always set from an opening balance.
+    const data: {
+      unit: string;
+      stockQty: number;
+      costPerUnitCents?: number;
+      defaultTrimBps?: number;
+    } = { unit: parsed.data.unit, stockQty: parsed.data.quantity };
+    if (hasCost) data.costPerUnitCents = dollarsToCents(Number(costStr));
+    if (trimStr.length) data.defaultTrimBps = percentToBps(num(trimStr));
+
+    const existing = await db.ingredient.findFirst({
+      where: { businessId: business.id, name: parsed.data.name },
+      select: { id: true },
+    });
+    if (existing) {
+      await db.ingredient.update({ where: { id: existing.id }, data });
+      result.updated++;
+    } else {
+      await db.ingredient.create({
+        data: {
+          businessId: business.id,
+          name: parsed.data.name,
+          unit: data.unit,
+          stockQty: data.stockQty,
+          costPerUnitCents: data.costPerUnitCents ?? 0,
+          defaultTrimBps: data.defaultTrimBps ?? 0,
+        },
+      });
+      result.created++;
+    }
+  }
+
+  revalidatePath("/dashboard/inventory");
+  revalidatePath("/dashboard/purchasing");
   revalidatePath("/dashboard");
   return result;
 }

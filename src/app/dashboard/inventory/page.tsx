@@ -1,4 +1,4 @@
-import { Boxes, PackageCheck, TriangleAlert, Flame, TrendingDown, ClipboardCheck, ScanLine } from "lucide-react";
+import { Boxes, PackageCheck, TriangleAlert, Flame, TrendingDown, ClipboardCheck, ScanLine, PackagePlus } from "lucide-react";
 import { requireBusiness } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { Page, Head, Kpi, Card, CardTitle } from "@/components/ui";
@@ -8,6 +8,7 @@ import { stockValueCents, toBuyQty, stockStatus } from "@/lib/inventory";
 import { ANTHROPIC_ENABLED } from "@/lib/anthropic";
 import type { TierKey } from "@/lib/tiers";
 import { ReceiveForm } from "./receive-form";
+import { OpeningStockForm } from "./opening-stock-form";
 import { CountForm } from "./count-form";
 import { InvoiceScanner } from "./invoice-scanner";
 import { ReorderCell } from "./reorder-cell";
@@ -162,9 +163,18 @@ export default async function InventoryPage() {
         </Card>
       )}
 
+      {/* Opening / current inventory — what you already have on the shelf now */}
+      <Card className="mb-4">
+        <CardTitle icon={<PackagePlus size={15} />} title="Set current stock" note="Opening inventory — what you have on hand now" />
+        <p className="text-[12.5px] mb-3" style={{ color: "var(--muted)" }}>
+          Switching in? Enter what&apos;s already on your shelf (and what it cost) so margins, purchasing, and P&amp;L are accurate from day one — no need to fake a delivery. Existing kitchens can bulk-load this from <a href="/dashboard/import" style={{ color: "var(--pine)" }}>Import data → Inventory</a>.
+        </p>
+        <OpeningStockForm ingredients={ingredients.map((i) => ({ name: i.name, unit: i.unit }))} />
+      </Card>
+
       {/* Receiving */}
       <Card className="mb-4">
-        <CardTitle icon={<PackageCheck size={15} />} title="Receive a delivery" note="Sets real cost/unit from the invoice" />
+        <CardTitle icon={<PackageCheck size={15} />} title="Receive a delivery" note="Adds to stock + sets cost/unit from an invoice" />
         <ReceiveForm ingredients={ingredients.map((i) => ({ id: i.id, name: i.name, unit: i.unit }))} />
       </Card>
 

@@ -4,11 +4,55 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { requireBusiness } from "@/lib/auth";
-import { dollarsToCents } from "@/lib/money";
+import { dollarsToCents, percentToBps } from "@/lib/money";
 import { costPerUnitFromReceipt, stockCountVariance } from "@/lib/inventory";
 import { buildShoppingList, type PurchaseLine } from "@/lib/purchasing";
+import { UNITS } from "@/lib/menu-constants";
 
 export type ReceiveState = { ok: boolean; message?: string };
+
+const OpeningStockInput = z.object({
+  name: z.string().trim().min(1, "Enter an ingredient name").max(120),
+  unit: z.enum(UNITS),
+  quantity: z.coerce.number().min(0).max(1_000_000),
+  cost: z.coerce.number().min(0).max(1_000_000), // cost per unit, in dollars
+  trim: z.coerce.number().min(0).max(100).optional().default(0),
+});
+
+/**
+ * Set an ingredient's OPENING / current inventory — what a switching kitchen
+ * already has on the shelf, priced. Sets stock + cost directly (not a delivery),
+ * creating the ingredient if new. This is the "starting stock" entry existing
+ * kitchens need so margins/purchasing/waste/P&L are accurate from day one.
+ */
+export async function setOpeningStock(input: z.infer<typeof OpeningStockInput>): Promise<ReceiveState> {
+  const { business } = await requireBusiness();
+  const parsed = OpeningStockInput.safeParse(input);
+  if (!parsed.success) return { ok: false, message: parsed.error.issues[0]?.message ?? "Invalid entry." };
+  const d = parsed.data;
+
+  await db.ingredient.upsert({
+    where: { businessId_name: { businessId: business.id, name: d.name } },
+    create: {
+      businessId: business.id,
+      name: d.name,
+      unit: d.unit,
+      stockQty: d.quantity,
+      costPerUnitCents: dollarsToCents(d.cost),
+      defaultTrimBps: percentToBps(d.trim),
+    },
+    update: {
+      unit: d.unit,
+      stockQty: d.quantity,
+      costPerUnitCents: dollarsToCents(d.cost),
+      defaultTrimBps: percentToBps(d.trim),
+    },
+  });
+
+  revalidatePath("/dashboard/inventory");
+  revalidatePath("/dashboard/purchasing");
+  return { ok: true, message: `${d.name}: ${d.quantity} ${d.unit} on hand at $${d.cost.toFixed(2)}/${d.unit}.` };
+}
 
 const ReceiveInput = z.object({
   ingredientId: z.string().min(1),
