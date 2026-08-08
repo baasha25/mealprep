@@ -19,6 +19,11 @@ const OpeningStockInput = z.object({
   cost: z.coerce.number().min(0).max(1_000_000), // cost per unit, in dollars
   trim: z.coerce.number().min(0).max(100).optional().default(0),
   gramsPerCup: z.coerce.number().min(0).max(100_000).optional(), // optional pack density
+  // Optional per-unit macros → let meals auto-sum nutrition from the recipe.
+  calPerUnit: z.coerce.number().min(0).max(1_000_000).optional(),
+  proteinPerUnit: z.coerce.number().min(0).max(1_000_000).optional(),
+  carbsPerUnit: z.coerce.number().min(0).max(1_000_000).optional(),
+  fatPerUnit: z.coerce.number().min(0).max(1_000_000).optional(),
 });
 
 /**
@@ -36,6 +41,13 @@ export async function setOpeningStock(input: z.infer<typeof OpeningStockInput>):
   // on update; explicit 0 clears it.
   const density =
     d.gramsPerCup === undefined ? undefined : d.gramsPerCup > 0 ? densityFromGramsPerCup(d.gramsPerCup) : null;
+  // Only touch a macro on update when it was actually provided (undefined = leave as-is).
+  const macroUpdate = {
+    ...(d.calPerUnit === undefined ? {} : { calPerUnit: d.calPerUnit }),
+    ...(d.proteinPerUnit === undefined ? {} : { proteinPerUnit: d.proteinPerUnit }),
+    ...(d.carbsPerUnit === undefined ? {} : { carbsPerUnit: d.carbsPerUnit }),
+    ...(d.fatPerUnit === undefined ? {} : { fatPerUnit: d.fatPerUnit }),
+  };
 
   await db.ingredient.upsert({
     where: { businessId_name: { businessId: business.id, name: d.name } },
@@ -47,6 +59,10 @@ export async function setOpeningStock(input: z.infer<typeof OpeningStockInput>):
       costPerUnitCents: dollarsToCents(d.cost),
       defaultTrimBps: percentToBps(d.trim),
       densityGPerMl: density ?? null,
+      calPerUnit: d.calPerUnit ?? 0,
+      proteinPerUnit: d.proteinPerUnit ?? 0,
+      carbsPerUnit: d.carbsPerUnit ?? 0,
+      fatPerUnit: d.fatPerUnit ?? 0,
     },
     update: {
       unit: d.unit,
@@ -54,6 +70,7 @@ export async function setOpeningStock(input: z.infer<typeof OpeningStockInput>):
       costPerUnitCents: dollarsToCents(d.cost),
       defaultTrimBps: percentToBps(d.trim),
       ...(density === undefined ? {} : { densityGPerMl: density }),
+      ...macroUpdate,
     },
   });
 

@@ -223,6 +223,10 @@ async function importInventory(csvText: string): Promise<ImportResult> {
       costPerUnitCents?: number;
       defaultTrimBps?: number;
       densityGPerMl?: number;
+      calPerUnit?: number;
+      proteinPerUnit?: number;
+      carbsPerUnit?: number;
+      fatPerUnit?: number;
     } = { unit: parsed.data.unit, stockQty: parsed.data.quantity };
     if (hasCost) data.costPerUnitCents = dollarsToCents(Number(costStr));
     if (trimStr.length) data.defaultTrimBps = percentToBps(num(trimStr));
@@ -231,6 +235,19 @@ async function importInventory(csvText: string): Promise<ImportResult> {
       const dens = densityFromGramsPerCup(Number(gpcStr));
       if (dens) data.densityGPerMl = dens;
     }
+    // Optional per-unit macros → let meals auto-sum nutrition from the recipe.
+    const macroCol = (v: string | undefined) => {
+      const s = (v ?? "").trim();
+      return s.length && Number.isFinite(Number(s)) ? Math.max(0, Number(s)) : undefined;
+    };
+    const cal = macroCol(rec.calories ?? rec.cal);
+    const protein = macroCol(rec.protein ?? rec.proteing ?? rec["protein g"]);
+    const carbs = macroCol(rec.carbs ?? rec.carbsg ?? rec["carbs g"]);
+    const fat = macroCol(rec.fat ?? rec.fatg ?? rec["fat g"]);
+    if (cal !== undefined) data.calPerUnit = cal;
+    if (protein !== undefined) data.proteinPerUnit = protein;
+    if (carbs !== undefined) data.carbsPerUnit = carbs;
+    if (fat !== undefined) data.fatPerUnit = fat;
 
     const existing = await db.ingredient.findFirst({
       where: { businessId: business.id, name: parsed.data.name },
@@ -249,6 +266,10 @@ async function importInventory(csvText: string): Promise<ImportResult> {
           costPerUnitCents: data.costPerUnitCents ?? 0,
           defaultTrimBps: data.defaultTrimBps ?? 0,
           densityGPerMl: data.densityGPerMl ?? null,
+          calPerUnit: data.calPerUnit ?? 0,
+          proteinPerUnit: data.proteinPerUnit ?? 0,
+          carbsPerUnit: data.carbsPerUnit ?? 0,
+          fatPerUnit: data.fatPerUnit ?? 0,
         },
       });
       result.created++;

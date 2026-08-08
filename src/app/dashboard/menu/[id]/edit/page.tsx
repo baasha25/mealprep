@@ -48,7 +48,7 @@ export default async function EditMealPage({
   const ingredientOptions = await db.ingredient.findMany({
     where: { businessId: business.id },
     orderBy: { name: "asc" },
-    select: { name: true, unit: true, densityGPerMl: true },
+    select: { name: true, unit: true, densityGPerMl: true, calPerUnit: true, proteinPerUnit: true, carbsPerUnit: true, fatPerUnit: true },
   });
 
   return (

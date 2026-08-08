@@ -27,7 +27,7 @@ export default async function InventoryPage() {
   const ingredients = await db.ingredient.findMany({
     where: { businessId: business.id },
     orderBy: { name: "asc" },
-    select: { id: true, name: true, unit: true, stockQty: true, costPerUnitCents: true, defaultTrimBps: true, reorderThreshold: true, shelfLifeDays: true, densityGPerMl: true },
+    select: { id: true, name: true, unit: true, stockQty: true, costPerUnitCents: true, defaultTrimBps: true, reorderThreshold: true, shelfLifeDays: true, densityGPerMl: true, calPerUnit: true, proteinPerUnit: true, carbsPerUnit: true, fatPerUnit: true },
   });
 
   // Production-queue requirement (gross) per ingredient — reuse the purchasing engine.
@@ -172,7 +172,7 @@ export default async function InventoryPage() {
         <p className="text-[12.5px] mb-3" style={{ color: "var(--muted)" }}>
           Switching in? Enter what&apos;s already on your shelf (and what it cost) so margins, purchasing, and P&amp;L are accurate from day one — no need to fake a delivery. Existing kitchens can bulk-load this from <a href="/dashboard/import" style={{ color: "var(--pine)" }}>Import data → Inventory</a>.
         </p>
-        <OpeningStockForm ingredients={ingredients.map((i) => ({ name: i.name, unit: i.unit, densityGPerMl: i.densityGPerMl }))} />
+        <OpeningStockForm ingredients={ingredients.map((i) => ({ name: i.name, unit: i.unit, densityGPerMl: i.densityGPerMl, calPerUnit: i.calPerUnit, proteinPerUnit: i.proteinPerUnit, carbsPerUnit: i.carbsPerUnit, fatPerUnit: i.fatPerUnit }))} />
       </Card>
 
       {/* Receiving */}

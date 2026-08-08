@@ -40,12 +40,12 @@ const KINDS: { id: ImportKind; label: string; icon: typeof ChefHat; cols: string
     id: "inventory",
     label: "Inventory",
     icon: Boxes,
-    cols: "name, unit, quantity, cost, trim",
+    cols: "name, unit, quantity, cost, trim (optional: gramsPerCup, calories, protein, carbs, fat — all per unit)",
     template:
-      "name,unit,quantity,cost,trim\n" +
-      "Chicken breast,lb,18,3.20,5\n" +
-      "Quinoa,lb,9,2.40,0\n" +
-      "Broccoli,lb,14,1.60,8",
+      "name,unit,quantity,cost,trim,gramsPerCup,calories,protein,carbs,fat\n" +
+      "Chicken breast,lb,18,3.20,5,,748,140,0,16\n" +
+      "Quinoa,lb,9,2.40,0,,1633,60,286,26\n" +
+      "Broccoli,lb,14,1.60,8,,154,13,30,2",
   },
 ];
 

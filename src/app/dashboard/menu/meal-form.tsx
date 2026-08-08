@@ -18,6 +18,7 @@ import {
 import { Card, CardTitle, Field, INP, btnPrimary } from "@/components/ui";
 import { DIET_OPTS, ALLERGENS, UNITS } from "@/lib/menu-constants";
 import { canConvert } from "@/lib/units";
+import { mealMacrosFromRecipe, recipeHasNutrition } from "@/lib/nutrition";
 import type { MealActionState } from "./actions";
 
 const ALLERGEN_ICON: Record<string, LucideIcon> = {
@@ -70,8 +71,17 @@ export function MealForm({
   submitLabel: string;
   /** Existing ingredients to autocomplete against, so a recipe reuses a costed
    *  ingredient instead of creating a $0-cost duplicate. Unit + density let us
-   *  flag rows whose unit can't be converted to how the ingredient is priced. */
-  ingredientOptions?: { name: string; unit: string; densityGPerMl?: number | null }[];
+   *  flag rows whose unit can't be converted to how the ingredient is priced.
+   *  Per-unit macros let us auto-sum the meal's nutrition from the recipe. */
+  ingredientOptions?: {
+    name: string;
+    unit: string;
+    densityGPerMl?: number | null;
+    calPerUnit?: number;
+    proteinPerUnit?: number;
+    carbsPerUnit?: number;
+    fatPerUnit?: number;
+  }[];
 }) {
   const [state, formAction, pending] = useActionState<
     MealActionState,
@@ -86,6 +96,13 @@ export function MealForm({
       ? initial.ingredients
       : [{ name: "", qty: "", unit: "oz", trimPercent: "" }],
   );
+  // Macro inputs are controlled so "Use these" (auto-sum from recipe) can fill them.
+  const [macros, setMacros] = useState({
+    calories: initial.calories,
+    proteinG: initial.proteinG,
+    carbsG: initial.carbsG,
+    fatG: initial.fatG,
+  });
 
   const toggleAllergen = (a: string) =>
     setAllergens((cur) =>
@@ -105,6 +122,39 @@ export function MealForm({
     const meta = optMeta.get(r.name.trim().toLowerCase());
     return meta && r.unit && !canConvert(r.unit, meta.unit, meta.densityGPerMl);
   });
+
+  // Auto-sum nutrition from the recipe: for each row that references a known,
+  // nutrition-carrying ingredient, convert the recipe qty into the ingredient's
+  // unit and multiply by its per-unit macros. Mirrors the plate-cost math.
+  const nutritionLines = rows
+    .map((r) => {
+      const meta = optMeta.get(r.name.trim().toLowerCase());
+      if (!meta) return null;
+      return {
+        qty: Number(r.qty) || 0,
+        unit: r.unit,
+        ingredient: {
+          unit: meta.unit,
+          densityGPerMl: meta.densityGPerMl,
+          calPerUnit: meta.calPerUnit ?? 0,
+          proteinPerUnit: meta.proteinPerUnit ?? 0,
+          carbsPerUnit: meta.carbsPerUnit ?? 0,
+          fatPerUnit: meta.fatPerUnit ?? 0,
+        },
+      };
+    })
+    .filter((l): l is NonNullable<typeof l> => l !== null);
+  const canAutoNutrition = recipeHasNutrition(nutritionLines);
+  const recipeMacros = canAutoNutrition ? mealMacrosFromRecipe(nutritionLines) : null;
+  const applyRecipeMacros = () => {
+    if (!recipeMacros) return;
+    setMacros({
+      calories: String(recipeMacros.calories),
+      proteinG: String(recipeMacros.proteinG),
+      carbsG: String(recipeMacros.carbsG),
+      fatG: String(recipeMacros.fatG),
+    });
+  };
   const setIngName = (i: number, v: string) =>
     setRows((cur) =>
       cur.map((r, x) => {
@@ -196,12 +246,37 @@ export function MealForm({
           </div>
         </Field>
         <div className="mt-4">
-          <label
-            className="text-[12.5px] font-medium"
-            style={{ color: "var(--ink)" }}
-          >
-            Nutrition (per meal)
-          </label>
+          <div className="flex items-center justify-between gap-2">
+            <label
+              className="text-[12.5px] font-medium"
+              style={{ color: "var(--ink)" }}
+            >
+              Nutrition (per meal)
+            </label>
+            {recipeMacros && (
+              <button
+                type="button"
+                onClick={applyRecipeMacros}
+                className="text-[11.5px] font-medium px-2.5 py-1 rounded-md border"
+                style={{ borderColor: "var(--line)", color: "var(--ink)" }}
+                title="Fill these fields by summing each ingredient's per-unit macros, converted to the recipe amounts."
+              >
+                Calc from recipe
+              </button>
+            )}
+          </div>
+          {recipeMacros && (
+            <div
+              className="text-[11.5px] mt-1.5 flex items-center gap-1.5"
+              style={{ color: "var(--muted)" }}
+            >
+              <Info size={12} style={{ color: "var(--muted)" }} />
+              <span>
+                From recipe: {recipeMacros.calories} cal · {recipeMacros.proteinG}g P ·{" "}
+                {recipeMacros.carbsG}g C · {recipeMacros.fatG}g F
+              </span>
+            </div>
+          )}
           <div className="grid grid-cols-4 gap-3 mt-1.5">
             {(
               [
@@ -217,7 +292,10 @@ export function MealForm({
                   type="number"
                   step="1"
                   min="0"
-                  defaultValue={initial[k]}
+                  value={macros[k]}
+                  onChange={(e) =>
+                    setMacros((cur) => ({ ...cur, [k]: e.target.value }))
+                  }
                   placeholder="0"
                   className={INP}
                   style={inputStyle}

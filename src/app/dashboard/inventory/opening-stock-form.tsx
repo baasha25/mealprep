@@ -15,13 +15,14 @@ const ST = { borderColor: "var(--line)", background: "var(--paper)", color: "var
  */
 const CUP_ML = 236.588236;
 
-export function OpeningStockForm({ ingredients }: { ingredients: { name: string; unit: string; densityGPerMl?: number | null }[] }) {
+export function OpeningStockForm({ ingredients }: { ingredients: { name: string; unit: string; densityGPerMl?: number | null; calPerUnit?: number; proteinPerUnit?: number; carbsPerUnit?: number; fatPerUnit?: number }[] }) {
   const [name, setName] = useState("");
   const [unit, setUnit] = useState<(typeof UNITS)[number]>("lb");
   const [qty, setQty] = useState("");
   const [cost, setCost] = useState("");
   const [trim, setTrim] = useState("");
   const [gpc, setGpc] = useState("");
+  const [macros, setMacros] = useState({ cal: "", protein: "", carbs: "", fat: "" });
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [pending, start] = useTransition();
 
@@ -32,6 +33,14 @@ export function OpeningStockForm({ ingredients }: { ingredients: { name: string;
     const m = metaByName.get(v.trim().toLowerCase());
     if (m?.unit && (UNITS as readonly string[]).includes(m.unit)) setUnit(m.unit as (typeof UNITS)[number]);
     if (m) setGpc(m.densityGPerMl ? String(Math.round(m.densityGPerMl * CUP_ML)) : "");
+    if (m) {
+      setMacros({
+        cal: m.calPerUnit ? String(m.calPerUnit) : "",
+        protein: m.proteinPerUnit ? String(m.proteinPerUnit) : "",
+        carbs: m.carbsPerUnit ? String(m.carbsPerUnit) : "",
+        fat: m.fatPerUnit ? String(m.fatPerUnit) : "",
+      });
+    }
   }
 
   function submit() {
@@ -47,6 +56,10 @@ export function OpeningStockForm({ ingredients }: { ingredients: { name: string;
         cost: Number(cost) || 0,
         trim: Number(trim) || 0,
         gramsPerCup: gpc === "" ? undefined : Number(gpc) || 0,
+        calPerUnit: macros.cal === "" ? undefined : Number(macros.cal) || 0,
+        proteinPerUnit: macros.protein === "" ? undefined : Number(macros.protein) || 0,
+        carbsPerUnit: macros.carbs === "" ? undefined : Number(macros.carbs) || 0,
+        fatPerUnit: macros.fat === "" ? undefined : Number(macros.fat) || 0,
       });
       setMsg({ ok: res.ok, text: res.message ?? (res.ok ? "Saved." : "Something went wrong.") });
       if (res.ok) {
@@ -55,6 +68,7 @@ export function OpeningStockForm({ ingredients }: { ingredients: { name: string;
         setCost("");
         setTrim("");
         setGpc("");
+        setMacros({ cal: "", protein: "", carbs: "", fat: "" });
       }
     });
   }
@@ -116,6 +130,35 @@ export function OpeningStockForm({ ingredients }: { ingredients: { name: string;
           placeholder="—"
         />
         <span className="text-[11.5px]" style={{ color: "var(--muted)" }}>grams / cup</span>
+      </div>
+
+      {/* Optional per-unit macros — sum into a meal's nutrition automatically once
+          the ingredient is used in a recipe. Leave blank to skip. */}
+      <div className="flex items-center gap-2 mt-2.5 flex-wrap">
+        <label className="text-[11.5px] flex items-center gap-1" style={{ color: "var(--muted)" }}>
+          Nutrition / {unit}
+          <Hint text={`Optional. Per-${unit} calories and macros. When this ingredient is used in a meal, its recipe can auto-fill the meal's nutrition (Menu → meal → Calc from recipe).`} />
+        </label>
+        {([
+          ["cal", "cal"],
+          ["protein", "P g"],
+          ["carbs", "C g"],
+          ["fat", "F g"],
+        ] as const).map(([k, l]) => (
+          <div key={k} className="flex items-center gap-1">
+            <input
+              className="w-16 rounded-lg border px-2.5 py-1.5 text-[13px] outline-none"
+              style={ST}
+              type="number"
+              min="0"
+              step="0.1"
+              value={macros[k]}
+              onChange={(e) => setMacros((cur) => ({ ...cur, [k]: e.target.value }))}
+              placeholder="—"
+            />
+            <span className="text-[11.5px]" style={{ color: "var(--muted)" }}>{l}</span>
+          </div>
+        ))}
       </div>
 
       {msg && (
