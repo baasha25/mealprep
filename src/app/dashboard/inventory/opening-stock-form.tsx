@@ -13,21 +13,25 @@ const ST = { borderColor: "var(--line)", background: "var(--paper)", color: "var
  * Enter what you ALREADY have on hand right now (opening / standing inventory).
  * Existing ingredients autocomplete (and prefill their unit); new ones are created.
  */
-export function OpeningStockForm({ ingredients }: { ingredients: { name: string; unit: string }[] }) {
+const CUP_ML = 236.588236;
+
+export function OpeningStockForm({ ingredients }: { ingredients: { name: string; unit: string; densityGPerMl?: number | null }[] }) {
   const [name, setName] = useState("");
   const [unit, setUnit] = useState<(typeof UNITS)[number]>("lb");
   const [qty, setQty] = useState("");
   const [cost, setCost] = useState("");
   const [trim, setTrim] = useState("");
+  const [gpc, setGpc] = useState("");
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [pending, start] = useTransition();
 
-  const unitByName = new Map(ingredients.map((i) => [i.name.toLowerCase(), i.unit]));
+  const metaByName = new Map(ingredients.map((i) => [i.name.toLowerCase(), i]));
 
   function pickName(v: string) {
     setName(v);
-    const u = unitByName.get(v.trim().toLowerCase());
-    if (u && (UNITS as readonly string[]).includes(u)) setUnit(u as (typeof UNITS)[number]);
+    const m = metaByName.get(v.trim().toLowerCase());
+    if (m?.unit && (UNITS as readonly string[]).includes(m.unit)) setUnit(m.unit as (typeof UNITS)[number]);
+    if (m) setGpc(m.densityGPerMl ? String(Math.round(m.densityGPerMl * CUP_ML)) : "");
   }
 
   function submit() {
@@ -42,6 +46,7 @@ export function OpeningStockForm({ ingredients }: { ingredients: { name: string;
         quantity: q,
         cost: Number(cost) || 0,
         trim: Number(trim) || 0,
+        gramsPerCup: gpc === "" ? undefined : Number(gpc) || 0,
       });
       setMsg({ ok: res.ok, text: res.message ?? (res.ok ? "Saved." : "Something went wrong.") });
       if (res.ok) {
@@ -49,6 +54,7 @@ export function OpeningStockForm({ ingredients }: { ingredients: { name: string;
         setQty("");
         setCost("");
         setTrim("");
+        setGpc("");
       }
     });
   }
@@ -91,6 +97,27 @@ export function OpeningStockForm({ ingredients }: { ingredients: { name: string;
           <PackagePlus size={15} /> {pending ? "Saving…" : "Set stock"}
         </button>
       </div>
+
+      {/* Optional pack density — only needed to use a volume unit for a weight-priced
+          ingredient (or vice-versa). One cup of quinoa vs. oil weigh differently. */}
+      <div className="flex items-center gap-2 mt-2.5 flex-wrap">
+        <label className="text-[11.5px] flex items-center gap-1" style={{ color: "var(--muted)" }}>
+          Pack density
+          <Hint text="Optional. Only needed if you buy this by weight but measure it by volume in recipes (or vice-versa). Enter how much one cup weighs in grams — e.g. quinoa ≈ 180 g/cup, oil ≈ 218 g/cup." />
+        </label>
+        <input
+          className="w-20 rounded-lg border px-2.5 py-1.5 text-[13px] outline-none"
+          style={ST}
+          type="number"
+          min="0"
+          step="1"
+          value={gpc}
+          onChange={(e) => setGpc(e.target.value)}
+          placeholder="—"
+        />
+        <span className="text-[11.5px]" style={{ color: "var(--muted)" }}>grams / cup</span>
+      </div>
+
       {msg && (
         <p className="text-[12.5px] mt-2" style={{ color: msg.ok ? "var(--pine)" : "var(--clay)" }}>{msg.text}</p>
       )}

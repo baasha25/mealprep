@@ -7,7 +7,7 @@ import { requireBusiness } from "@/lib/auth";
 import { dollarsToCents, percentToBps } from "@/lib/money";
 import { costPerUnitFromReceipt, stockCountVariance } from "@/lib/inventory";
 import { buildShoppingList, type PurchaseLine } from "@/lib/purchasing";
-import { toPurchaseQty } from "@/lib/units";
+import { toPurchaseQty, densityFromGramsPerCup } from "@/lib/units";
 import { UNITS } from "@/lib/menu-constants";
 
 export type ReceiveState = { ok: boolean; message?: string };
@@ -18,6 +18,7 @@ const OpeningStockInput = z.object({
   quantity: z.coerce.number().min(0).max(1_000_000),
   cost: z.coerce.number().min(0).max(1_000_000), // cost per unit, in dollars
   trim: z.coerce.number().min(0).max(100).optional().default(0),
+  gramsPerCup: z.coerce.number().min(0).max(100_000).optional(), // optional pack density
 });
 
 /**
@@ -31,6 +32,10 @@ export async function setOpeningStock(input: z.infer<typeof OpeningStockInput>):
   const parsed = OpeningStockInput.safeParse(input);
   if (!parsed.success) return { ok: false, message: parsed.error.issues[0]?.message ?? "Invalid entry." };
   const d = parsed.data;
+  // Optional pack density (grams per cup → g/ml). undefined leaves it untouched
+  // on update; explicit 0 clears it.
+  const density =
+    d.gramsPerCup === undefined ? undefined : d.gramsPerCup > 0 ? densityFromGramsPerCup(d.gramsPerCup) : null;
 
   await db.ingredient.upsert({
     where: { businessId_name: { businessId: business.id, name: d.name } },
@@ -41,12 +46,14 @@ export async function setOpeningStock(input: z.infer<typeof OpeningStockInput>):
       stockQty: d.quantity,
       costPerUnitCents: dollarsToCents(d.cost),
       defaultTrimBps: percentToBps(d.trim),
+      densityGPerMl: density ?? null,
     },
     update: {
       unit: d.unit,
       stockQty: d.quantity,
       costPerUnitCents: dollarsToCents(d.cost),
       defaultTrimBps: percentToBps(d.trim),
+      ...(density === undefined ? {} : { densityGPerMl: density }),
     },
   });
 
