@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Store, Repeat, Users, DollarSign, Compass } from "lucide-react";
 import { requireSuperAdmin } from "@/lib/admin";
 import { db } from "@/lib/db";
@@ -137,7 +138,7 @@ export default async function AdminPage() {
               style={{ borderBottom: "1px solid var(--line)" }}
             >
               <div className="min-w-0">
-                <div className="text-[13.5px] font-medium truncate" style={{ color: "var(--ink)" }}>{b.name}</div>
+                <Link href={`/admin/${b.id}`} className="text-[13.5px] font-medium truncate block hover:underline" style={{ color: "var(--ink)" }}>{b.name}</Link>
                 <div className="text-[11px] truncate" style={{ color: "var(--muted)" }}>/{b.slug ?? "—"}</div>
               </div>
               <div className="text-[12.5px] truncate" style={{ color: "var(--ink-soft)" }}>{ownerEmail(b)}</div>

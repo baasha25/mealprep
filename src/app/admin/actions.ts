@@ -21,3 +21,12 @@ export async function setBusinessTier(businessId: string, tier: TierKey): Promis
   revalidatePath("/admin");
   return { ok: true };
 }
+
+/** Toggle complimentary (founding-customer / demo) access for a kitchen. */
+export async function setBusinessComped(businessId: string, comped: boolean): Promise<{ ok: boolean }> {
+  await requireSuperAdmin();
+  await db.business.update({ where: { id: businessId }, data: { billingComped: comped } });
+  revalidatePath("/admin");
+  revalidatePath(`/admin/${businessId}`);
+  return { ok: true };
+}
