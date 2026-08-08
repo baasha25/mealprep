@@ -106,11 +106,17 @@ async function main() {
   await db.subscription.deleteMany({});
   await db.business.deleteMany({});
 
+  // Healthy billing state so the demo dashboard shows no alarming banners:
+  // comfortably mid-trial and comped (no lockout), for clean sales screenshots.
+  const trialEndsAt = new Date();
+  trialEndsAt.setDate(trialEndsAt.getDate() + 21);
   const business = await db.business.create({
     data: {
       name: "Greenleaf Kitchen",
       slug: "greenleaf-kitchen",
       brandColor: "#2f4536",
+      trialEndsAt,
+      billingComped: true,
       settings: {
         create: {
           subDiscountBps: bps(0.15),

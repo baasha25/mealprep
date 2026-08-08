@@ -1,11 +1,6 @@
 {
   "version": "0.0.1",
   "configurations": [
-    {
-      "name": "prepflow",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
-      "port": 3000
-    }
+    { "name": "prepflow-dev", "runtimeExecutable": "npm", "runtimeArgs": ["run", "dev:stub"], "port": 3000 }
   ]
 }
