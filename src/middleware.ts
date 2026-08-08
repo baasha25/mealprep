@@ -16,10 +16,19 @@ const isProtected = createRouteMatcher([
   "/onboarding(.*)",
   "/admin(.*)",
 ]);
+// Only the dashboard is reachable in demo mode — never /admin or /onboarding.
+const isDemoAllowed = createRouteMatcher(["/dashboard(.*)"]);
 
 const clerkHandler = process.env.CLERK_SECRET_KEY
   ? clerkMiddleware(async (auth, req) => {
-      if (isProtected(req)) await auth.protect();
+      if (!isProtected(req)) return;
+      // A present demo cookie lets the dashboard through WITHOUT Clerk. This is
+      // safe: getAuthContext still verifies the signature and only ever loads a
+      // business flagged isDemo — a forged/stale cookie falls back to sign-in.
+      // Cookie name is inlined to keep node:crypto out of the edge bundle.
+      const hasDemo = Boolean(req.cookies.get("pf_demo")?.value);
+      if (hasDemo && isDemoAllowed(req)) return;
+      await auth.protect();
     })
   : null;
 

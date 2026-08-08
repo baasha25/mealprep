@@ -19,7 +19,7 @@ export async function getStorefrontBusiness(slug: string) {
  */
 export async function getFirstStorefrontSlug(): Promise<string | null> {
   const business = await db.business.findFirst({
-    where: { slug: { not: null } },
+    where: { slug: { not: null }, isDemo: false }, // never land the public /store on a demo tenant
     orderBy: { createdAt: "asc" },
     select: { slug: true },
   });

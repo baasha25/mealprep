@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { Eye, AlertTriangle, ArrowUpCircle, Clock } from "lucide-react";
+import { Eye, AlertTriangle, ArrowUpCircle, Clock, Sparkles } from "lucide-react";
 import { requireBusiness } from "@/lib/auth";
+import { exitDemo } from "../demo/[rep]/enter/actions";
 import { orderLimitStatus } from "@/lib/usage";
 import { TIERS, type TierKey } from "@/lib/tiers";
 import { trialStatus } from "@/lib/trial";
@@ -19,12 +20,15 @@ export default async function DashboardLayout({
   children: React.ReactNode;
 }) {
   const { business, role } = await requireBusiness();
+  // A throwaway sales-demo tenant: swap all billing/trial/cap chrome for a single
+  // "you're in a demo" bar so the app looks clean while a rep shows it off.
+  const isDemo = business.isDemo;
 
   // One query for the whole shell: order usage (also powers the sidebar footer
   // and cap banner). The old cosmetic "N menu items · N orders" counts were two
   // extra DB round-trips on every dashboard page — dropped.
   const usage = await orderLimitStatus({ id: business.id, tier: business.tier as TierKey });
-  const showCap = role === "owner" && (usage.atLimit || usage.nearLimit);
+  const showCap = role === "owner" && (usage.atLimit || usage.nearLimit) && !isDemo;
   const planLabel = TIERS[usage.tier].name;
   // Free-trial countdown (owner-only, informational — no lockout until billing).
   const trial = trialStatus(business.trialEndsAt);
@@ -37,8 +41,8 @@ export default async function DashboardLayout({
   // The lock only bites once billing is switched on (otherwise there's no way
   // to pay). Until then the trial is purely informational.
   const locked = access.locked && KITCHEN_BILLING_ENABLED;
-  const showLock = role === "owner" && locked;
-  const showTrial = role === "owner" && trial.active && !locked;
+  const showLock = role === "owner" && locked && !isDemo;
+  const showTrial = role === "owner" && trial.active && !locked && !isDemo;
   // Staff never see plan/order metrics — give them a neutral footer line.
   const sidebarStats =
     role !== "owner"
@@ -65,6 +69,37 @@ export default async function DashboardLayout({
         authEnabled={Boolean(process.env.CLERK_SECRET_KEY)}
       />
       <main className="flex-1 min-w-0">
+        {isDemo && (
+          <div
+            className="no-print flex items-center gap-3 px-6 py-2.5 text-[13px] flex-wrap"
+            style={{ background: "var(--pine)", color: "#f4f2ec" }}
+          >
+            <span className="flex items-center gap-1.5 font-medium">
+              <Sparkles size={14} /> You&apos;re in a live demo.
+            </span>
+            <span style={{ color: "#ffffffcc" }}>
+              This is a sandbox kitchen — add anything you like, nothing here is saved or charged.
+            </span>
+            <div className="ml-auto flex items-center gap-2">
+              <form action={exitDemo}>
+                <button
+                  type="submit"
+                  className="px-3 py-1 rounded-md text-[12.5px] font-medium"
+                  style={{ background: "#ffffff1a", color: "#f4f2ec" }}
+                >
+                  Exit demo
+                </button>
+              </form>
+              <Link
+                href="/sign-up?utm_source=demo&utm_medium=sales"
+                className="flex items-center gap-1.5 px-3 py-1 rounded-md text-[12.5px] font-medium"
+                style={{ background: "#f4f2ec", color: "var(--pine)" }}
+              >
+                <ArrowUpCircle size={14} /> Claim your kitchen
+              </Link>
+            </div>
+          </div>
+        )}
         {/* Owner "preview as staff" is a dev-only affordance (cookie-based).
             With real auth, staff are actually staff — no preview banner. */}
         {role === "staff" && !process.env.CLERK_SECRET_KEY && (

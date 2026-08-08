@@ -3,8 +3,25 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { isSuperAdmin } from "@/lib/admin";
+import { DEMO_COOKIE, verifyDemoToken } from "@/lib/demo-session";
 import type { Business } from "@/generated/prisma/client";
 import type { Role } from "@/lib/permissions";
+
+/**
+ * Resolve a demo session from the signed pf_demo cookie, or null. Loads ONLY a
+ * business flagged `isDemo` — a demo cookie can never reach a real tenant, even
+ * if its signature were somehow forged. Callers must give a REAL login priority
+ * over this (a signed-in owner is never dropped into demo mode).
+ */
+async function resolveDemoContext(): Promise<AuthContext | null> {
+  const store = await cookies();
+  const token = store.get(DEMO_COOKIE)?.value;
+  const businessId = verifyDemoToken(token);
+  if (!businessId) return null;
+  const business = await db.business.findFirst({ where: { id: businessId, isDemo: true } });
+  if (!business) return null;
+  return { business, userId: null, role: "owner", userName: "Demo" };
+}
 
 /**
  * Auth seam — the ONLY place the app learns which business/tenant (and role) the
@@ -42,7 +59,12 @@ export type AuthContext = {
 // each firing their own. Big latency win on every dashboard navigation.
 export const getAuthContext = cache(async (): Promise<AuthContext | null> => {
   if (USE_DEV_AUTH) {
+    // A demo cookie takes precedence in dev too, so demo mode is testable.
+    const demo = await resolveDemoContext();
+    if (demo) return demo;
     const business = await db.business.findFirst({
+      // Never let a stray demo tenant become the default dev business.
+      where: { isDemo: false },
       orderBy: { createdAt: "asc" },
     });
     if (!business) return null;
@@ -55,7 +77,13 @@ export const getAuthContext = cache(async (): Promise<AuthContext | null> => {
   // dev-stub path never touches Clerk.
   const { auth, currentUser } = await import("@clerk/nextjs/server");
   const { userId } = await auth();
-  if (!userId) redirect("/sign-in");
+  // A REAL login always wins. Only when there's no signed-in user do we consider
+  // a demo session — so a real owner can never be dropped into demo mode.
+  if (!userId) {
+    const demo = await resolveDemoContext();
+    if (demo) return demo;
+    redirect("/sign-in");
+  }
 
   let user = await db.user.findUnique({
     where: { authProviderId: userId },

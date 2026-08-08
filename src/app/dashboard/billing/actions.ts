@@ -26,6 +26,7 @@ async function ensureBillingCustomer(businessId: string, name: string, existing:
 /** Start (or switch to) a paid plan via Stripe Checkout — the kitchen pays PrepFlow. */
 export async function startKitchenSubscription(tier: string): Promise<BillingActionResult> {
   const { business } = await requireOwner();
+  if (business.isDemo) return { ok: false, message: "This is a demo — claim your kitchen to set up billing." };
   if (!KITCHEN_BILLING_ENABLED) return { ok: false, message: "Billing isn't switched on yet." };
   if (!isTierKey(tier)) return { ok: false, message: "Unknown plan." };
   const price = tierPriceId(tier);

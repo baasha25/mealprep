@@ -57,6 +57,18 @@ async function send(opts: {
 }): Promise<void> {
   try {
     if (!opts.to || (Array.isArray(opts.to) && opts.to.length === 0)) return;
+    // Never send real email from a demo session. Only demo tenants carry the
+    // pf_demo cookie; a real owner never does. (Best-effort: outside a request
+    // scope cookies() throws and we proceed normally.)
+    try {
+      const { cookies } = await import("next/headers");
+      if ((await cookies()).get("pf_demo")?.value) {
+        console.log(`[email:demo] suppressed "${opts.subject}"`);
+        return;
+      }
+    } catch {
+      /* not in a request scope (cron/background) — send as normal */
+    }
     const html = layout(opts);
     if (!resend) {
       console.log(`[email:disabled] would send "${opts.subject}" to ${opts.to}`);

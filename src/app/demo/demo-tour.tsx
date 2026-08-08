@@ -7,7 +7,6 @@ import {
   ArrowRight,
   ArrowLeft,
   Check,
-  ExternalLink,
   LayoutDashboard,
   Store,
   TrendingUp,
@@ -161,6 +160,8 @@ export function DemoTour({ rep, repName }: { rep: string | null; repName: string
   }, [next, prev]);
 
   const signupHref = `/sign-up?utm_source=demo&utm_medium=sales&utm_campaign=${encodeURIComponent(rep || "demo")}`;
+  // Hand off from the walkthrough into a real, empty demo kitchen.
+  const enterHref = `/demo/${encodeURIComponent(rep || "demo")}/enter`;
   const step = STEPS[i];
   const StepIcon = step.icon;
 
@@ -272,11 +273,11 @@ export function DemoTour({ rep, repName }: { rep: string | null; repName: string
                 </button>
               ) : (
                 <Link
-                  href={signupHref}
+                  href={enterHref}
                   className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-[14px] font-medium"
                   style={{ background: "var(--pine)", color: "#f4f2ec" }}
                 >
-                  Start free <ArrowRight size={16} />
+                  Explore the app yourself <ArrowRight size={16} />
                 </Link>
               )}
             </div>
@@ -310,15 +311,13 @@ export function DemoTour({ rep, repName }: { rep: string | null; repName: string
             </span>
           </div>
           <div className="flex items-center gap-2">
-            <a
-              href="/store/greenleaf-kitchen"
-              target="_blank"
-              rel="noreferrer"
+            <Link
+              href={enterHref}
               className="hidden sm:inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[13.5px] font-medium"
               style={{ border: "1px solid var(--line)", color: "var(--ink)" }}
             >
-              See a live storefront <ExternalLink size={14} />
-            </a>
+              Explore the app <ArrowRight size={14} />
+            </Link>
             <Link
               href={signupHref}
               className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-[13.5px] font-medium"

@@ -15,6 +15,7 @@ export default async function AdminPage() {
   await requireSuperAdmin();
 
   const businesses = await db.business.findMany({
+    where: { isDemo: false }, // throwaway demo tenants never appear in the operator panel
     orderBy: { createdAt: "desc" },
     include: {
       users: { select: { email: true, role: true } },
