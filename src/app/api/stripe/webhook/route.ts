@@ -196,6 +196,25 @@ export async function POST(req: NextRequest) {
         break;
       }
 
+      case "charge.refunded": {
+        const charge = event.data.object as Stripe.Charge;
+        const pi = typeof charge.payment_intent === "string" ? charge.payment_intent : charge.payment_intent?.id;
+        if (pi) {
+          const payment = await db.payment.findFirst({ where: { stripePaymentIntentId: pi } });
+          if (payment) {
+            const fully = (charge.amount_refunded ?? 0) >= payment.amountCents;
+            await db.payment.update({
+              where: { id: payment.id },
+              data: { refundedAmountCents: charge.amount_refunded ?? 0, status: fully ? "refunded" : "partially_refunded" },
+            });
+            if (fully) {
+              await db.order.updateMany({ where: { id: payment.orderId, status: { not: "canceled" } }, data: { status: "refunded" } });
+            }
+          }
+        }
+        break;
+      }
+
       default:
         break;
     }

@@ -9,6 +9,7 @@ import { ORDER_TYPE_LABEL } from "@/lib/order-status";
 import { StatusControl } from "../status-control";
 import { updateOrderStatus } from "../actions";
 import { OrderLossControl } from "./order-loss-control";
+import { RefundButton } from "./refund-button";
 
 export default async function OrderDetailPage({
   params,
@@ -110,6 +111,12 @@ export default async function OrderDetailPage({
               .filter((it) => it.mealId)
               .map((it) => ({ mealId: it.mealId as string, name: it.nameSnapshot, qty: it.qty }))}
           />
+
+          {!isStaff && order.status !== "refunded" && order.status !== "canceled" && (
+            <div className="mt-4 pt-4" style={{ borderTop: "1px solid var(--line)" }}>
+              <RefundButton orderId={order.id} amountLabel={formatCents(Math.max(0, order.totalCents - order.giftRedeemedCents))} />
+            </div>
+          )}
         </Card>
 
         <Card>

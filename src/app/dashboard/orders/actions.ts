@@ -3,7 +3,8 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
-import { requireBusiness } from "@/lib/auth";
+import { requireBusiness, requireOwner } from "@/lib/auth";
+import { stripe, STRIPE_ENABLED } from "@/lib/stripe";
 import { plateCostFromRecipe } from "@/lib/profitability";
 import { mealLossCents } from "@/lib/loss";
 
@@ -46,6 +47,46 @@ export async function updateOrderStatus(formData: FormData) {
   revalidatePath("/dashboard/orders");
   revalidatePath(`/dashboard/orders/${parsed.data.orderId}`);
   revalidatePath("/dashboard");
+}
+
+export type RefundResult = { ok: boolean; message?: string };
+
+/**
+ * Refund an order (owner only). If it was paid through Stripe we issue a real
+ * Stripe refund; the `charge.refunded` webhook then confirms it. Cash/POS orders
+ * are simply marked refunded. Sets the order + payment to refunded either way.
+ */
+export async function refundOrder(orderId: string): Promise<RefundResult> {
+  const { business } = await requireOwner();
+  const order = await db.order.findFirst({
+    where: { id: orderId, businessId: business.id },
+    include: { payments: true },
+  });
+  if (!order) return { ok: false, message: "Order not found." };
+  if (order.status === "refunded") return { ok: false, message: "This order is already refunded." };
+
+  const payment = order.payments.find((p) => p.stripePaymentIntentId?.startsWith("pi_")) ?? order.payments[0];
+
+  // Real Stripe refund when we have a payment intent; otherwise it's cash/POS.
+  if (STRIPE_ENABLED && payment?.stripePaymentIntentId?.startsWith("pi_")) {
+    try {
+      await stripe.refunds.create({ payment_intent: payment.stripePaymentIntentId });
+    } catch (err) {
+      return { ok: false, message: `Stripe refund failed: ${(err as Error).message}` };
+    }
+  }
+
+  await db.$transaction([
+    db.order.update({ where: { id: order.id }, data: { status: "refunded" } }),
+    ...(payment
+      ? [db.payment.update({ where: { id: payment.id }, data: { status: "refunded", refundedAmountCents: payment.amountCents } })]
+      : []),
+  ]);
+
+  revalidatePath(`/dashboard/orders/${order.id}`);
+  revalidatePath("/dashboard/orders");
+  revalidatePath("/dashboard");
+  return { ok: true, message: "Order refunded. It no longer counts toward revenue." };
 }
 
 // Reasons that can trace to a specific order (a subset of all LossReasons).
