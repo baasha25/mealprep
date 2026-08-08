@@ -106,7 +106,7 @@ export function SettingsForm({ initial }: { initial: SettingsInitial }) {
           note="Stored as integer cents / basis points"
         />
         <div className="grid sm:grid-cols-3 gap-4">
-          <Field label="Subscription discount (%)">
+          <Field label="Subscription discount (%)" hint="The discount subscribers get vs. ordering one-off — applied to their subtotal before tax.">
             <input
               name="subDiscount"
               type="number"
@@ -117,7 +117,7 @@ export function SettingsForm({ initial }: { initial: SettingsInitial }) {
             />
             <ErrorText msg={errors.subDiscount} />
           </Field>
-          <Field label="Tax rate (%)">
+          <Field label="Tax rate (%)" hint="Sales tax charged to customers, on the discounted subtotal. Use your local rate (e.g. 13% HST).">
             <input
               name="taxRate"
               type="number"
@@ -152,7 +152,7 @@ export function SettingsForm({ initial }: { initial: SettingsInitial }) {
             </div>
             <ErrorText msg={errors.tier} />
           </Field>
-          <Field label="Delivery fee ($)">
+          <Field label="Delivery fee ($)" hint="Flat fee added to delivery orders.">
             <input
               name="deliveryFee"
               type="number"
@@ -163,7 +163,7 @@ export function SettingsForm({ initial }: { initial: SettingsInitial }) {
             />
             <ErrorText msg={errors.deliveryFee} />
           </Field>
-          <Field label="Processing fee ($)">
+          <Field label="Processing fee ($)" hint="Flat per-order fee (e.g. packaging/handling). Separate from Stripe's card processing.">
             <input
               name="processingFee"
               type="number"
@@ -174,7 +174,7 @@ export function SettingsForm({ initial }: { initial: SettingsInitial }) {
             />
             <ErrorText msg={errors.processingFee} />
           </Field>
-          <Field label="Minimum order ($)">
+          <Field label="Minimum order ($)" hint="Orders below this can't check out. 0 = no minimum.">
             <input
               name="minOrder"
               type="number"
@@ -265,7 +265,7 @@ export function SettingsForm({ initial }: { initial: SettingsInitial }) {
           </span>
         </label>
         <div className="grid sm:grid-cols-3 gap-4">
-          <Field label="Points earned per $1">
+          <Field label="Points earned per $1" hint="Loyalty points a customer earns per $1 of order subtotal (before discounts).">
             <input
               name="loyaltyPointsPerDollar"
               type="number"

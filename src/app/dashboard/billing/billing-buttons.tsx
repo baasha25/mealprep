@@ -50,7 +50,7 @@ export function PlanCards({ currentTier, subscribed }: { currentTier: TierKey; s
             </div>
             <ul className="space-y-1 mb-3 text-[12.5px]" style={{ color: "var(--ink-soft)" }}>
               <li className="flex items-center gap-1.5"><Check size={12} style={{ color: "var(--pine)" }} /> {t.orderLimit ? `${t.orderLimit} orders/mo` : "Unlimited orders"}</li>
-              <li className="flex items-center gap-1.5"><Check size={12} style={{ color: "var(--pine)" }} /> {feePctLabel(k)} platform fee</li>
+              <li className="flex items-center gap-1.5" title="PrepFlow's small per-order fee, taken automatically from each sale. It's separate from Stripe's card processing and drops as you move up plans."><Check size={12} style={{ color: "var(--pine)" }} /> {feePctLabel(k)} platform fee</li>
               <li className="flex items-center gap-1.5"><Check size={12} style={{ color: "var(--pine)" }} /> {t.blurb}</li>
             </ul>
             {isCurrent ? (
