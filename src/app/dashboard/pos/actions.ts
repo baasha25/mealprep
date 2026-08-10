@@ -6,7 +6,7 @@ import { db } from "@/lib/db";
 import { requireBusiness } from "@/lib/auth";
 import { computeOrder } from "@/lib/pricing";
 import { orderLimitStatus } from "@/lib/usage";
-import type { TierKey } from "@/lib/tiers";
+import { effectiveTier, type TierKey } from "@/lib/tiers";
 
 const PosInput = z.object({
   items: z
@@ -30,7 +30,7 @@ export async function placePosOrder(input: z.infer<typeof PosInput>): Promise<Po
   if (!settings) return { ok: false, message: "Settings missing." };
 
   // Plan order-cap: block new sales once the monthly allowance is used up.
-  const usage = await orderLimitStatus({ id: business.id, tier: business.tier as TierKey });
+  const usage = await orderLimitStatus({ id: business.id, tier: effectiveTier({ tier: business.tier as TierKey, trialEndsAt: business.trialEndsAt }) });
   if (usage.atLimit) {
     return {
       ok: false,

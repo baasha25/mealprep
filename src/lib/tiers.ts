@@ -26,6 +26,19 @@ export function isTierKey(v: unknown): v is TierKey {
   return v === "starter" || v === "growth" || v === "pro";
 }
 
+/**
+ * The tier a kitchen effectively has RIGHT NOW. During the free trial every
+ * kitchen gets full Pro-level access (unlimited orders, all features) regardless
+ * of the plan they picked; once the trial ends they fall back to their real tier.
+ * Note: this governs features/limits, NOT the per-transaction platform fee, which
+ * always follows the kitchen's actual `tier`.
+ */
+export function effectiveTier(b: { tier: TierKey; trialEndsAt: Date | null }): TierKey {
+  // Local import avoided — trial math is tiny and dependency-free.
+  const active = b.trialEndsAt != null && b.trialEndsAt.getTime() > Date.now();
+  return active ? "pro" : b.tier;
+}
+
 // Human label for the fee, e.g. "1.5%".
 export function feePctLabel(key: TierKey): string {
   return `${TIERS[key].platformFeeBps / 100}%`;

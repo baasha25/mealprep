@@ -281,6 +281,17 @@ export function DemoTour({ rep, repName }: { rep: string | null; repName: string
                 </Link>
               )}
             </div>
+            {/* Jump-ahead link sits right under Back/Next so the hands-on demo is
+                always within reach, not only at the very end. */}
+            {!onFinal && (
+              <Link
+                href={enterHref}
+                className="inline-flex items-center gap-1 mt-3 text-[13px] font-medium"
+                style={{ color: "var(--pine)" }}
+              >
+                Skip ahead and explore the app yourself <ArrowRight size={14} />
+              </Link>
+            )}
           </div>
 
           {/* Screenshot */}

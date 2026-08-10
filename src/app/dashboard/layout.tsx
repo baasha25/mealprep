@@ -3,7 +3,7 @@ import { Eye, AlertTriangle, ArrowUpCircle, Clock, Sparkles } from "lucide-react
 import { requireBusiness } from "@/lib/auth";
 import { exitDemo } from "../demo/[rep]/enter/actions";
 import { orderLimitStatus } from "@/lib/usage";
-import { TIERS, type TierKey } from "@/lib/tiers";
+import { TIERS, effectiveTier, type TierKey } from "@/lib/tiers";
 import { trialStatus } from "@/lib/trial";
 import { kitchenAccess, KITCHEN_BILLING_ENABLED, type BillingStatus } from "@/lib/kitchen-billing";
 import { Lock } from "lucide-react";
@@ -27,7 +27,7 @@ export default async function DashboardLayout({
   // One query for the whole shell: order usage (also powers the sidebar footer
   // and cap banner). The old cosmetic "N menu items · N orders" counts were two
   // extra DB round-trips on every dashboard page — dropped.
-  const usage = await orderLimitStatus({ id: business.id, tier: business.tier as TierKey });
+  const usage = await orderLimitStatus({ id: business.id, tier: effectiveTier({ tier: business.tier as TierKey, trialEndsAt: business.trialEndsAt }) });
   const showCap = role === "owner" && (usage.atLimit || usage.nearLimit) && !isDemo;
   const planLabel = TIERS[usage.tier].name;
   // Free-trial countdown (owner-only, informational — no lockout until billing).
@@ -155,7 +155,7 @@ export default async function DashboardLayout({
             <span style={{ color: "var(--muted)" }}>
               {trial.nudge
                 ? `Pick your plan before it ends to keep ${business.name} running without a break.`
-                : `Full access to everything — you're previewing the ${planLabel} plan.`}
+                : `Every feature unlocked — you're on full Pro-level access for your 30-day free trial.`}
             </span>
             <Link
               href="/dashboard/billing"

@@ -5,7 +5,7 @@ import { db } from "@/lib/db";
 import { Page, Head, Kpi, Card, CardTitle } from "@/components/ui";
 import { formatCents, formatCents0 } from "@/lib/money";
 import { orderLimitStatus } from "@/lib/usage";
-import { TIERS, type TierKey } from "@/lib/tiers";
+import { TIERS, effectiveTier, type TierKey } from "@/lib/tiers";
 import { RangeFilter } from "@/components/range-filter";
 import { Greeting } from "@/components/greeting";
 import { toRangeKey, rangeWhere, rangeLabel } from "@/lib/date-range";
@@ -52,7 +52,7 @@ export default async function DashboardPage({
   if (isOwner) {
     // Revenue KPIs exclude canceled/refunded orders — those were never earned.
     const where = { businessId: business.id, ...rangeWhere(range), ...revenueStatusWhere };
-    const usage = await orderLimitStatus({ id: business.id, tier: business.tier as TierKey });
+    const usage = await orderLimitStatus({ id: business.id, tier: effectiveTier({ tier: business.tier as TierKey, trialEndsAt: business.trialEndsAt }) });
     const [orders, subCount, agg] = await Promise.all([
       db.order.count({ where }),
       db.subscription.count({ where: { businessId: business.id, status: "active" } }),

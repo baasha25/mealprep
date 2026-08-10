@@ -6,7 +6,7 @@ import { db } from "@/lib/db";
 import { stripe, STRIPE_ENABLED } from "@/lib/stripe";
 import { getStorefrontBusiness } from "@/lib/storefront";
 import { orderLimitStatus } from "@/lib/usage";
-import type { TierKey } from "@/lib/tiers";
+import { effectiveTier, type TierKey } from "@/lib/tiers";
 import { sendOrderConfirmation, sendOwnerNewOrder } from "@/lib/email";
 import { computeOrder, type AppliedCoupon } from "@/lib/pricing";
 import {
@@ -129,7 +129,7 @@ export async function placeOrder(input: PlaceOrderInputT): Promise<PlaceOrderRes
 
   // Plan order-cap: a kitchen over its monthly allowance can't take new orders
   // until it upgrades. Customer-facing copy stays generic (not a billing pitch).
-  const usage = await orderLimitStatus({ id: business.id, tier: business.tier as TierKey });
+  const usage = await orderLimitStatus({ id: business.id, tier: effectiveTier({ tier: business.tier as TierKey, trialEndsAt: business.trialEndsAt }) });
   if (usage.atLimit) {
     return { ok: false, message: "This kitchen has paused new orders for now. Please check back soon." };
   }
