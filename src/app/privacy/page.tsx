@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { LegalDoc, Section, LEGAL_CONTACT } from "@/components/legal-doc";
+import { LegalDoc, Section, LEGAL_CONTACT, LEGAL_ENTITY, LEGAL_ADDRESS } from "@/components/legal-doc";
 
 export const metadata: Metadata = {
   title: "Privacy Policy — PrepFlow",
@@ -8,12 +8,12 @@ export const metadata: Metadata = {
 
 export default function PrivacyPage() {
   return (
-    <LegalDoc title="Privacy Policy" updated="August 1, 2026">
+    <LegalDoc title="Privacy Policy" updated="August 13, 2026">
       <p className="text-[14px] leading-relaxed" style={{ color: "var(--ink-soft)" }}>
-        This Privacy Policy explains how PrepFlow (&quot;we&quot;, &quot;us&quot;) collects, uses, and shares personal
-        information when you use PrepFlow (the &quot;Service&quot;). We handle personal information in
-        accordance with Canada&apos;s <em>Personal Information Protection and Electronic Documents Act</em>{" "}
-        (PIPEDA) and, where applicable, other privacy laws.
+        This Privacy Policy explains how PrepFlow — operated by {LEGAL_ENTITY} (&quot;we&quot;, &quot;us&quot;) —
+        collects, uses, and shares personal information when you use PrepFlow (the &quot;Service&quot;). We
+        handle personal information in accordance with Canada&apos;s <em>Personal Information Protection
+        and Electronic Documents Act</em> (PIPEDA) and, where applicable, other privacy laws.
       </p>
 
       <Section heading="Our role">
@@ -105,7 +105,11 @@ export default function PrivacyPage() {
       </Section>
 
       <Section heading="Contact">
-        <p>Privacy questions or requests: {LEGAL_CONTACT}.</p>
+        <p>
+          The organization responsible for personal information under this Policy is {LEGAL_ENTITY}.
+          Privacy questions or requests (including access, correction, or deletion):{" "}
+          {LEGAL_CONTACT}.{LEGAL_ADDRESS ? ` Mailing address: ${LEGAL_ADDRESS}.` : ""}
+        </p>
       </Section>
     </LegalDoc>
   );

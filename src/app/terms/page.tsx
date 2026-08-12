@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { LegalDoc, Section, LEGAL_CONTACT } from "@/components/legal-doc";
+import { LegalDoc, Section, LEGAL_CONTACT, LEGAL_ENTITY, LEGAL_ADDRESS } from "@/components/legal-doc";
 
 export const metadata: Metadata = {
   title: "Terms of Service — PrepFlow",
@@ -8,12 +8,13 @@ export const metadata: Metadata = {
 
 export default function TermsPage() {
   return (
-    <LegalDoc title="Terms of Service" updated="August 1, 2026">
+    <LegalDoc title="Terms of Service" updated="August 13, 2026">
       <p className="text-[14px] leading-relaxed" style={{ color: "var(--ink-soft)" }}>
         These Terms of Service (&quot;Terms&quot;) govern your access to and use of PrepFlow (the
-        &quot;Service&quot;), operated by PrepFlow (&quot;PrepFlow&quot;, &quot;we&quot;, &quot;us&quot;). By creating an account or
-        using the Service, you agree to these Terms. If you are using PrepFlow on behalf of a
-        business, you agree on its behalf and represent that you are authorized to do so.
+        &quot;Service&quot;). PrepFlow is operated by {LEGAL_ENTITY} (&quot;PrepFlow&quot;, &quot;we&quot;, &quot;us&quot;). By
+        creating an account or using the Service, you agree to these Terms. If you are using
+        PrepFlow on behalf of a business, you agree on its behalf and represent that you are
+        authorized to do so.
       </p>
 
       <Section heading="1. The Service">
@@ -137,7 +138,10 @@ export default function TermsPage() {
       </Section>
 
       <Section heading="15. Contact">
-        <p>Questions about these Terms: {LEGAL_CONTACT}.</p>
+        <p>
+          These Terms are between you and {LEGAL_ENTITY}. Questions about these Terms:{" "}
+          {LEGAL_CONTACT}.{LEGAL_ADDRESS ? ` Mailing address: ${LEGAL_ADDRESS}.` : ""}
+        </p>
       </Section>
     </LegalDoc>
   );

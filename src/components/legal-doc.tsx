@@ -4,6 +4,12 @@ import { Leaf } from "lucide-react";
 /** Contact address used across the legal pages — change in ONE place. */
 export const LEGAL_CONTACT = "support@prepflow.ca";
 
+/** The legal entity that operates PrepFlow. Named across the legal pages. */
+export const LEGAL_ENTITY = "2557551 Ontario Inc., operating as CodeSmart";
+
+/** Registered/mailing address for legal notices. Set once provided; rendered only if non-empty. */
+export const LEGAL_ADDRESS = "";
+
 /** Shared, brand-styled shell for the Terms / Privacy pages. */
 export function LegalDoc({
   title,
