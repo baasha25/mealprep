@@ -5,6 +5,7 @@ import "./globals.css";
 import { AttributionCapture } from "@/components/attribution-capture";
 import { Analytics } from "@/components/analytics";
 import { ConsentBanner } from "@/components/consent-banner";
+import { EnvRibbon } from "@/components/env-ribbon";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -39,6 +40,7 @@ export default function RootLayout({
         <Analytics />
         {children}
         <ConsentBanner />
+        <EnvRibbon />
       </body>
     </html>
   );
