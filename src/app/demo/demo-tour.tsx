@@ -41,7 +41,7 @@ const STEPS: Step[] = [
     points: [
       "Live revenue, orders, and average order value",
       "Active subscriptions and plan usage at a glance",
-      "Everything below rolls up from real orders — nothing is faked",
+      "Everything below rolls up from real orders",
     ],
     img: "/demo/overview.png",
     imgAlt: "PrepFlow owner dashboard showing revenue, meals ordered, and subscriptions",
