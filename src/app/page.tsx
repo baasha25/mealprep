@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import {
   ArrowRight,
   TrendingDown,
@@ -21,16 +20,11 @@ import {
 import { SiteNav } from "@/components/marketing/site-nav";
 import { Faq } from "@/components/marketing/faq";
 
-export const dynamic = "force-dynamic";
+// Static marketing page — prerendered and served from the CDN for an instant
+// first load. A signed-in owner is bounced to /dashboard by middleware (so this
+// page never needs to run auth or render on demand).
 
-export default async function Home() {
-  // A signed-in owner landing on the marketing root goes straight to work.
-  if (process.env.CLERK_SECRET_KEY) {
-    const { auth } = await import("@clerk/nextjs/server");
-    const { userId } = await auth();
-    if (userId) redirect("/dashboard");
-  }
-
+export default function Home() {
   return (
     <div style={{ background: "var(--paper)" }}>
       <SiteNav />

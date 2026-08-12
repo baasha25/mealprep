@@ -21,6 +21,13 @@ const isDemoAllowed = createRouteMatcher(["/dashboard(.*)"]);
 
 const clerkHandler = process.env.CLERK_SECRET_KEY
   ? clerkMiddleware(async (auth, req) => {
+      // The marketing landing is now a static page. A signed-in owner who hits
+      // it goes straight to work — handled here so `/` itself stays static/CDN.
+      if (req.nextUrl.pathname === "/") {
+        const { userId } = await auth();
+        if (userId) return NextResponse.redirect(new URL("/dashboard", req.url));
+        return;
+      }
       if (!isProtected(req)) return;
       // A present demo cookie lets the dashboard through WITHOUT Clerk. This is
       // safe: getAuthContext still verifies the signature and only ever loads a
