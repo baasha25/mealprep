@@ -31,6 +31,7 @@ import {
   CalendarClock,
   Trash2,
   CreditCard,
+  BookOpen,
   type LucideIcon,
 } from "lucide-react";
 
@@ -86,6 +87,10 @@ const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
       ["/dashboard/import", "Import data", Upload],
       ["/dashboard/settings", "Settings", Cog],
     ],
+  },
+  {
+    label: "Help",
+    items: [["/dashboard/guide", "Guide", BookOpen]],
   },
 ];
 
