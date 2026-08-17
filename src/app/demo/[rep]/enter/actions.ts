@@ -5,6 +5,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { TIERS } from "@/lib/tiers";
+import { trialEndFrom } from "@/lib/trial";
 import {
   DEMO_COOKIE,
   DEMO_SESSION_SECONDS,
@@ -41,14 +42,17 @@ export async function enterDemo(
   }
 
   // A blank kitchen the rep fills in live — default settings only, no meals,
-  // customers, or orders. Comped + no trial so no billing banners fire; the
-  // dashboard shows the dedicated demo banner instead.
+  // customers, or orders. Comped so no billing banners fire (the dashboard shows
+  // the dedicated demo banner instead), and given a trial window so it runs at
+  // full Pro level — the demo should show every feature, including the Pro-only
+  // AI invoice scanner.
   const business = await db.business.create({
     data: {
       name: "Demo Kitchen",
       slug: `demo-${randomUUID().slice(0, 8)}`,
       isDemo: true,
       billingComped: true,
+      trialEndsAt: trialEndFrom(),
       settings: { create: { platformFeeBps: TIERS.starter.platformFeeBps } },
     },
     select: { id: true },

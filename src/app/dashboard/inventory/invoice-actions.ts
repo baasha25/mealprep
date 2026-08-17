@@ -7,7 +7,12 @@ import { requireBusiness } from "@/lib/auth";
 import { costPerUnitFromReceipt } from "@/lib/inventory";
 import { ANTHROPIC_ENABLED } from "@/lib/anthropic";
 import { extractInvoice, type InvoiceLine } from "@/lib/invoice-ocr";
-import type { TierKey } from "@/lib/tiers";
+import { effectiveTier, type TierKey } from "@/lib/tiers";
+
+/** Pro-gated, but the 30-day trial grants Pro-level access (and demo kitchens run Pro). */
+function hasPro(business: { tier: string; trialEndsAt: Date | null }): boolean {
+  return effectiveTier({ tier: business.tier as TierKey, trialEndsAt: business.trialEndsAt }) === "pro";
+}
 
 const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
 
@@ -25,7 +30,7 @@ export type ScanResult =
 /** Read an uploaded invoice (base64) and return line items pre-matched to inventory. */
 export async function scanInvoice(base64: string, mediaType: string): Promise<ScanResult> {
   const { business } = await requireBusiness();
-  if ((business.tier as TierKey) !== "pro") {
+  if (!hasPro(business)) {
     return { ok: false, message: "Invoice scanning is a Pro feature. Upgrade your plan in Settings." };
   }
   if (!ANTHROPIC_ENABLED) {
@@ -80,7 +85,7 @@ export type ApplyResult = { ok: boolean; message: string; received?: number };
 /** Turn confirmed invoice lines into stock receipts (adds stock, sets real cost/unit). */
 export async function applyInvoice(input: z.infer<typeof ApplyInput>): Promise<ApplyResult> {
   const { business } = await requireBusiness();
-  if ((business.tier as TierKey) !== "pro") {
+  if (!hasPro(business)) {
     return { ok: false, message: "Invoice scanning is a Pro feature." };
   }
   const parsed = ApplyInput.safeParse(input);

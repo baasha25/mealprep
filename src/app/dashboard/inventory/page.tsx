@@ -6,7 +6,7 @@ import { formatCents } from "@/lib/money";
 import { buildShoppingList, type PurchaseLine } from "@/lib/purchasing";
 import { stockValueCents, toBuyQty, stockStatus } from "@/lib/inventory";
 import { ANTHROPIC_ENABLED } from "@/lib/anthropic";
-import type { TierKey } from "@/lib/tiers";
+import { effectiveTier, type TierKey } from "@/lib/tiers";
 import { ReceiveForm } from "./receive-form";
 import { OpeningStockForm } from "./opening-stock-form";
 import { CountForm } from "./count-form";
@@ -22,7 +22,9 @@ const round2 = (n: number) => Math.round(n * 100) / 100;
 
 export default async function InventoryPage() {
   const { business } = await requireBusiness();
-  const isPro = (business.tier as TierKey) === "pro";
+  // Trial grants Pro-level access, and demo kitchens run Pro — so gate the
+  // scanner UI on the effective tier, not just the chosen plan.
+  const isPro = effectiveTier({ tier: business.tier as TierKey, trialEndsAt: business.trialEndsAt }) === "pro";
 
   const ingredients = await db.ingredient.findMany({
     where: { businessId: business.id },
