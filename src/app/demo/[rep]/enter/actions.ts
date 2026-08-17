@@ -12,6 +12,7 @@ import {
   demoEnabled,
   signDemoToken,
 } from "@/lib/demo-session";
+import { rateLimit, clientIp } from "@/lib/ratelimit";
 
 export type EnterDemoState = { ok: false; message: string };
 
@@ -27,6 +28,12 @@ export async function enterDemo(
 ): Promise<EnterDemoState> {
   if (!demoEnabled()) {
     return { ok: false, message: "The demo isn't configured yet. Set DEMO_PASSCODE and DEMO_SECRET." };
+  }
+  // Throttle passcode attempts per IP so the shared code can't be brute-forced
+  // (and to stop a bot spamming throwaway demo tenants). Inert until Upstash is set.
+  const gate = await rateLimit("demo-enter", await clientIp(), 8, "10 m");
+  if (!gate.ok) {
+    return { ok: false, message: "Too many attempts. Please wait a few minutes and try again." };
   }
   const code = String(formData.get("code") ?? "");
   if (!checkDemoPasscode(code)) {
