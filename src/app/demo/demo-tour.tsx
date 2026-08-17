@@ -217,7 +217,7 @@ export function DemoTour({ rep, repName }: { rep: string | null; repName: string
 
       {/* Body */}
       <main className="flex-1 max-w-6xl w-full mx-auto px-5 py-8 md:py-12">
-        <div className="grid md:grid-cols-[minmax(0,1fr)_minmax(0,1.35fr)] gap-8 md:gap-12 items-center">
+        <div className="grid md:grid-cols-[minmax(0,1fr)_minmax(0,1.35fr)] gap-8 md:gap-12 items-start">
           {/* Narrative */}
           <div>
             <div className="flex items-center gap-2 mb-4">
