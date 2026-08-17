@@ -48,10 +48,22 @@ export async function startConnectOnboarding(): Promise<ConnectResult> {
 
     return link.url ? { ok: true, url: link.url } : { ok: false, message: "Couldn't start onboarding." };
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
+    const msg = err instanceof Error ? err.message : "";
     console.error("[connect] onboarding failed:", msg);
-    // TEMP (diagnostic): surface Stripe's real error to the owner so we can see
-    // exactly what's being rejected. Restored to a friendly message afterward.
-    return { ok: false, message: `Stripe error: ${msg}`.slice(0, 400) };
+    if (/platform profile|complete your platform/i.test(msg)) {
+      return {
+        ok: false,
+        message:
+          "Stripe is still reviewing the platform profile. Once it's approved (usually a few minutes to a day) this will work — please try again shortly.",
+      };
+    }
+    if (/connect/i.test(msg)) {
+      return {
+        ok: false,
+        message:
+          "Stripe Connect isn't fully set up yet. Finish setup in your Stripe Dashboard (Connect → platform setup), then try again.",
+      };
+    }
+    return { ok: false, message: "Couldn't start Stripe onboarding. Please try again in a few minutes." };
   }
 }
