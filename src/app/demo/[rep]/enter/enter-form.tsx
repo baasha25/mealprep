@@ -31,7 +31,7 @@ export function EnterDemoForm({ rep, repName }: { rep: string; repName: string |
             Open the live demo
           </h1>
           <p className="mt-1.5 text-[13.5px] leading-relaxed" style={{ color: "var(--muted)" }}>
-            Enter your team&apos;s access code to open a fresh, empty kitchen you can set up live.
+            Enter your team&apos;s access code to open a ready-to-explore sample kitchen — real menu, orders, and live numbers you can change on the spot.
             {repName ? ` Guided by ${repName}.` : ""}
           </p>
 

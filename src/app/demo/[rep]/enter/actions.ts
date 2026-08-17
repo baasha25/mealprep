@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { TIERS } from "@/lib/tiers";
 import { trialEndFrom } from "@/lib/trial";
+import { seedDemoKitchen } from "@/lib/demo-seed";
 import {
   DEMO_COOKIE,
   DEMO_SESSION_SECONDS,
@@ -18,10 +19,10 @@ import { rateLimit, clientIp } from "@/lib/ratelimit";
 export type EnterDemoState = { ok: false; message: string };
 
 /**
- * Open a live demo: verify the shared passcode, provision a FRESH, EMPTY,
- * isolated demo kitchen for this session, drop a signed cookie, and land the
- * rep in the real dashboard (read-write). Each call makes its own throwaway
- * tenant, so concurrent demos never collide; a cron sweeps them later.
+ * Open a live demo: verify the shared passcode, provision a FRESH isolated demo
+ * kitchen pre-stocked with a costed sample menu + orders, drop a signed cookie,
+ * and land the rep in the real dashboard (read-write). Each call makes its own
+ * throwaway tenant, so concurrent demos never collide; a cron sweeps them later.
  */
 export async function enterDemo(
   _prev: EnterDemoState | null,
@@ -41,11 +42,10 @@ export async function enterDemo(
     return { ok: false, message: "That access code isn't right. Check with your team lead." };
   }
 
-  // A blank kitchen the rep fills in live — default settings only, no meals,
-  // customers, or orders. Comped so no billing banners fire (the dashboard shows
-  // the dedicated demo banner instead), and given a trial window so it runs at
-  // full Pro level — the demo should show every feature, including the Pro-only
-  // AI invoice scanner.
+  // A ready-to-explore sample kitchen. Comped so no billing banners fire (the
+  // dashboard shows the dedicated demo banner instead), and given a trial window
+  // so it runs at full Pro level — the demo should show every feature, including
+  // the Pro-only AI invoice scanner.
   const business = await db.business.create({
     data: {
       name: "Demo Kitchen",
@@ -57,6 +57,16 @@ export async function enterDemo(
     },
     select: { id: true },
   });
+
+  // Stock it with a fully-costed sample menu + orders so the money features
+  // (Profitability, Purchasing, Waste, Analytics) show real dollars the instant
+  // the rep lands — no manual data entry needed. Best-effort: a seed hiccup must
+  // never strand the rep at a broken login, so fall through to an empty kitchen.
+  try {
+    await seedDemoKitchen(business.id);
+  } catch {
+    // Leave the kitchen empty rather than block the demo.
+  }
 
   const token = signDemoToken(business.id);
   if (!token) {

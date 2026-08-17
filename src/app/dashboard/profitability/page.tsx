@@ -60,9 +60,16 @@ export default async function ProfitabilityPage({
     const cost = plateCostFromRecipe(m.ingredients);
     const econ = mealEconomics(m.priceCents, cost);
     const units = unitsByMeal.get(m.id) ?? 0;
-    return { id: m.id, name: m.name, priceCents: m.priceCents, costCents: cost, ...econ, units, contributionCents: econ.marginCents * units };
+    // A meal with no recipe has no known cost — showing "$0 cost / 100% margin"
+    // would be a lie. Flag it, keep it out of the cost-based math, and render "—".
+    const hasRecipe = m.ingredients.length > 0;
+    return { id: m.id, name: m.name, priceCents: m.priceCents, costCents: cost, ...econ, units, contributionCents: econ.marginCents * units, hasRecipe };
   });
-  const rows = classifyMenu(base).sort((a, b) => b.contributionCents - a.contributionCents);
+  // Only costed meals feed the margin/menu-engineering math and the P&L; uncosted
+  // meals are listed separately so their unknown cost never inflates the numbers.
+  const uncosted = base.filter((b) => !b.hasRecipe).sort((a, b) => a.name.localeCompare(b.name));
+  const rows = classifyMenu(base.filter((b) => b.hasRecipe)).sort((a, b) => b.contributionCents - a.contributionCents);
+  const uncostedSoldUnits = uncosted.reduce((s, r) => s + r.units, 0);
 
   const losers = rows.filter((r) => r.losing).length;
   const avgMarginBps = rows.length ? Math.round(rows.reduce((s, r) => s + r.marginBps, 0) / rows.length) : 0;
@@ -85,6 +92,12 @@ export default async function ProfitabilityPage({
 
   // The menu table's contribution column is menu-margin (pre-loss).
   const totalContribution = rows.reduce((s, r) => s + r.contributionCents, 0);
+
+  // Costed meals (with a menu-engineering class) first, then any uncosted meals.
+  const displayRows = [
+    ...rows.map((r) => ({ ...r, costed: true as const })),
+    ...uncosted.map((r) => ({ ...r, costed: false as const })),
+  ];
 
   // Ingredient price-rise alerts from receipts (latest vs previous cost/unit).
   const priced = await db.ingredient.findMany({
@@ -197,6 +210,16 @@ export default async function ProfitabilityPage({
         </div>
       )}
 
+      {/* No-recipe warning: these meals can't be costed, so they're left out of the numbers above. */}
+      {uncosted.length > 0 && (
+        <div className="rounded-xl border px-4 py-3 mb-4 flex gap-2.5 items-start" style={{ borderColor: "var(--clay)", background: "#fbf1ec" }}>
+          <AlertTriangle size={16} style={{ color: "var(--clay)", marginTop: 1 }} />
+          <div className="text-[12.5px]" style={{ color: "var(--ink)" }}>
+            <span className="font-semibold">{uncosted.length} meal{uncosted.length === 1 ? "" : "s"} {uncosted.length === 1 ? "has" : "have"} no recipe yet</span>, so PrepFlow can&apos;t calculate {uncosted.length === 1 ? "its" : "their"} cost. {uncosted.length === 1 ? "It is" : "They are"} shown as &ldquo;—&rdquo; below and left out of the margins and P&amp;L above{uncostedSoldUnits > 0 ? `, even though ${uncosted.length === 1 ? "it" : "they"} sold ${uncostedSoldUnits} unit${uncostedSoldUnits === 1 ? "" : "s"} this period` : ""}. Add each meal&apos;s ingredients (Menu → meal → Edit) to see real cost, margin, and profit.
+          </div>
+        </div>
+      )}
+
       {/* Profitability table */}
       <div className="rounded-xl border overflow-hidden mb-4" style={{ borderColor: "var(--line)", background: "var(--surface)" }}>
         <div className="hidden sm:grid grid-cols-[1.5fr_80px_80px_90px_70px_70px_110px] gap-3 px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wide" style={{ color: "var(--muted)", borderBottom: "1px solid var(--line)" }}>
@@ -208,7 +231,25 @@ export default async function ProfitabilityPage({
           <div className="text-right">Sold</div>
           <div className="text-right">Contribution</div>
         </div>
-        {rows.map((r) => {
+        {displayRows.map((r) => {
+          // Uncosted meal (no recipe): show "—" for every cost-based figure and an
+          // "Add recipe" prompt instead of a menu-engineering badge — never a fake 100%.
+          if (!r.costed) {
+            return (
+              <div key={r.id} className="grid sm:grid-cols-[1.5fr_80px_80px_90px_70px_70px_110px] grid-cols-2 gap-3 px-4 py-3 items-center" style={{ borderBottom: "1px solid var(--line)" }}>
+                <div className="min-w-0">
+                  <div className="text-[13.5px] font-medium truncate" style={{ color: "var(--ink)" }}>{r.name}</div>
+                  <Link href={`/dashboard/menu/${r.id}/edit`} className="inline-block mt-0.5 text-[10.5px] px-1.5 py-0.5 rounded font-medium" style={{ background: "var(--paper-2, #efe9dd)", color: "var(--clay)" }}>Add recipe to cost</Link>
+                </div>
+                <div className="text-[12.5px] text-right" style={{ color: "var(--ink-soft)" }}>{formatCents(r.priceCents)}</div>
+                <div className="text-[12.5px] text-right" style={{ color: "var(--muted)" }}>—</div>
+                <div className="text-[12.5px] text-right" style={{ color: "var(--muted)" }}>—</div>
+                <div className="text-[12.5px] text-right" style={{ color: "var(--muted)" }}>—</div>
+                <div className="text-[12.5px] text-right" style={{ color: "var(--muted)" }}>{r.units}</div>
+                <div className="disp text-[14px] text-right" style={{ color: "var(--muted)" }}>—</div>
+              </div>
+            );
+          }
           const cs = CLASS_STYLE[r.menuClass];
           return (
             <div key={r.id} className="grid sm:grid-cols-[1.5fr_80px_80px_90px_70px_70px_110px] grid-cols-2 gap-3 px-4 py-3 items-center" style={{ borderBottom: "1px solid var(--line)" }}>
