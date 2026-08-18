@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useRef, useState } from "react";
 import Link from "next/link";
 import {
   Check,
@@ -13,13 +13,16 @@ import {
   Milk,
   Nut,
   Fish,
+  ImagePlus,
+  Loader2,
+  X,
   type LucideIcon,
 } from "lucide-react";
 import { Card, CardTitle, Field, INP, btnPrimary } from "@/components/ui";
 import { DIET_OPTS, ALLERGENS, UNITS } from "@/lib/menu-constants";
 import { canConvert } from "@/lib/units";
 import { mealMacrosFromRecipe, recipeHasNutrition } from "@/lib/nutrition";
-import type { MealActionState } from "./actions";
+import { signMealImageUpload, type MealActionState } from "./actions";
 
 const ALLERGEN_ICON: Record<string, LucideIcon> = {
   gluten: Wheat,
@@ -47,6 +50,7 @@ export type MealFormInitial = {
   allergens: string[];
   active: boolean;
   swatch: string;
+  imageUrl: string;
   shelfLifeDays: string;
   ingredients: IngredientRow[];
 };
@@ -56,6 +60,120 @@ const inputStyle = {
   background: "var(--paper)",
   color: "var(--ink)",
 } as const;
+
+/**
+ * Meal photo uploader. The file goes straight from the browser to Cloudinary
+ * (signed on the server), and we keep only the returned URL in a hidden field
+ * the form submits. Falls back to a clear "not set up" note when Cloudinary
+ * isn't configured, so the form still works without it.
+ */
+function MealImageField({ initial }: { initial: string }) {
+  const [url, setUrl] = useState(initial);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  async function onPick(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // allow re-picking the same file later
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setError("Please choose an image file (JPG, PNG, or WebP).");
+      return;
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      setError("That image is over 8 MB. Please choose a smaller photo.");
+      return;
+    }
+    setError(null);
+    setBusy(true);
+    try {
+      const sig = await signMealImageUpload();
+      if (!sig.ok) {
+        setError(sig.message);
+        return;
+      }
+      const body = new FormData();
+      body.append("file", file);
+      body.append("api_key", sig.apiKey);
+      body.append("timestamp", String(sig.timestamp));
+      body.append("signature", sig.signature);
+      body.append("folder", sig.folder);
+      const res = await fetch(`https://api.cloudinary.com/v1_1/${sig.cloudName}/image/upload`, {
+        method: "POST",
+        body,
+      });
+      const data = await res.json();
+      if (!res.ok || !data.secure_url) {
+        setError("Upload failed. Please try again.");
+        return;
+      }
+      setUrl(data.secure_url as string);
+    } catch {
+      setError("Upload failed — check your connection and try again.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="mt-4">
+      <input type="hidden" name="imageUrl" value={url} />
+      <label className="text-[12.5px] font-medium" style={{ color: "var(--ink)" }}>
+        Meal photo
+      </label>
+      <p className="text-[11.5px] mt-0.5 mb-2" style={{ color: "var(--muted)" }}>
+        Shown big on your storefront — the #1 thing that sells a meal. Landscape or square,
+        at least 1000px wide, JPG/PNG/WebP up to 8 MB. We optimize it automatically.
+      </p>
+      <div className="flex items-center gap-3">
+        <div
+          className="relative w-28 h-28 rounded-lg overflow-hidden grid place-items-center shrink-0"
+          style={{ background: "var(--paper)", border: "1px solid var(--line)" }}
+        >
+          {url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={url} alt="Meal" className="w-full h-full object-cover" />
+          ) : (
+            <ImagePlus size={22} style={{ color: "var(--muted)" }} />
+          )}
+          {busy && (
+            <div className="absolute inset-0 grid place-items-center" style={{ background: "#00000055" }}>
+              <Loader2 size={20} className="animate-spin" color="#fff" />
+            </div>
+          )}
+        </div>
+        <div className="flex flex-col gap-2">
+          <button
+            type="button"
+            onClick={() => fileRef.current?.click()}
+            disabled={busy}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-[12.5px] font-medium disabled:opacity-60"
+            style={{ background: "var(--paper)", color: "var(--ink)", border: "1px solid var(--line)" }}
+          >
+            <ImagePlus size={14} /> {busy ? "Uploading…" : url ? "Replace photo" : "Upload photo"}
+          </button>
+          {url && !busy && (
+            <button
+              type="button"
+              onClick={() => setUrl("")}
+              className="flex items-center gap-1.5 text-[12px]"
+              style={{ color: "var(--clay)" }}
+            >
+              <X size={13} /> Remove photo
+            </button>
+          )}
+        </div>
+        <input ref={fileRef} type="file" accept="image/*" onChange={onPick} className="hidden" />
+      </div>
+      {error && (
+        <p className="text-[11.5px] mt-2" style={{ color: "var(--clay)" }}>
+          {error}
+        </p>
+      )}
+    </div>
+  );
+}
 
 export function MealForm({
   action,
@@ -223,6 +341,7 @@ export function MealForm({
             style={inputStyle}
           />
         </Field>
+        <MealImageField initial={initial.imageUrl} />
         <Field label="Diet category" className="mt-4">
           <div className="flex gap-1.5 flex-wrap">
             {DIET_OPTS.map((d) => {

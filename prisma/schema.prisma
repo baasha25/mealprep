@@ -260,7 +260,8 @@ model Meal {
   description String?
   diet        String?
   priceCents  Int
-  swatch      String   @default("#8a5a3c")
+  swatch      String   @default("#8a5a3c") // fallback card color when there's no photo
+  imageUrl    String?  // customer-facing meal photo (Cloudinary secure URL); null = show swatch placeholder
   // Macros
   calories  Int      @default(0)
   proteinG  Int      @default(0)

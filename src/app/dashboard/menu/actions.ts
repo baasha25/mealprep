@@ -7,6 +7,12 @@ import { db } from "@/lib/db";
 import { requireBusiness, assertWritable } from "@/lib/auth";
 import { dollarsToCents, percentToBps } from "@/lib/money";
 import { DIET_OPTS, ALLERGENS, UNITS } from "@/lib/menu-constants";
+import {
+  CLOUDINARY_ENABLED,
+  cloudinaryPublicConfig,
+  signCloudinaryParams,
+  isCloudinaryUrl,
+} from "@/lib/cloudinary";
 
 const IngredientInput = z.object({
   name: z.string().trim().min(1),
@@ -32,6 +38,12 @@ const MealInput = z.object({
     (v) => (v === "" || v == null || v === "0" ? null : v),
     z.coerce.number().int().min(1).max(60).nullable(),
   ),
+  // Customer-facing photo URL from the client-side Cloudinary upload. Only accept
+  // a genuine Cloudinary delivery URL; anything else is ignored (stored as null).
+  imageUrl: z.preprocess((v) => {
+    const s = String(v ?? "").trim();
+    return s && isCloudinaryUrl(s) ? s : null;
+  }, z.string().nullable()),
 });
 
 export type MealActionState = {
@@ -71,6 +83,7 @@ function parseMealForm(formData: FormData) {
       active: formData.get("active") === "on",
       swatch: formData.get("swatch"),
       shelfLifeDays: formData.get("shelfLifeDays") ?? "",
+      imageUrl: formData.get("imageUrl") ?? "",
     },
     ingredientRows,
   };
@@ -143,6 +156,7 @@ export async function createMeal(
         diet: d.diet,
         priceCents: dollarsToCents(d.price),
         swatch: d.swatch,
+        imageUrl: d.imageUrl,
         calories: d.calories,
         proteinG: d.proteinG,
         carbsG: d.carbsG,
@@ -196,6 +210,7 @@ export async function updateMeal(
         diet: d.diet,
         priceCents: dollarsToCents(d.price),
         swatch: d.swatch,
+        imageUrl: d.imageUrl,
         calories: d.calories,
         proteinG: d.proteinG,
         carbsG: d.carbsG,
@@ -211,6 +226,34 @@ export async function updateMeal(
   revalidatePath("/dashboard/menu");
   revalidatePath("/dashboard");
   redirect("/dashboard/menu");
+}
+
+export type UploadSignature =
+  | {
+      ok: true;
+      cloudName: string;
+      apiKey: string;
+      timestamp: number;
+      signature: string;
+      folder: string;
+    }
+  | { ok: false; message: string };
+
+/**
+ * Mint a short-lived signature so the browser can upload a meal photo straight
+ * to Cloudinary without the API secret ever leaving the server. Scoped to the
+ * caller's business (its own folder) and owner-gated via requireBusiness.
+ */
+export async function signMealImageUpload(): Promise<UploadSignature> {
+  const { business } = await requireBusiness();
+  if (!CLOUDINARY_ENABLED) {
+    return { ok: false, message: "Photo uploads aren't set up yet." };
+  }
+  const timestamp = Math.floor(Date.now() / 1000);
+  const folder = `prepflow/meals/${business.id}`;
+  const signature = signCloudinaryParams({ folder, timestamp });
+  const { cloudName, apiKey } = cloudinaryPublicConfig();
+  return { ok: true, cloudName, apiKey, timestamp, signature, folder };
 }
 
 export async function toggleMealActive(formData: FormData) {

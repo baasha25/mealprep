@@ -26,6 +26,7 @@ export default async function NewMealPage() {
     allergens: [],
     active: true,
     swatch: swatchForIndex(count),
+    imageUrl: "",
     shelfLifeDays: "",
     ingredients: [],
   };

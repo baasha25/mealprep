@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { Leaf } from "lucide-react";
 import { db } from "@/lib/db";
 import { getStorefrontBusiness } from "@/lib/storefront";
+import { cldImage } from "@/lib/cloudinary";
 import { PlanCards } from "./plan-cards";
 import { Storefront, type StoreMeal, type StoreSettings } from "./storefront";
 
@@ -43,6 +44,7 @@ export default async function StorePage({
     diet: m.diet,
     priceCents: m.priceCents,
     swatch: m.swatch,
+    imageUrl: cldImage(m.imageUrl, { w: 700, h: 400 }),
     allergens: m.allergens,
     calories: m.calories,
     proteinG: m.proteinG,

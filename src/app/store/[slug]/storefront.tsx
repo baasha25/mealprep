@@ -43,6 +43,7 @@ export type StoreMeal = {
   diet: string | null;
   priceCents: number;
   swatch: string;
+  imageUrl: string | null;
   allergens: string[];
   calories: number;
   proteinG: number;
@@ -249,13 +250,23 @@ export function Storefront({
             return (
               <div key={m.id} className="rounded-xl border overflow-hidden flex flex-col" style={cardStyle}>
                 <div
-                  className="h-24 relative grid place-items-center"
+                  className={`${m.imageUrl ? "h-40" : "h-24"} relative grid place-items-center`}
                   style={{ background: `${m.swatch}10` }}
                 >
-                  <Leaf size={26} style={{ color: m.swatch, opacity: 0.5 }} />
+                  {m.imageUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={m.imageUrl}
+                      alt={m.name}
+                      loading="lazy"
+                      className="absolute inset-0 w-full h-full object-cover"
+                    />
+                  ) : (
+                    <Leaf size={26} style={{ color: m.swatch, opacity: 0.5 }} />
+                  )}
                   {m.diet && (
                     <span
-                      className="absolute top-3 left-3 text-[10.5px] px-2 py-0.5 rounded"
+                      className="absolute top-3 left-3 text-[10.5px] px-2 py-0.5 rounded shadow-sm"
                       style={{
                         background: "var(--surface)",
                         color: m.swatch,
@@ -266,17 +277,17 @@ export function Storefront({
                     </span>
                   )}
                   {m.allergens.length > 0 && (
-                    <div className="absolute top-3 right-3 flex gap-1">
+                    <div className="absolute top-2.5 right-2.5 flex gap-1">
                       {m.allergens.map((a) => {
                         const I = ALLERGEN_ICON[a];
                         return I ? (
                           <span
                             key={a}
-                            className="grid place-items-center w-5 h-5 rounded-full"
-                            style={{ background: "var(--surface)", border: "1px solid var(--line)" }}
+                            className="grid place-items-center w-6 h-6 rounded-full shadow-sm"
+                            style={{ background: "#fff", border: "1px solid var(--line)" }}
                             title={`Contains ${a}`}
                           >
-                            <I size={11} color={m.swatch} />
+                            <I size={14} color="var(--clay)" strokeWidth={2.4} />
                           </span>
                         ) : null;
                       })}
