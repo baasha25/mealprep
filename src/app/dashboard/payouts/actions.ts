@@ -48,15 +48,22 @@ export async function startConnectOnboarding(): Promise<ConnectResult> {
 
     return link.url ? { ok: true, url: link.url } : { ok: false, message: "Couldn't start onboarding." };
   } catch (err) {
-    // TEMPORARY DIAGNOSTIC (2026-08-18): surface Stripe's exact raw error so we can
-    // see precisely why live connected-account creation is being refused. Revert to
-    // the friendly messages (below) once diagnosed.
-    const e = err as { type?: string; code?: string; statusCode?: number; raw?: { message?: string }; message?: string };
-    const raw = e?.raw?.message || e?.message || "unknown error";
-    console.error("[connect] onboarding failed:", raw);
-    return {
-      ok: false,
-      message: `Stripe error [${e?.type ?? "?"} / ${e?.code ?? "?"} / HTTP ${e?.statusCode ?? "?"}]: ${raw}`,
-    };
+    const msg = err instanceof Error ? err.message : "";
+    console.error("[connect] onboarding failed:", msg);
+    if (/platform profile|complete your platform/i.test(msg)) {
+      return {
+        ok: false,
+        message:
+          "Stripe is still reviewing the platform profile. Once it's approved (usually a few minutes to a day) this will work — please try again shortly.",
+      };
+    }
+    if (/connect/i.test(msg)) {
+      return {
+        ok: false,
+        message:
+          "Stripe Connect isn't fully set up yet. Finish setup in your Stripe Dashboard (Connect → platform setup), then try again.",
+      };
+    }
+    return { ok: false, message: "Couldn't start Stripe onboarding. Please try again in a few minutes." };
   }
 }
