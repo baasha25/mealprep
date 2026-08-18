@@ -382,7 +382,7 @@ function Pricing() {
       </div>
 
       <p className="text-center text-[12.5px] mt-8" style={{ color: "var(--muted)" }}>
-        Annual billing saves about two months. 30-day free trial — no card required. Prices in USD.
+        Annual billing saves about two months. 30-day free trial — no card required. Prices in CAD.
       </p>
     </section>
   );
