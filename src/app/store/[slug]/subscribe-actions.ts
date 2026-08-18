@@ -3,7 +3,7 @@
 import { z } from "zod";
 import { headers } from "next/headers";
 import { db } from "@/lib/db";
-import { stripe, STRIPE_ENABLED } from "@/lib/stripe";
+import { stripe, STRIPE_ENABLED, PLATFORM_CURRENCY } from "@/lib/stripe";
 import { getStorefrontBusiness } from "@/lib/storefront";
 
 const Input = z.object({
@@ -60,7 +60,7 @@ export async function startPlanSubscription(input: unknown): Promise<SubscribeRe
       {
         quantity: 1,
         price_data: {
-          currency: "usd",
+          currency: PLATFORM_CURRENCY,
           product_data: { name: `${business.name} — ${plan.name}` },
           unit_amount: chargeCents,
           recurring: { interval: "week", interval_count: intervalCount },

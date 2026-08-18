@@ -169,7 +169,7 @@ export default async function KitchenAccountPage({
             {customer.loyaltyPoints.toLocaleString()}
           </div>
           <div className="text-[12px] mt-1" style={{ color: "var(--muted)" }}>
-            Worth {new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(
+            Worth {new Intl.NumberFormat("en-CA", { style: "currency", currency: "CAD" }).format(
               (customer.loyaltyPoints * (business.settings?.loyaltyRedeemCentsPerPoint ?? 5)) / 100,
             )}{" "}
             off your next order · earn 1 per $1 spent

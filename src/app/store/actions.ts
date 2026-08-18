@@ -3,7 +3,7 @@
 import { z } from "zod";
 import { headers } from "next/headers";
 import { db } from "@/lib/db";
-import { stripe, STRIPE_ENABLED } from "@/lib/stripe";
+import { stripe, STRIPE_ENABLED, PLATFORM_CURRENCY } from "@/lib/stripe";
 import { getStorefrontBusiness } from "@/lib/storefront";
 import { orderLimitStatus } from "@/lib/usage";
 import { effectiveTier, type TierKey } from "@/lib/tiers";
@@ -314,7 +314,7 @@ export async function placeOrder(input: PlaceOrderInputT): Promise<PlaceOrderRes
         {
           quantity: 1,
           price_data: {
-            currency: "usd",
+            currency: PLATFORM_CURRENCY,
             unit_amount: amountDueCents,
             product_data: { name: `${business.name} — ${totals.itemCount} meals`, description: `Order #${order.id.slice(-6)}` },
           },
