@@ -12,7 +12,10 @@ export type Diet = (typeof DIET_OPTS)[number];
 export const ALLERGENS = ["gluten", "dairy", "nuts", "fish"] as const;
 export type Allergen = (typeof ALLERGENS)[number];
 
-export const UNITS = ["oz", "cup", "tbsp", "tsp", "ea", "g", "lb"] as const;
+// Weight, then volume, then count. Imperial + metric — the cost converter
+// (src/lib/units.ts) reconciles any two compatible units, so a kitchen can buy
+// in lb and cook in g, or price per kg and use ml (with a density set).
+export const UNITS = ["oz", "lb", "g", "kg", "cup", "tbsp", "tsp", "ml", "l", "ea"] as const;
 export type Unit = (typeof UNITS)[number];
 
 // Card accent colors assigned to new meals (cycled by menu position).
