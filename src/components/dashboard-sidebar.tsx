@@ -67,7 +67,7 @@ const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
       ["/dashboard/purchasing", "Purchasing", Carrot],
       ["/dashboard/inventory", "Inventory", Boxes],
       ["/dashboard/waste", "Waste & Loss", Trash2],
-      ["/dashboard/fulfillment", "Labels & packing", Tag],
+      ["/dashboard/fulfillment", "Labels & Packing Slips", Tag],
       ["/dashboard/routes", "Delivery Routes", Truck],
     ],
   },
