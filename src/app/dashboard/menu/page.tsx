@@ -4,6 +4,7 @@ import { requireBusiness } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { Page, Head } from "@/components/ui";
 import { formatCents } from "@/lib/money";
+import { cldImage } from "@/lib/cloudinary";
 import { toggleMealActive, deleteMeal } from "./actions";
 
 export default async function MenuPage() {
@@ -77,9 +78,18 @@ export default async function MenuPage() {
               }}
             >
               <div
-                className="h-16 relative"
+                className="h-20 relative"
                 style={{ background: `${m.swatch}1a` }}
               >
+                {m.imageUrl && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={cldImage(m.imageUrl, { w: 480, h: 220 }) ?? m.imageUrl}
+                    alt={m.name}
+                    loading="lazy"
+                    className="absolute inset-0 w-full h-full object-cover"
+                  />
+                )}
                 {!m.active && (
                   <span
                     className="absolute top-2 left-2 text-[10px] px-1.5 py-0.5 rounded font-medium"
