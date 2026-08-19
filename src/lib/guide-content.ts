@@ -148,16 +148,18 @@ export const GUIDE: GuideArea[] = [
         use: [
           "Menu → New menu item.",
           "Enter the name and the price (what a customer pays).",
+          "(Recommended) Add a photo — it's the #1 thing that sells a meal on your storefront.",
           "Add a description, diet tag, calories/macros, and allergens if you have them.",
           "(Recommended) Add the recipe — the ingredients and how much of each — so PrepFlow can cost the meal.",
           "Save. It appears on your storefront instantly.",
         ],
         numbers: [
           ["Price", "What the customer pays for this meal."],
+          ["Photo", "The meal's picture, shown large on your storefront. Optional, but the single biggest driver of orders — customers buy food with their eyes. Upload a landscape or square photo (at least 1000px wide; JPG, PNG, or WebP). PrepFlow optimizes it automatically."],
           ["Active / inactive", "Whether the meal shows on your storefront. Turn a meal off to hide it without deleting it."],
           ["Recipe / ingredients", "The ingredients (and amounts) that make the meal. Optional to sell, but required for cost, margin, purchasing, and waste numbers to work."],
         ],
-        tips: ["Prices can be changed any time — Menu → click the meal → edit → Save. The change is live immediately."],
+        tips: ["Prices can be changed any time — Menu → click the meal → edit → Save. The change is live immediately.", "No photo yet? The card falls back to a clean color tile, so your storefront still looks tidy — but a real photo converts far better."],
       },
       {
         id: "adding-a-meal",
@@ -169,9 +171,10 @@ export const GUIDE: GuideArea[] = [
         numbers: [
           ["Name / Price", "Shown to customers. Price is what they pay."],
           ["Diet / Allergens / Macros", "Filters and labels shown on the storefront and on packing labels."],
+          ["Photo", "The meal's picture, shown big on the storefront. Optional but strongly recommended — it's what sells the meal. Upload a landscape or square image (1000px+); it's optimized automatically."],
           ["Ingredient", "Pick an existing ingredient (so it reuses the price you've set) or type a new one."],
-          ["Qty + Unit", "How much of that ingredient the recipe uses (e.g. 8 oz chicken). PrepFlow converts units automatically (lb ↔ oz, cup ↔ ml, etc.)."],
-          ["Trim %", "The share of that ingredient lost in prep — peels, fat, stalks, ends. This is what powers the 'over-bought' waste number in Purchasing."],
+          ["Qty + Unit", "How much of that ingredient the recipe uses (e.g. 8 oz chicken). Units can be imperial or metric (oz, lb, g, kg, cup, ml, l…) — PrepFlow converts automatically (buy in lb, cook in g)."],
+          ["Trim %", "The share of that ingredient lost in prep — peels, fat, stalks, ends. This is what powers the 'over-bought' waste number in Purchasing. Not sure of the number? Tap the calculator icon on the row, enter the raw and trimmed weight, and it works out the % for you."],
         ],
         tips: ["Always pick an ingredient from the dropdown when it already exists, so it uses the cost you set instead of creating a new $0 copy."],
       },
