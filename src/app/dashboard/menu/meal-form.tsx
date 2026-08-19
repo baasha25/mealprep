@@ -16,6 +16,7 @@ import {
   ImagePlus,
   Loader2,
   X,
+  Calculator,
   type LucideIcon,
 } from "lucide-react";
 import { Card, CardTitle, Field, INP, btnPrimary } from "@/components/ui";
@@ -286,6 +287,23 @@ export function MealForm({
   const remRow = (i: number) =>
     setRows((cur) => cur.filter((_, x) => x !== i));
 
+  // Trim calculator: which row's calculator is open, and its raw/after weights.
+  // trim % = (raw − usable) ÷ raw × 100 — computed live, applied to the row.
+  const [calcRow, setCalcRow] = useState<number | null>(null);
+  const [calcRaw, setCalcRaw] = useState("");
+  const [calcAfter, setCalcAfter] = useState("");
+  const openCalc = (i: number) => {
+    setCalcRow((cur) => (cur === i ? null : i));
+    setCalcRaw("");
+    setCalcAfter("");
+  };
+  const calcTrim: number | null = (() => {
+    const raw = Number(calcRaw);
+    const after = Number(calcAfter);
+    if (!(raw > 0) || !(after >= 0) || after > raw) return null;
+    return Math.round(((raw - after) / raw) * 1000) / 10; // one decimal
+  })();
+
   return (
     <form action={formAction} className="space-y-4">
       {/* Hidden, client-controlled fields */}
@@ -503,68 +521,131 @@ export function MealForm({
             <option key={o.name} value={o.name} />
           ))}
         </datalist>
+        {/* Column headers so each field (esp. Trim %) is unambiguous. */}
+        <div className="grid grid-cols-[1fr_68px_82px_72px_auto] gap-2 px-0.5 mb-1 text-[10.5px] font-semibold uppercase tracking-wide" style={{ color: "var(--muted)" }}>
+          <span>Ingredient</span>
+          <span>Qty</span>
+          <span>Unit</span>
+          <span>Trim %</span>
+          <span />
+        </div>
         <div className="space-y-2">
           {rows.map((ing, i) => (
-            <div
-              key={i}
-              className="grid grid-cols-[1fr_68px_82px_72px_auto] gap-2 items-center"
-            >
-              <input
-                name="ingName"
-                value={ing.name}
-                onChange={(e) => setIngName(i, e.target.value)}
-                placeholder="Ingredient"
-                list="pf-ingredients"
-                autoComplete="off"
-                title="Pick an existing ingredient from the list so the recipe uses its real cost & unit. A brand-new name is added at $0 cost until you price it in Inventory."
-                className={INP}
-                style={inputStyle}
-              />
-              <input
-                name="ingQty"
-                type="number"
-                step="0.01"
-                min="0"
-                value={ing.qty}
-                onChange={(e) => updRow(i, "qty", e.target.value)}
-                placeholder="Qty"
-                className={INP}
-                style={inputStyle}
-              />
-              <select
-                name="ingUnit"
-                value={ing.unit}
-                onChange={(e) => updRow(i, "unit", e.target.value)}
-                title="Unit for this recipe amount. It can differ from how the ingredient is priced — the cost converts (e.g. buy per lb, use per oz)."
-                className={INP}
-                style={inputStyle}
-              >
-                {UNITS.map((u) => (
-                  <option key={u}>{u}</option>
-                ))}
-              </select>
-              <input
-                name="ingTrim"
-                type="number"
-                step="0.01"
-                min="0"
-                max="100"
-                value={ing.trimPercent}
-                onChange={(e) => updRow(i, "trimPercent", e.target.value)}
-                placeholder="Trim%"
-                title="Prep waste for this ingredient — peels, stalks, fat, ends. It grosses up how much you buy and shows the 'over-bought' dollars in Purchasing."
-                className={INP}
-                style={inputStyle}
-              />
-              <button
-                type="button"
-                onClick={() => remRow(i)}
-                className="grid place-items-center w-8 h-8 rounded-md"
-                style={{ background: "var(--paper)", border: "1px solid var(--line)" }}
-                aria-label="Remove ingredient"
-              >
-                <Trash2 size={14} style={{ color: "var(--clay)" }} />
-              </button>
+            <div key={i}>
+              <div className="grid grid-cols-[1fr_68px_82px_72px_auto] gap-2 items-center">
+                <input
+                  name="ingName"
+                  value={ing.name}
+                  onChange={(e) => setIngName(i, e.target.value)}
+                  placeholder="Ingredient"
+                  list="pf-ingredients"
+                  autoComplete="off"
+                  title="Pick an existing ingredient from the list so the recipe uses its real cost & unit. A brand-new name is added at $0 cost until you price it in Inventory."
+                  className={INP}
+                  style={inputStyle}
+                />
+                <input
+                  name="ingQty"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={ing.qty}
+                  onChange={(e) => updRow(i, "qty", e.target.value)}
+                  placeholder="Qty"
+                  className={INP}
+                  style={inputStyle}
+                />
+                <select
+                  name="ingUnit"
+                  value={ing.unit}
+                  onChange={(e) => updRow(i, "unit", e.target.value)}
+                  title="Unit for this recipe amount. It can differ from how the ingredient is priced — the cost converts (e.g. buy per lb, use per oz)."
+                  className={INP}
+                  style={inputStyle}
+                >
+                  {UNITS.map((u) => (
+                    <option key={u}>{u}</option>
+                  ))}
+                </select>
+                <div className="relative">
+                  <input
+                    name="ingTrim"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max="100"
+                    value={ing.trimPercent}
+                    onChange={(e) => updRow(i, "trimPercent", e.target.value)}
+                    placeholder="0"
+                    title="Prep waste for this ingredient — peels, stalks, fat, ends. It grosses up how much you buy and shows the 'over-bought' dollars in Purchasing. Not sure? Tap the calculator."
+                    className={`${INP} pr-5`}
+                    style={inputStyle}
+                  />
+                  <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[11px] pointer-events-none" style={{ color: "var(--muted)" }}>%</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => openCalc(i)}
+                    className="grid place-items-center w-8 h-8 rounded-md"
+                    style={{ background: calcRow === i ? "var(--pine)" : "var(--paper)", border: "1px solid var(--line)" }}
+                    title="Work out the trim % from a raw vs. trimmed weight"
+                    aria-label="Trim calculator"
+                  >
+                    <Calculator size={14} style={{ color: calcRow === i ? "#f4f2ec" : "var(--pine)" }} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => remRow(i)}
+                    className="grid place-items-center w-8 h-8 rounded-md"
+                    style={{ background: "var(--paper)", border: "1px solid var(--line)" }}
+                    aria-label="Remove ingredient"
+                  >
+                    <Trash2 size={14} style={{ color: "var(--clay)" }} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Inline trim calculator for this row. */}
+              {calcRow === i && (
+                <div className="mt-2 rounded-lg p-3" style={{ background: "var(--paper)", border: "1px solid var(--line)" }}>
+                  <div className="text-[11.5px] mb-2" style={{ color: "var(--ink)" }}>
+                    <strong>Trim % calculator</strong> — weigh it before and after trimming. Trim % = (raw − usable) ÷ raw.
+                  </div>
+                  <div className="flex items-end gap-2 flex-wrap">
+                    <label className="flex flex-col text-[11px]" style={{ color: "var(--muted)" }}>
+                      Raw weight
+                      <input type="number" step="0.01" min="0" value={calcRaw} onChange={(e) => setCalcRaw(e.target.value)} placeholder="e.g. 1000" className={`${INP} w-28`} style={inputStyle} />
+                    </label>
+                    <label className="flex flex-col text-[11px]" style={{ color: "var(--muted)" }}>
+                      After trimming
+                      <input type="number" step="0.01" min="0" value={calcAfter} onChange={(e) => setCalcAfter(e.target.value)} placeholder="e.g. 700" className={`${INP} w-28`} style={inputStyle} />
+                    </label>
+                    <div className="flex flex-col text-[11px]" style={{ color: "var(--muted)" }}>
+                      Trim
+                      <div className="h-9 flex items-center px-2 rounded-md text-[14px] font-semibold" style={{ color: calcTrim == null ? "var(--muted)" : "var(--pine)", minWidth: 56 }}>
+                        {calcTrim == null ? "—" : `${calcTrim}%`}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      disabled={calcTrim == null}
+                      onClick={() => {
+                        if (calcTrim == null) return;
+                        updRow(i, "trimPercent", String(calcTrim));
+                        setCalcRow(null);
+                      }}
+                      className="h-9 px-3 rounded-md text-[12.5px] font-medium disabled:opacity-50"
+                      style={{ background: "var(--pine)", color: "#f4f2ec" }}
+                    >
+                      Use {calcTrim == null ? "" : `${calcTrim}%`}
+                    </button>
+                  </div>
+                  <p className="text-[10.5px] mt-2" style={{ color: "var(--muted)" }}>
+                    Any weight unit works (g, oz, lb…) as long as both boxes use the same one.
+                  </p>
+                </div>
+              )}
             </div>
           ))}
         </div>
