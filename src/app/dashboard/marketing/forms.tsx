@@ -1,9 +1,15 @@
 "use client";
 
-import { useActionState, useState, useTransition } from "react";
-import { Check, Plus, Gift, Send } from "lucide-react";
+import { useActionState, useRef, useState, useTransition } from "react";
+import { Check, Plus, Gift, Send, ImagePlus, Loader2, X } from "lucide-react";
 import { Field, INP, btnPrimary } from "@/components/ui";
-import { createCoupon, createGiftCard, sendEmailCampaign, type FormState } from "./actions";
+import {
+  createCoupon,
+  createGiftCard,
+  sendEmailCampaign,
+  signCampaignImageUpload,
+  type FormState,
+} from "./actions";
 
 const inputStyle = { borderColor: "var(--line)", background: "var(--paper)", color: "var(--ink)" } as const;
 
@@ -99,16 +105,49 @@ export function CampaignForm() {
   const [segment, setSegment] = useState<"all" | "lapsed" | "subscribers">("all");
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
+  const [imageUrl, setImageUrl] = useState("");
+  const [imgBusy, setImgBusy] = useState(false);
+  const [imgError, setImgError] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
   const [state, setState] = useState<FormState | null>(null);
+
+  async function onPickImage(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    if (!file.type.startsWith("image/")) return setImgError("Please choose an image file.");
+    if (file.size > 8 * 1024 * 1024) return setImgError("Image is over 8 MB — pick a smaller one.");
+    setImgError(null);
+    setImgBusy(true);
+    try {
+      const sig = await signCampaignImageUpload();
+      if (!sig.ok) return setImgError(sig.message);
+      const body = new FormData();
+      body.append("file", file);
+      body.append("api_key", sig.apiKey);
+      body.append("timestamp", String(sig.timestamp));
+      body.append("signature", sig.signature);
+      body.append("folder", sig.folder);
+      const res = await fetch(`https://api.cloudinary.com/v1_1/${sig.cloudName}/image/upload`, { method: "POST", body });
+      const data = await res.json();
+      if (!res.ok || !data.secure_url) return setImgError("Upload failed. Try again.");
+      setImageUrl(data.secure_url as string);
+    } catch {
+      setImgError("Upload failed — check your connection.");
+    } finally {
+      setImgBusy(false);
+    }
+  }
 
   const send = () =>
     start(async () => {
       setState(null);
-      const r = await sendEmailCampaign({ segment, subject, message });
+      const r = await sendEmailCampaign({ segment, subject, message, imageUrl: imageUrl || undefined });
       setState(r);
       if (r.ok) {
         setSubject("");
         setMessage("");
+        setImageUrl("");
       }
     });
 
@@ -155,6 +194,45 @@ export function CampaignForm() {
           className="w-full rounded-lg border px-3 py-2.5 text-[14px] outline-none resize-y"
           style={inputStyle}
         />
+        <p className="text-[11px] mt-1.5" style={{ color: "var(--muted)" }}>
+          Formatting: <code>**bold**</code> · <code>[link text](https://…)</code> · a blank line starts a new paragraph.
+        </p>
+      </div>
+      <div>
+        <label className="block text-[12.5px] font-medium mb-1.5" style={{ color: "var(--ink)" }}>Photo <span style={{ color: "var(--muted)", fontWeight: 400 }}>(optional — shows at the top of the email)</span></label>
+        <div className="flex items-center gap-3">
+          <div className="relative w-24 h-16 rounded-lg overflow-hidden grid place-items-center shrink-0" style={{ background: "var(--paper)", border: "1px solid var(--line)" }}>
+            {imageUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={imageUrl} alt="Campaign" className="w-full h-full object-cover" />
+            ) : (
+              <ImagePlus size={18} style={{ color: "var(--muted)" }} />
+            )}
+            {imgBusy && (
+              <div className="absolute inset-0 grid place-items-center" style={{ background: "#00000055" }}>
+                <Loader2 size={16} className="animate-spin" color="#fff" />
+              </div>
+            )}
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <button
+              type="button"
+              onClick={() => fileRef.current?.click()}
+              disabled={imgBusy}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12.5px] font-medium disabled:opacity-60"
+              style={{ background: "var(--paper)", color: "var(--ink)", border: "1px solid var(--line)" }}
+            >
+              <ImagePlus size={13} /> {imgBusy ? "Uploading…" : imageUrl ? "Replace" : "Add photo"}
+            </button>
+            {imageUrl && !imgBusy && (
+              <button type="button" onClick={() => setImageUrl("")} className="flex items-center gap-1 text-[11.5px]" style={{ color: "var(--clay)" }}>
+                <X size={12} /> Remove
+              </button>
+            )}
+          </div>
+          <input ref={fileRef} type="file" accept="image/*" onChange={onPickImage} className="hidden" />
+        </div>
+        {imgError && <p className="text-[11.5px] mt-1.5" style={{ color: "var(--clay)" }}>{imgError}</p>}
       </div>
       <div className="flex items-center gap-3">
         <button

@@ -1,6 +1,7 @@
 import { Resend } from "resend";
 import { db } from "@/lib/db";
 import { formatCents } from "@/lib/money";
+import { cldImage } from "@/lib/cloudinary";
 
 // Transactional email via Resend. Gated on the key so the app runs without it —
 // when disabled we log what would have been sent instead of failing.
@@ -430,14 +431,22 @@ export async function sendCampaignEmail(opts: {
   brandColor?: string;
   subject: string;
   message: string;
+  imageUrl?: string;
 }): Promise<void> {
-  const bodyHtml = opts.message
-    .split(/\n\n+/)
-    .map(
-      (p) =>
-        `<p style="margin:0 0 12px;color:${INK};font-size:14px;line-height:1.55;">${escapeHtml(p).replace(/\n/g, "<br/>")}</p>`,
-    )
-    .join("");
+  // Optional banner image at the top (Cloudinary-optimized).
+  const img = cldImage(opts.imageUrl, { w: 1000 });
+  const imgHtml = img
+    ? `<img src="${escapeHtml(img)}" alt="" style="width:100%;max-width:560px;border-radius:8px;display:block;margin:0 0 16px;" />`
+    : "";
+  const bodyHtml =
+    imgHtml +
+    opts.message
+      .split(/\n\n+/)
+      .map(
+        (p) =>
+          `<p style="margin:0 0 12px;color:${INK};font-size:14px;line-height:1.55;">${formatCampaignText(p)}</p>`,
+      )
+      .join("");
   await send({
     to: opts.to,
     subject: opts.subject,
@@ -446,6 +455,21 @@ export async function sendCampaignEmail(opts: {
     heading: escapeHtml(opts.subject),
     bodyHtml,
   });
+}
+
+/**
+ * Render a paragraph of campaign text with light Markdown: **bold**, [text](url),
+ * and single newlines → <br/>. Escapes first, so the markers are the only markup
+ * introduced (no HTML injection). Links must be http(s).
+ */
+function formatCampaignText(p: string): string {
+  let html = escapeHtml(p).replace(/\n/g, "<br/>");
+  html = html.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+  html = html.replace(
+    /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g,
+    '<a href="$2" style="color:#2F4536;">$1</a>',
+  );
+  return html;
 }
 
 /* ------------------------------- Utils ---------------------------------- */

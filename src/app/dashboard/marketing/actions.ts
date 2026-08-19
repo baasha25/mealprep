@@ -7,6 +7,12 @@ import { requireBusiness, requireOwner, assertWritable } from "@/lib/auth";
 import { dollarsToCents, formatCents } from "@/lib/money";
 import { appUrl } from "@/lib/app-url";
 import { sendCampaignEmail, sendGiftCard } from "@/lib/email";
+import {
+  CLOUDINARY_ENABLED,
+  cloudinaryPublicConfig,
+  signCloudinaryParams,
+  isCloudinaryUrl,
+} from "@/lib/cloudinary";
 
 export type FormState = { ok: boolean; message?: string };
 
@@ -16,7 +22,27 @@ const CampaignInput = z.object({
   segment: z.enum(["all", "lapsed", "subscribers"]),
   subject: z.string().trim().min(1, "Subject is required").max(140),
   message: z.string().trim().min(1, "Message is required").max(4000),
+  // Optional banner image (Cloudinary URL); anything else is dropped.
+  imageUrl: z.preprocess((v) => {
+    const s = String(v ?? "").trim();
+    return s && isCloudinaryUrl(s) ? s : undefined;
+  }, z.string().optional()),
 });
+
+export type CampaignUploadSignature =
+  | { ok: true; cloudName: string; apiKey: string; timestamp: number; signature: string; folder: string }
+  | { ok: false; message: string };
+
+/** Sign a direct-to-Cloudinary upload for a campaign banner image (owner-gated). */
+export async function signCampaignImageUpload(): Promise<CampaignUploadSignature> {
+  const { business } = await requireOwner();
+  if (!CLOUDINARY_ENABLED) return { ok: false, message: "Image uploads aren't set up yet." };
+  const timestamp = Math.floor(Date.now() / 1000);
+  const folder = `prepflow/campaigns/${business.id}`;
+  const signature = signCloudinaryParams({ folder, timestamp });
+  const { cloudName, apiKey } = cloudinaryPublicConfig();
+  return { ok: true, cloudName, apiKey, timestamp, signature, folder };
+}
 
 const LAPSED_DAYS = 45;
 const MAX_RECIPIENTS = 200;
@@ -26,13 +52,14 @@ export async function sendEmailCampaign(input: {
   segment: string;
   subject: string;
   message: string;
+  imageUrl?: string;
 }): Promise<FormState & { count?: number }> {
   const { business } = await requireOwner();
   const parsed = CampaignInput.safeParse(input);
   if (!parsed.success) {
     return { ok: false, message: parsed.error.issues[0]?.message ?? "Invalid campaign." };
   }
-  const { segment, subject, message } = parsed.data;
+  const { segment, subject, message, imageUrl } = parsed.data;
 
   let emails: string[] = [];
   if (segment === "subscribers") {
@@ -69,7 +96,7 @@ export async function sendEmailCampaign(input: {
   for (let i = 0; i < unique.length; i += 5) {
     await Promise.all(
       unique.slice(i, i + 5).map(async (to) => {
-        await sendCampaignEmail({ to, businessName: business.name, brandColor: business.brandColor, subject, message });
+        await sendCampaignEmail({ to, businessName: business.name, brandColor: business.brandColor, subject, message, imageUrl });
         sent++;
       }),
     );
