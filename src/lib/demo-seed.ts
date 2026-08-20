@@ -21,18 +21,23 @@ const COST: Record<string, number> = {
 };
 const STOCK: Record<string, number> = { oz: 40, cup: 8, ea: 10, tbsp: 20, tsp: 20, lb: 6 };
 
+// Meal photos: free, commercial-use Unsplash images, sized/cropped via Unsplash's
+// own CDN params (robust + optimized, no hotlink-breakage). Makes the demo
+// storefront + menu look real out of the gate. Swap for the merchant's own later.
+const PHOTO = (id: string) => `https://images.unsplash.com/${id}?auto=format&fit=crop&w=800&h=500&q=80`;
+
 const MEALS = [
-  { name: "Grilled Chicken & Quinoa", diet: "High Protein", price: 12.5, swatch: "#8a5a3c", desc: "Lean chicken, fluffy quinoa, roasted broccoli.", cal: 540, p: 42, c: 48, f: 16, allergens: [] as string[],
+  { name: "Grilled Chicken & Quinoa", diet: "High Protein", price: 12.5, swatch: "#8a5a3c", img: PHOTO("photo-1522080213597-473dfd70215c"), desc: "Lean chicken, fluffy quinoa, roasted broccoli.", cal: 540, p: 42, c: 48, f: 16, allergens: [] as string[],
     ing: [["Chicken breast",6,"oz",0.12],["Quinoa",0.75,"cup",0.02],["Broccoli",1,"cup",0.18],["Olive oil",1,"tbsp",0]] },
-  { name: "Salmon & Sweet Potato", diet: "High Protein", price: 14.0, swatch: "#9a5142", desc: "Omega-rich salmon with roasted sweet potato.", cal: 610, p: 38, c: 44, f: 28, allergens: ["fish"],
+  { name: "Salmon & Sweet Potato", diet: "High Protein", price: 14.0, swatch: "#9a5142", img: PHOTO("photo-1621362641986-999b4eb0f5ca"), desc: "Omega-rich salmon with roasted sweet potato.", cal: 610, p: 38, c: 44, f: 28, allergens: ["fish"],
     ing: [["Salmon fillet",6,"oz",0.1],["Sweet potato",1,"ea",0.15],["Asparagus",1,"cup",0.22],["Olive oil",1,"tbsp",0]] },
-  { name: "Vegan Buddha Bowl", diet: "Plant-Based", price: 11.0, swatch: "#5e6b4a", desc: "Chickpeas, brown rice, kale, tahini drizzle.", cal: 480, p: 19, c: 62, f: 18, allergens: ["nuts"],
+  { name: "Vegan Buddha Bowl", diet: "Plant-Based", price: 11.0, swatch: "#5e6b4a", img: PHOTO("photo-1505576633757-0ac1084af824"), desc: "Chickpeas, brown rice, kale, tahini drizzle.", cal: 480, p: 19, c: 62, f: 18, allergens: ["nuts"],
     ing: [["Chickpeas",0.75,"cup",0.03],["Brown rice",0.75,"cup",0.02],["Kale",1,"cup",0.25],["Tahini",1,"tbsp",0]] },
-  { name: "Steak & Roasted Veg", diet: "Keto", price: 15.5, swatch: "#7a4a4a", desc: "Sirloin with brussels sprouts & sweet potato.", cal: 660, p: 46, c: 30, f: 38, allergens: [],
+  { name: "Steak & Roasted Veg", diet: "Keto", price: 15.5, swatch: "#7a4a4a", img: PHOTO("photo-1604909054103-f9ed51a70caf"), desc: "Sirloin with brussels sprouts & sweet potato.", cal: 660, p: 46, c: 30, f: 38, allergens: [],
     ing: [["Sirloin steak",6,"oz",0.14],["Brussels sprouts",1,"cup",0.2],["Sweet potato",1,"ea",0.15],["Olive oil",1,"tbsp",0]] },
-  { name: "Turkey Meatballs & Zoodles", diet: "Low Carb", price: 12.0, swatch: "#6b5b3e", desc: "Turkey meatballs over zucchini noodles.", cal: 420, p: 36, c: 18, f: 22, allergens: ["dairy"],
+  { name: "Turkey Meatballs & Zoodles", diet: "Low Carb", price: 12.0, swatch: "#6b5b3e", img: PHOTO("photo-1720931782210-4ffd1f836b63"), desc: "Turkey meatballs over zucchini noodles.", cal: 420, p: 36, c: 18, f: 22, allergens: ["dairy"],
     ing: [["Ground turkey",5,"oz",0.08],["Zucchini",2,"ea",0.2],["Marinara",0.5,"cup",0],["Parmesan",1,"tbsp",0]] },
-  { name: "Shrimp Cauli-Rice", diet: "Low Carb", price: 13.0, swatch: "#3f5c5a", desc: "Garlic shrimp over cauliflower fried rice.", cal: 390, p: 32, c: 22, f: 16, allergens: ["fish"],
+  { name: "Shrimp Cauli-Rice", diet: "Low Carb", price: 13.0, swatch: "#3f5c5a", img: PHOTO("photo-1685458696097-917ef0ec2239"), desc: "Garlic shrimp over cauliflower fried rice.", cal: 390, p: 32, c: 22, f: 16, allergens: ["fish"],
     ing: [["Shrimp",5,"oz",0.1],["Cauliflower rice",1.5,"cup",0.15],["Egg",1,"ea",0],["Soy sauce",1,"tbsp",0]] },
 ];
 
@@ -66,7 +71,7 @@ export async function seedDemoKitchen(businessId: string): Promise<void> {
   for (const m of MEALS) {
     const meal = await db.meal.create({
       data: {
-        businessId, name: m.name, description: m.desc, diet: m.diet, priceCents: cents(m.price), swatch: m.swatch,
+        businessId, name: m.name, description: m.desc, diet: m.diet, priceCents: cents(m.price), swatch: m.swatch, imageUrl: m.img,
         calories: m.cal, proteinG: m.p, carbsG: m.c, fatG: m.f, allergens: m.allergens,
         ingredients: { create: m.ing.map(([name, qty, unit, trim]) => ({ ingredientId: ingIds.get(name as string)!, qty: qty as number, unit: unit as string, trimBps: bps(trim as number) })) },
       },
