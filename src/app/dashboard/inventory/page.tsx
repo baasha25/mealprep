@@ -172,7 +172,7 @@ export default async function InventoryPage() {
       <Card className="mb-4">
         <CardTitle icon={<PackagePlus size={15} />} title="Set current stock" note="Opening inventory — what you have on hand now" />
         <p className="text-[12.5px] mb-3" style={{ color: "var(--muted)" }}>
-          Switching in? Enter what&apos;s already on your shelf (and what it cost) so margins, purchasing, and P&amp;L are accurate from day one — no need to fake a delivery. Existing kitchens can bulk-load this from <a href="/dashboard/import" style={{ color: "var(--pine)" }}>Import data → Inventory</a>.
+          Switching in? Enter what&apos;s already on your shelf (and what it cost) so margins, purchasing, and P&amp;L are accurate from day one. Existing kitchens can bulk-load this from <a href="/dashboard/import" style={{ color: "var(--pine)" }}>Import data → Inventory</a>.
         </p>
         <OpeningStockForm ingredients={ingredients.map((i) => ({ name: i.name, unit: i.unit, densityGPerMl: i.densityGPerMl, calPerUnit: i.calPerUnit, proteinPerUnit: i.proteinPerUnit, carbsPerUnit: i.carbsPerUnit, fatPerUnit: i.fatPerUnit }))} />
       </Card>
