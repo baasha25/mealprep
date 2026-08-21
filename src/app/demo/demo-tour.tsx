@@ -12,6 +12,8 @@ import {
   TrendingUp,
   Sprout,
   ChefHat,
+  Megaphone,
+  Trash2,
   Upload,
   type LucideIcon,
 } from "lucide-react";
@@ -101,6 +103,34 @@ const STEPS: Step[] = [
     ],
     img: "/demo/kitchen.png",
     imgAlt: "Kitchen production report grouped by meal and station",
+  },
+  {
+    icon: Megaphone,
+    kicker: "Grow sales",
+    title: "Promotion & marketing, built in",
+    blurb:
+      "Run coupons and gift cards customers redeem at checkout, and send email campaigns to bring lapsed diners back and reward your regulars — no separate tools.",
+    points: [
+      "Create coupons and gift cards",
+      "Email campaigns to all customers, lapsed, or subscribers",
+      "Add a photo and simple formatting to make it look sharp",
+    ],
+    img: "/demo/marketing.png",
+    imgAlt: "Marketing screen with coupons, gift cards, and an email campaign composer",
+  },
+  {
+    icon: Trash2,
+    kicker: "Protect your margin",
+    title: "Know exactly what you're losing",
+    blurb:
+      "Log spoilage, dropped deliveries, and remakes. PrepFlow books the real food cost to your P&L, so your profit reflects reality — and you can see where the waste comes from.",
+    points: [
+      "Log spoilage, dropped orders, or remakes",
+      "Books the true food cost to your P&L automatically",
+      "See your biggest loss causes at a glance",
+    ],
+    img: "/demo/waste.png",
+    imgAlt: "Waste & Loss screen for logging spoilage, dropped orders, and remakes",
   },
   {
     icon: Upload,
