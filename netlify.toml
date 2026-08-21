@@ -12,3 +12,10 @@
 [build.environment]
   # Prisma 7 generates its client on install via the postinstall script.
   NODE_VERSION = "20"
+
+# Serve the static sales overview deck (public/overview.html) at a clean, branded
+# URL — prepflow.ca/overview — for linking in sales emails.
+[[redirects]]
+  from = "/overview"
+  to = "/overview.html"
+  status = 200

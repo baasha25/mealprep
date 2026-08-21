@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PrepFlow — Built for the Line. Engineered for Margin.</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,600;0,8..60,700;1,8..60,600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-parchment: #F7F5F0;
+      --card-bg: #FFFFFF;
+      --card-subtle: #F1ECE4;
+      --border-color: #E6E0D6;
+      --text-main: #1C231F;
+      --text-muted: #5E6962;
+      --primary-green: #26402B;
+      --primary-green-hover: #1E3322;
+      --accent-rust: #B85C38;
+      --accent-rust-light: #FBF0EB;
+      --tag-green: #E8EFE9;
+      --tag-green-text: #26402B;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: #EAE5DC;
+      color: var(--text-main);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    /* Screen Slide Deck Container */
+    .deck-container {
+      width: 100%;
+      max-width: 1080px;
+      height: 650px;
+      background-color: var(--bg-parchment);
+      border-radius: 16px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08);
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      border: 1px solid var(--border-color);
+    }
+
+    .slide {
+      display: none;
+      height: 100%;
+      padding: 38px 52px;
+      flex-direction: column;
+      justify-content: space-between;
+      animation: fadeIn 0.25s ease-in-out;
+    }
+
+    .slide.active {
+      display: flex;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Top Navigation & Brand Logo */
+    .top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0px;
+    }
+
+    .brand-logo-container {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+    }
+
+    .brand-logo-icon {
+      width: 32px;
+      height: 32px;
+      background-color: var(--primary-green);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .brand-logo-icon svg {
+      width: 18px;
+      height: 18px;
+      fill: none;
+      stroke: #FFFFFF;
+      stroke-width: 2.2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .brand-logo-text {
+      font-family: 'Source Serif 4', Georgia, serif;
+      font-size: 24px;
+      font-weight: 700;
+      color: #1A211D;
+      letter-spacing: -0.5px;
+    }
+
+    .brand-tag-badge {
+      background: var(--card-subtle);
+      border: 1px solid var(--border-color);
+      padding: 4px 10px;
+      border-radius: 100px;
+      font-size: 11.5px;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-left: 6px;
+    }
+
+    .slide-number {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+      letter-spacing: 0.5px;
+    }
+
+    /* Standardized Slide Body with Gap from Logo */
+    .slide-body {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+      padding-top: 26px;
+    }
+
+    h1, h2 {
+      font-family: 'Source Serif 4', Georgia, serif;
+      color: var(--text-main);
+      font-weight: 700;
+      line-height: 1.15;
+    }
+
+    h1 { font-size: 38px; }
+    h2 { font-size: 30px; }
+
+    p.subtitle {
+      font-size: 15.5px;
+      color: var(--text-muted);
+      line-height: 1.45;
+      margin-top: 6px;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      align-items: stretch;
+      margin-top: 14px;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 18px;
+      margin-top: 14px;
+    }
+
+    .grid-4 {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+      margin-top: 14px;
+    }
+
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .card h3 {
+      font-family: 'Source Serif 4', Georgia, serif;
+      font-size: 17px;
+      margin-bottom: 6px;
+      color: var(--primary-green);
+    }
+
+    .card p {
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 1.4;
+    }
+
+    .metric-pill {
+      background: var(--accent-rust-light);
+      color: var(--accent-rust);
+      font-weight: 700;
+      font-size: 11.5px;
+      padding: 3px 8px;
+      border-radius: 6px;
+      display: inline-block;
+      margin-bottom: 6px;
+    }
+
+    .stat-val {
+      font-family: 'Source Serif 4', Georgia, serif;
+      font-size: 26px;
+      font-weight: 700;
+      color: var(--text-main);
+      margin: 2px 0;
+    }
+
+    .stat-val.rust { color: var(--accent-rust); }
+    .stat-val.green { color: var(--primary-green); }
+
+    .progress-bar-bg {
+      width: 100%;
+      height: 7px;
+      background: #EAE6DF;
+      border-radius: 100px;
+      margin: 8px 0;
+      overflow: hidden;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      background: var(--accent-rust);
+      border-radius: 100px;
+    }
+
+    .comparison-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 12px;
+      font-size: 12.5px;
+    }
+
+    .comparison-table th {
+      text-align: left;
+      padding: 9px 12px;
+      background: var(--card-subtle);
+      color: var(--primary-green);
+      font-weight: 700;
+      border-top: 1px solid var(--border-color);
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .comparison-table td {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border-color);
+      color: var(--text-muted);
+      vertical-align: middle;
+    }
+
+    .comparison-table tr.highlight {
+      background: #FFFFFF;
+      font-weight: 600;
+    }
+
+    .comparison-table tr.highlight td {
+      color: var(--text-main);
+    }
+
+    .slide-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-top: 14px;
+      border-top: 1px solid var(--border-color);
+      margin-top: auto;
+    }
+
+    .footer-badges {
+      display: flex;
+      gap: 14px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--primary-green);
+    }
+
+    .primary-btn {
+      background: var(--primary-green);
+      color: #FFFFFF;
+      border: none;
+      padding: 9px 18px;
+      border-radius: 8px;
+      font-size: 13.5px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      text-decoration: none;
+    }
+
+    .deck-controls {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      margin-top: 16px;
+    }
+
+    .nav-btn {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      color: var(--primary-green);
+    }
+
+    /* Multi-Page Print & PDF Engine */
+    @page {
+      size: letter landscape;
+      margin: 0;
+    }
+
+    @media print {
+      html, body {
+        background-color: var(--bg-parchment) !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        width: 100% !important;
+        height: auto !important;
+        min-height: auto !important;
+        display: block !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+
+      .deck-controls {
+        display: none !important;
+      }
+
+      .deck-container {
+        display: block !important;
+        width: 100% !important;
+        max-width: none !important;
+        height: auto !important;
+        box-shadow: none !important;
+        border: none !important;
+        border-radius: 0 !important;
+        background: transparent !important;
+        overflow: visible !important;
+      }
+
+      .slide {
+        display: flex !important;
+        opacity: 1 !important;
+        visibility: visible !important;
+        position: relative !important;
+        width: 100vw !important;
+        height: 100vh !important;
+        max-height: 100vh !important;
+        padding: 40px 52px !important;
+        page-break-before: auto !important;
+        page-break-after: always !important;
+        page-break-inside: avoid !important;
+        break-after: page !important;
+        break-inside: avoid !important;
+        box-sizing: border-box !important;
+        background-color: var(--bg-parchment) !important;
+      }
+
+      .slide:last-child {
+        page-break-after: avoid !important;
+        break-after: avoid !important;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="deck-container">
+
+    <!-- SLIDE 1: MASTER TITLE & HOOK -->
+    <section class="slide active" id="slide-1">
+      <div class="top-bar">
+        <div class="brand-logo-container">
+          <div class="brand-logo-icon">
+            <svg viewBox="0 0 24 24"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/><path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 12"/></svg>
+          </div>
+          <span class="brand-logo-text">PrepFlow</span>
+          <span class="brand-tag-badge">prepflow.ca</span>
+        </div>
+        <span class="slide-number">01 / 07</span>
+      </div>
+      <div class="slide-body">
+        <h1>Built for the Line. Engineered for Margin.</h1>
+        <p class="subtitle" style="max-width: 820px;">The all-in-one platform uniting customer orders, kitchen prep, and live profitability. Storefront, subscriptions, payments, kitchen ops, and trim-aware intelligence — without the duct tape.</p>
+        
+        <div class="grid-3" style="margin-top: 20px;">
+          <div class="card">
+            <span class="metric-pill">Active Subscriptions</span>
+            <div class="stat-val green">$138.60<span style="font-size: 13px; font-weight: normal; color: var(--text-muted);">/wk</span></div>
+            <p>14 meals/wk Athlete Plan with automated recurring billing and cutoff sync.</p>
+          </div>
+          <div class="card">
+            <span class="metric-pill">Trim-Aware Purchasing</span>
+            <div class="stat-val rust">$18.96 to cut</div>
+            <p>Live calculation of prep trim waste across sirloin, shrimp, and produce.</p>
+          </div>
+          <div class="card">
+            <span class="metric-pill">Fulfillment Flow</span>
+            <div class="stat-val">1-Click Labels</div>
+            <p>Direct batch macro/allergen labels and optimized local driver routing.</p>
+          </div>
+        </div>
+      </div>
+      <div class="slide-footer">
+        <div class="footer-badges">
+          <span>✓ 30-day free trial</span>
+          <span>✓ No card required</span>
+          <span>✓ Migrate in an afternoon</span>
+        </div>
+        <div style="font-size: 13px; font-weight: 600; color: var(--primary-green);">www.prepflow.ca</div>
+      </div>
+    </section>
+
+    <!-- SLIDE 2: THE PROBLEM -->
+    <section class="slide" id="slide-2">
+      <div class="top-bar">
+        <div class="brand-logo-container">
+          <div class="brand-logo-icon">
+            <svg viewBox="0 0 24 24"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/><path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 12"/></svg>
+          </div>
+          <span class="brand-logo-text">PrepFlow</span>
+          <span class="brand-tag-badge">The Core Problem</span>
+        </div>
+        <span class="slide-number">02 / 07</span>
+      </div>
+      <div class="slide-body">
+        <h2>Most food operators are cooking in the dark.</h2>
+        <p class="subtitle">Whether scaling a meal prep brand or expanding a restaurant vertical, disconnected systems bleed margin.</p>
+        
+        <div class="grid-3" style="margin-top: 20px;">
+          <div class="card">
+            <span class="metric-pill">The Admin Bottleneck</span>
+            <h3>Manual Sunday Chaos</h3>
+            <p>Wasting 6–8 hours every weekend chasing customer orders over DMs/SMS, re-typing spreadsheets, and handwriting packing lists.</p>
+          </div>
+          <div class="card">
+            <span class="metric-pill">Invisible Waste</span>
+            <h3>Uncalculated Trim Bleed</h3>
+            <p>Buying As-Purchased (AP) protein weights but pricing based on finished plate portion (EP) yield—throwing $1,000s into the trash.</p>
+          </div>
+          <div class="card">
+            <span class="metric-pill">The App Stack</span>
+            <h3>The Integration Nightmare</h3>
+            <p>Cobbling together Shopify + Zapier + Excel + Route Planners. None talk to each other, creating packing errors and delivery delays.</p>
+          </div>
+        </div>
+      </div>
+      <div class="slide-footer">
+        <div class="footer-badges">
+          <span>The Result: Stalled Growth & Unseen Profit Leaks</span>
+        </div>
+        <div style="font-size: 13px; color: var(--text-muted);">PrepFlow Solution &rarr;</div>
+      </div>
+    </section>
+
+    <!-- SLIDE 3: THE TWO-TRACK SOLUTION -->
+    <section class="slide" id="slide-3">
+      <div class="top-bar">
+        <div class="brand-logo-container">
+          <div class="brand-logo-icon">
+            <svg viewBox="0 0 24 24"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/><path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 12"/></svg>
+          </div>
+          <span class="brand-logo-text">PrepFlow</span>
+          <span class="brand-tag-badge">Platform Architecture</span>
+        </div>
+        <span class="slide-number">03 / 07</span>
+      </div>
+      <div class="slide-body">
+        <h2>One central brain. Start simple, scale to margin.</h2>
+        <p class="subtitle">A flexible Two-Track architecture designed to deliver instant time savings today without forcing complex setup.</p>
+        
+        <div class="grid-2" style="margin-top: 20px;">
+          <div class="card" style="border-left: 4px solid var(--primary-green);">
+            <span class="metric-pill" style="background: var(--tag-green); color: var(--tag-green-text);">Track 1 &bull; Instant Time Recovery</span>
+            <h3>Start in an Afternoon (Solopreneur Friendly)</h3>
+            <p style="margin-bottom: 10px;">No complex recipe entry required on day one. Get your weekends back immediately:</p>
+            <p>&bull; Branded meal-prep storefront & recurring subscription picker</p>
+            <p>&bull; Automated client ordering & cutoff reminder notifications</p>
+            <p>&bull; Instant 1-click weekly master meal production tallies</p>
+          </div>
+          <div class="card" style="border-left: 4px solid var(--accent-rust);">
+            <span class="metric-pill">Track 2 &bull; Commercial Margin Protection</span>
+            <h3>Scale When Ready (Full Kitchen OS)</h3>
+            <p style="margin-bottom: 10px;">Activate culinary and financial control as your kitchen volume expands:</p>
+            <p>&bull; Trim-aware purchasing & gross vs. net ingredient aggregation</p>
+            <p>&bull; Live batch P&L tracking & instant loss logging (spoilage / drops)</p>
+            <p>&bull; Line tablet KDS boards, batch labels, & route optimization</p>
+          </div>
+        </div>
+      </div>
+      <div class="slide-footer">
+        <div class="footer-badges">
+          <span>✓ Add a meal once — updates storefront, POS, KDS, and purchasing lists</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 4: THE COMPLETE WORKSPACE -->
+    <section class="slide" id="slide-4">
+      <div class="top-bar">
+        <div class="brand-logo-container">
+          <div class="brand-logo-icon">
+            <svg viewBox="0 0 24 24"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/><path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 12"/></svg>
+          </div>
+          <span class="brand-logo-text">PrepFlow</span>
+          <span class="brand-tag-badge">Complete Workspace</span>
+        </div>
+        <span class="slide-number">04 / 07</span>
+      </div>
+      <div class="slide-body">
+        <h2>Engineered specifically for food production rhythms.</h2>
+        <p class="subtitle">Replacing 4 disconnected subscriptions with one unified, kitchen-tested workflow.</p>
+        
+        <div class="grid-4" style="margin-top: 18px;">
+          <div class="card">
+            <h3>Sales & Storefront</h3>
+            <p>&bull; Branded meal picker</p>
+            <p>&bull; Recurring billing</p>
+            <p>&bull; Walk-in POS terminal</p>
+            <p>&bull; Custom cutoff triggers</p>
+          </div>
+          <div class="card">
+            <h3>Kitchen OS</h3>
+            <p>&bull; Station prep lists</p>
+            <p>&bull; Tap-to-advance KDS</p>
+            <p>&bull; Live stock par counts</p>
+            <p>&bull; Real-time inventory</p>
+          </div>
+          <div class="card">
+            <h3>Margin Control</h3>
+            <p>&bull; Trim yield calculations</p>
+            <p>&bull; Gross vs. net purchasing</p>
+            <p>&bull; Live plate margins</p>
+            <p>&bull; Real-time P&L rollup</p>
+          </div>
+          <div class="card">
+            <h3>Fulfillment</h3>
+            <p>&bull; Macro & allergen labels</p>
+            <p>&bull; Packing slip generator</p>
+            <p>&bull; Local route optimizer</p>
+            <p>&bull; Driver manifests</p>
+          </div>
+        </div>
+      </div>
+      <div class="slide-footer">
+        <div class="footer-badges">
+          <span>Seamless flow from customer checkout straight to delivery route</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 5: DUAL ROI & FINANCIAL WEDGE -->
+    <section class="slide" id="slide-5">
+      <div class="top-bar">
+        <div class="brand-logo-container">
+          <div class="brand-logo-icon">
+            <svg viewBox="0 0 24 24"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/><path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 12"/></svg>
+          </div>
+          <span class="brand-logo-text">PrepFlow</span>
+          <span class="brand-tag-badge">Financial Wedge</span>
+        </div>
+        <span class="slide-number">05 / 07</span>
+      </div>
+      <div class="slide-body">
+        <h2>Stop throwing profit in the trash. Dual ROI.</h2>
+        <p class="subtitle">PrepFlow pays for itself on day one through trim-waste recovery and reclaimed admin hours.</p>
+        
+        <div class="grid-2" style="margin-top: 18px;">
+          <div class="card">
+            <span class="metric-pill">Direct Food Cost Recovery</span>
+            <div class="stat-val rust">$800 – $1,400<span style="font-size: 13.5px; font-weight: normal; color: var(--text-muted);">/month saved</span></div>
+            <p><strong>The Protein Math:</strong> When you purchase 10 lbs of raw protein, trim waste reduces your finished yield. PrepFlow calculates exact gross vs. net ingredient demand to eliminate overbuying on every run.</p>
+            <div class="progress-bar-bg"><div class="progress-bar-fill" style="width: 82%;"></div></div>
+            <span style="font-size: 11px; color: var(--text-muted);">82% average cooked yield accounted for automatically</span>
+          </div>
+
+          <div class="card">
+            <span class="metric-pill" style="background: var(--tag-green); color: var(--tag-green-text);">Labor & Admin Recovery</span>
+            <div class="stat-val green">8+ Hours<span style="font-size: 13.5px; font-weight: normal; color: var(--text-muted);">/week reclaimed</span></div>
+            <p><strong>Zero Manual Tallying:</strong> Eliminate Sunday spreadsheet consolidation, customer reminder messages, and label typing. 1-click exports create driver manifests and station prep sheets instantly.</p>
+            <div class="progress-bar-bg"><div class="progress-bar-fill" style="width: 100%; background: var(--primary-green);"></div></div>
+            <span style="font-size: 11px; color: var(--text-muted);">1 full workday returned to the owner/operator</span>
+          </div>
+        </div>
+      </div>
+      <div class="slide-footer">
+        <div class="footer-badges">
+          <span>Active P&L = Real Revenue &minus; Real Food Cost &minus; Logged Waste</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 6: COMPETITIVE POSITIONING -->
+    <section class="slide" id="slide-6">
+      <div class="top-bar">
+        <div class="brand-logo-container">
+          <div class="brand-logo-icon">
+            <svg viewBox="0 0 24 24"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/><path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 12"/></svg>
+          </div>
+          <span class="brand-logo-text">PrepFlow</span>
+          <span class="brand-tag-badge">Competitive Matrix</span>
+        </div>
+        <span class="slide-number">06 / 07</span>
+      </div>
+      <div class="slide-body">
+        <h2>Purpose-built beats generic every time.</h2>
+        <p class="subtitle">How PrepFlow stacks up against cobbled tools and legacy enterprise software.</p>
+        
+        <table class="comparison-table">
+          <thead>
+            <tr>
+              <th>Operational Dimension</th>
+              <th>Cobbled Stack (Shopify + Excel)</th>
+              <th>Legacy SaaS (Sprwt / GoPrep)</th>
+              <th style="background: var(--primary-green); color: #fff;">PrepFlow (prepflow.ca)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Architecture</strong></td>
+              <td>3–4 disconnected plugins</td>
+              <td>Bloated enterprise software</td>
+              <td><strong>Unified Single Source of Truth</strong></td>
+            </tr>
+            <tr>
+              <td><strong>Trim Yield & Costing</strong></td>
+              <td>Static pricing; zero yield logic</td>
+              <td>Complex 4-week recipe setup</td>
+              <td><strong>Demand-Driven Trim Intelligence</strong></td>
+            </tr>
+            <tr>
+              <td><strong>Onboarding Speed</strong></td>
+              <td>Weeks of manual integration</td>
+              <td>4–6 week onboarding curve</td>
+              <td><strong>Switch in an Afternoon (Concierge)</strong></td>
+            </tr>
+            <tr class="highlight">
+              <td><strong>Kitchen Usability</strong></td>
+              <td>Paper clipboards & whiteboards</td>
+              <td>Dated 2018 clunky interface</td>
+              <td><strong>Modern Line Tablet KDS (2026 UI)</strong></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="slide-footer">
+        <div class="footer-badges">
+          <span>Enterprise capability without enterprise complexity</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 7: HYBRID CALL TO ACTION -->
+    <section class="slide" id="slide-7">
+      <div class="top-bar">
+        <div class="brand-logo-container">
+          <div class="brand-logo-icon">
+            <svg viewBox="0 0 24 24"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/><path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 12"/></svg>
+          </div>
+          <span class="brand-logo-text">PrepFlow</span>
+          <span class="brand-tag-badge">Get Started</span>
+        </div>
+        <span class="slide-number">07 / 07</span>
+      </div>
+      <div class="slide-body">
+        <h2>From kitchen chaos to autopilot in an afternoon.</h2>
+        <p class="subtitle">Concierge migration: send us your menus and supplier invoices, and we build your digital kitchen.</p>
+        
+        <div class="grid-3" style="margin-top: 20px;">
+          <div class="card" style="text-align: center; padding: 20px 14px;">
+            <span class="metric-pill">Self-Serve Activation</span>
+            <div class="stat-val" style="font-size: 20px;">30-Day Free Trial</div>
+            <p style="margin: 6px 0 14px;">Instant access to dynamic menus, POS, KDS, and order automation.</p>
+            <a href="https://prepflow.ca" class="primary-btn" style="justify-content: center;">Start Free Trial</a>
+          </div>
+
+          <div class="card" style="text-align: center; padding: 20px 14px; border: 1.5px solid var(--primary-green);">
+            <span class="metric-pill" style="background: var(--tag-green); color: var(--tag-green-text);">10–15 Min Audit</span>
+            <div class="stat-val green" style="font-size: 20px;">Profit Leak Audit</div>
+            <p style="margin: 6px 0 14px;">Live audit of top 5 ingredient trim yields and admin bottlenecks.</p>
+            <a href="https://prepflow.ca" class="primary-btn" style="justify-content: center; background: var(--primary-green);">Book Profit Audit</a>
+          </div>
+
+          <div class="card" style="text-align: center; padding: 20px 14px;">
+            <span class="metric-pill">20–30 Min Walkthrough</span>
+            <div class="stat-val" style="font-size: 20px;">Kitchen OS Demo</div>
+            <p style="margin: 6px 0 14px;">Full walkthrough from order to KDS line routing and live P&L.</p>
+            <a href="https://prepflow.ca" class="primary-btn" style="justify-content: center;">Schedule Demo</a>
+          </div>
+        </div>
+      </div>
+      <div class="slide-footer">
+        <div class="footer-badges">
+          <span>✓ 30-day free trial</span>
+          <span>✓ No card required</span>
+          <span>✓ Concierge migration in an afternoon</span>
+        </div>
+        <div style="font-weight: 700; color: var(--primary-green);">hello@prepflow.ca</div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="deck-controls">
+    <button class="nav-btn" id="prevBtn">&larr; Previous</button>
+    <span id="slideIndicator" style="font-size: 13px; font-weight: 600; color: var(--text-muted);">Slide 1 of 7</span>
+    <button class="nav-btn" id="nextBtn">Next &rarr;</button>
+    <button class="nav-btn print-btn" onclick="window.print()" style="margin-left: 8px; background: var(--primary-green); color: #fff;">Save / Print as PDF (7 Pages)</button>
+  </div>
+
+  <script>
+    let currentSlide = 1;
+    const totalSlides = 7;
+
+    function showSlide(index) {
+      document.querySelectorAll('.slide').forEach((slide, i) => {
+        slide.classList.toggle('active', i + 1 === index);
+      });
+      document.getElementById('slideIndicator').innerText = `Slide ${index} of ${totalSlides}`;
+      currentSlide = index;
+    }
+
+    document.getElementById('prevBtn').addEventListener('click', () => {
+      if (currentSlide > 1) showSlide(currentSlide - 1);
+    });
+
+    document.getElementById('nextBtn').addEventListener('click', () => {
+      if (currentSlide < totalSlides) showSlide(currentSlide + 1);
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight' || e.key === ' ') {
+        if (currentSlide < totalSlides) showSlide(currentSlide + 1);
+      } else if (e.key === 'ArrowLeft') {
+        if (currentSlide > 1) showSlide(currentSlide - 1);
+      }
+    });
+  </script>
+</body>
+</html>
