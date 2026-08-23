@@ -11,7 +11,7 @@ import {
   CLOUDINARY_ENABLED,
   cloudinaryPublicConfig,
   signCloudinaryParams,
-  isCloudinaryUrl,
+  isAllowedMealImageUrl,
 } from "@/lib/cloudinary";
 
 const IngredientInput = z.object({
@@ -42,7 +42,7 @@ const MealInput = z.object({
   // a genuine Cloudinary delivery URL; anything else is ignored (stored as null).
   imageUrl: z.preprocess((v) => {
     const s = String(v ?? "").trim();
-    return s && isCloudinaryUrl(s) ? s : null;
+    return s && isAllowedMealImageUrl(s) ? s : null;
   }, z.string().nullable()),
 });
 

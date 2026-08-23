@@ -49,3 +49,13 @@ export function cldImage(
 export function isCloudinaryUrl(url: string): boolean {
   return /^https:\/\/res\.cloudinary\.com\/[\w.-]+\/image\/upload\//.test(url);
 }
+
+/**
+ * Image URLs we trust to store on a meal: Cloudinary (real merchant uploads) OR
+ * Unsplash (the demo seed's stock food photos). Anything else is rejected so an
+ * arbitrary URL can't be persisted — and, importantly, so a valid seeded demo
+ * photo isn't silently wiped when a meal is edited and saved.
+ */
+export function isAllowedMealImageUrl(url: string): boolean {
+  return isCloudinaryUrl(url) || /^https:\/\/images\.unsplash\.com\/photo-/.test(url);
+}
