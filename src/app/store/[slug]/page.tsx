@@ -4,6 +4,8 @@ import { Leaf } from "lucide-react";
 import { db } from "@/lib/db";
 import { getStorefrontBusiness } from "@/lib/storefront";
 import { cldImage } from "@/lib/cloudinary";
+import { nextCutoffAt, nextDeliveryAfter, formatDeliveryLabel, DEFAULT_TIMEZONE } from "@/lib/cutoff";
+import { CutoffBanner } from "./cutoff-banner";
 import { PlanCards } from "./plan-cards";
 import { Storefront, type StoreMeal, type StoreSettings } from "./storefront";
 
@@ -62,11 +64,28 @@ export default async function StorePage({
     pickupLocations: s.pickupLocations,
   };
 
+  // Live order-cut-off countdown, computed in the kitchen's own timezone.
+  const tz = s.timezone || DEFAULT_TIMEZONE;
+  const cutoffInstant = nextCutoffAt(s.cutoff, tz);
+  const cutoffISO = cutoffInstant?.toISOString() ?? null;
+  const deliveryInstant = cutoffInstant
+    ? nextDeliveryAfter((s.deliveryDays ?? {}) as Record<string, boolean>, cutoffInstant, tz)
+    : null;
+  const deliveryLabel = deliveryInstant ? formatDeliveryLabel(deliveryInstant, tz) : null;
+
   return (
     <div
       className="min-h-screen"
       style={{ background: "var(--paper)", "--pine": business.brandColor } as React.CSSProperties}
     >
+      {cutoffISO && (
+        <CutoffBanner
+          cutoffISO={cutoffISO}
+          cutoffLabel={s.cutoff}
+          deliveryLabel={deliveryLabel}
+          brandColor={business.brandColor}
+        />
+      )}
       <header
         className="border-b"
         style={{ borderColor: "var(--line)", background: "var(--surface)" }}

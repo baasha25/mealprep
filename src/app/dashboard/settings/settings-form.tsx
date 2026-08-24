@@ -5,6 +5,7 @@ import { Check, Store, Percent, Truck, Star, Bell } from "lucide-react";
 import { Card, CardTitle, Field, INP, btnPrimary } from "@/components/ui";
 import { updateSettings, type SettingsActionState } from "./actions";
 import { TIERS, TIER_KEYS, feePctLabel, type TierKey } from "@/lib/tiers";
+import { TIMEZONES } from "@/lib/cutoff";
 
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
 
@@ -20,6 +21,7 @@ export type SettingsInitial = {
   minOrder: number;
   minMeals: number;
   cutoff: string;
+  timezone: string;
   fulfillment: "delivery" | "pickup" | "both";
   deliveryDays: Record<string, boolean>;
   pickupLocations: string[];
@@ -211,6 +213,13 @@ export function SettingsForm({ initial }: { initial: SettingsInitial }) {
               style={inputStyle}
             />
             <ErrorText msg={errors.cutoff} />
+          </Field>
+          <Field label="Cut-off timezone" hint="The timezone your cut-off time is in — powers the countdown clock shown on your storefront.">
+            <select name="timezone" defaultValue={initial.timezone} className={INP} style={inputStyle}>
+              {TIMEZONES.map((t) => (
+                <option key={t.value} value={t.value}>{t.label}</option>
+              ))}
+            </select>
           </Field>
           <Field label="Fulfillment options">
             <select

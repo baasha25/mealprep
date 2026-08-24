@@ -172,6 +172,7 @@ model BusinessSettings {
 
   // Fulfillment
   cutoff          String   @default("Sat 8:00 PM")
+  timezone        String   @default("America/Toronto") // IANA tz the cutoff time is in; powers the storefront countdown
   fulfillment     String   @default("both") // "delivery" | "pickup" | "both"
   deliveryDays    Json     @default("{\"Mon\":true,\"Tue\":false,\"Wed\":true,\"Thu\":false,\"Fri\":true,\"Sat\":false,\"Sun\":false}")
   pickupLocations String[] @default([])

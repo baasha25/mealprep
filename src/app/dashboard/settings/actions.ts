@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import { requireBusiness, assertWritable } from "@/lib/auth";
 import { dollarsToCents, percentToBps } from "@/lib/money";
 import { TIERS } from "@/lib/tiers";
+import { TIMEZONE_VALUES, DEFAULT_TIMEZONE } from "@/lib/cutoff";
 
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
 
@@ -23,6 +24,10 @@ const SettingsInput = z.object({
   minOrder: z.coerce.number().min(0).max(100000),
   minMeals: z.coerce.number().int().min(0).max(100),
   cutoff: z.string().trim().max(60),
+  timezone: z.preprocess(
+    (v) => (TIMEZONE_VALUES.includes(String(v)) ? v : DEFAULT_TIMEZONE),
+    z.string(),
+  ),
   fulfillment: z.enum(["delivery", "pickup", "both"]),
   deliveryDays: z.record(z.enum(DAYS), z.boolean()),
   pickupLocations: z.array(z.string().trim().min(1)),
@@ -68,6 +73,7 @@ export async function updateSettings(
     minOrder: formData.get("minOrder"),
     minMeals: formData.get("minMeals"),
     cutoff: formData.get("cutoff"),
+    timezone: formData.get("timezone"),
     fulfillment: formData.get("fulfillment"),
     deliveryDays,
     pickupLocations,
@@ -112,6 +118,7 @@ export async function updateSettings(
         minOrderCents: dollarsToCents(d.minOrder),
         minMeals: d.minMeals,
         cutoff: d.cutoff,
+        timezone: d.timezone,
         fulfillment: d.fulfillment,
         deliveryDays: d.deliveryDays,
         pickupLocations: d.pickupLocations,
@@ -131,6 +138,7 @@ export async function updateSettings(
         minOrderCents: dollarsToCents(d.minOrder),
         minMeals: d.minMeals,
         cutoff: d.cutoff,
+        timezone: d.timezone,
         fulfillment: d.fulfillment,
         deliveryDays: d.deliveryDays,
         pickupLocations: d.pickupLocations,

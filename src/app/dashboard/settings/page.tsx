@@ -29,6 +29,7 @@ export default async function SettingsPage() {
     minOrder: centsToDollars(settings.minOrderCents),
     minMeals: settings.minMeals,
     cutoff: settings.cutoff,
+    timezone: settings.timezone,
     fulfillment: settings.fulfillment as "delivery" | "pickup" | "both",
     deliveryDays: dd,
     pickupLocations: settings.pickupLocations,
