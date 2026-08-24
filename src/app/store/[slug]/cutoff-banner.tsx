@@ -46,11 +46,11 @@ export function CutoffBanner({
 
   const unit = (val: string, label: string) => (
     <span className="inline-flex flex-col items-center leading-none">
-      <span className="tabular-nums font-bold text-[15px] sm:text-[16px]">{val}</span>
-      <span className="text-[8.5px] uppercase tracking-wide opacity-75 mt-0.5">{label}</span>
+      <span className="tabular-nums font-bold text-[22px] sm:text-[26px]">{val}</span>
+      <span className="text-[9.5px] uppercase tracking-wide opacity-75 mt-1">{label}</span>
     </span>
   );
-  const sep = <span className="opacity-40 font-bold text-[14px] -mt-2">:</span>;
+  const sep = <span className="opacity-40 font-bold text-[20px] sm:text-[24px] -mt-2.5">:</span>;
 
   return (
     <div
@@ -59,19 +59,19 @@ export function CutoffBanner({
       role="status"
       aria-live="off"
     >
-      <div className="max-w-6xl mx-auto px-4 py-2 flex items-center justify-center gap-x-3 gap-y-1 flex-wrap text-center">
-        <Clock size={15} className="opacity-90 shrink-0" />
+      <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-center gap-x-4 gap-y-1.5 flex-wrap text-center">
+        <Clock size={19} className="opacity-90 shrink-0" />
         {closed ? (
-          <span className="text-[13px] font-medium">
+          <span className="text-[15px] font-medium">
             Ordering for this delivery has closed — check back soon for the next window.
           </span>
         ) : (
           <>
-            <span className="text-[12.5px] sm:text-[13px] font-medium">
+            <span className="text-[14px] sm:text-[15.5px] font-medium">
               Order by <strong>{cutoffLabel}</strong>
               {deliveryLabel ? <> — arrives <strong>{deliveryLabel}</strong></> : null}. Closes in
             </span>
-            <span className="inline-flex items-center gap-1.5">
+            <span className="inline-flex items-center gap-2">
               {left ? (
                 <>
                   {left.d > 0 && (
@@ -88,7 +88,7 @@ export function CutoffBanner({
                 </>
               ) : (
                 // pre-mount placeholder (keeps layout stable, no ticking yet)
-                <span className="tabular-nums font-bold text-[15px] opacity-80">—:—:—</span>
+                <span className="tabular-nums font-bold text-[22px] sm:text-[26px] opacity-80">—:—:—</span>
               )}
             </span>
           </>
