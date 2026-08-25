@@ -7,6 +7,7 @@ export type Role = "owner" | "staff";
 export const OWNER_ONLY: string[] = [
   "/dashboard/analytics",
   "/dashboard/profitability",
+  "/dashboard/costs",
   "/dashboard/reports",
   "/dashboard/waste",
   "/dashboard/marketing",

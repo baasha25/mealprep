@@ -1,9 +1,15 @@
-import { TrendingUp, DollarSign, AlertTriangle, ChefHat, ArrowUpRight, Trash2 } from "lucide-react";
+import { TrendingUp, DollarSign, AlertTriangle, ChefHat, ArrowUpRight, Trash2, Scale, Calculator } from "lucide-react";
 import Link from "next/link";
 import { requireOwner } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { Page, Head, Kpi, Card, CardTitle, Row, Hint } from "@/components/ui";
 import { formatCents, bpsToPercent } from "@/lib/money";
+import {
+  rangeDays,
+  proratePeriodCents,
+  sumMonthlyByCategory,
+  primeCostHealth,
+} from "@/lib/operating-costs";
 import { costPerUnitFromReceipt } from "@/lib/inventory";
 import { revenueStatusWhere } from "@/lib/order-status";
 import { RangeFilter } from "@/components/range-filter";
@@ -25,6 +31,16 @@ const CLASS_STYLE: Record<MenuClass, { fg: string; bg: string; blurb: string }> 
   dog: { fg: "#7a7268", bg: "#e7e3d8", blurb: "Low margin, low sales — fix or cut" },
 };
 
+// Prime Cost health pill + headline color, keyed to the ≤55% benchmark.
+const TONE: Record<"good" | "warn" | "bad", { fg: string; bg: string; ink: string }> = {
+  good: { fg: "#2f5e3f", bg: "#d9ead9", ink: "var(--pine)" },
+  warn: { fg: "#8a6d1f", bg: "#f3e9c9", ink: "#8a6d1f" },
+  bad: { fg: "#8a3f2f", bg: "#f3d9d0", ink: "var(--clay)" },
+};
+
+// Cost-stack segment colors, shared by the Prime Cost bar and per-plate bars.
+const SEG = { food: "var(--clay)", labour: "#c9a227", overhead: "#9a9488", profit: "var(--pine)" } as const;
+
 export default async function ProfitabilityPage({
   searchParams,
 }: {
@@ -39,9 +55,23 @@ export default async function ProfitabilityPage({
       id: true,
       name: true,
       priceCents: true,
+      expectedServings: true,
+      actualServings: true,
       ingredients: { select: { qty: true, unit: true, trimBps: true, ingredient: { select: { unit: true, costPerUnitCents: true, densityGPerMl: true } } } },
     },
   });
+
+  // Recipe-yield gaps (food-cost lever #3): recipe is costed for N servings but the
+  // kitchen actually gets fewer, so the real per-plate cost is higher than shown.
+  const yieldAlerts = meals
+    .map((m) => {
+      const e = m.expectedServings ?? 0;
+      const a = m.actualServings ?? 0;
+      if (!(e > 0) || !(a > 0) || a >= e) return null;
+      return { name: m.name, overrunBps: Math.round((e / a - 1) * 10000) };
+    })
+    .filter(Boolean)
+    .sort((x, y) => y!.overrunBps - x!.overrunBps) as { name: string; overrunBps: number }[];
 
   // Sold line items in range (earned revenue only) → units + revenue per meal.
   const soldItems = await db.orderItem.findMany({
@@ -90,6 +120,32 @@ export default async function ProfitabilityPage({
   const netContributionCents = grossMarginCents - lossCents;
   const lossShareBps = grossMarginCents > 0 ? Math.round((lossCents / grossMarginCents) * 10000) : 0;
 
+  // ---- Labour + overhead → Prime Cost and true operating profit ----
+  const operatingCosts = await db.operatingCost.findMany({
+    where: { businessId: business.id, active: true },
+    select: { category: true, monthlyCents: true },
+  });
+  const { laborMonthly, overheadMonthly } = sumMonthlyByCategory(operatingCosts);
+  const hasOpCosts = laborMonthly > 0 || overheadMonthly > 0;
+  // Monthly labour/overhead prorated to the selected period so they line up with
+  // the period's food revenue (Today / This Week / This Month / All time).
+  const periodDays = rangeDays(range, new Date(), business.createdAt);
+  const laborCents = proratePeriodCents(laborMonthly, periodDays);
+  const overheadCents = proratePeriodCents(overheadMonthly, periodDays);
+
+  // Prime Cost = food + labour; the industry health line is ≤ 55% of sales.
+  const hasSales = foodRevenueCents > 0;
+  const primeCents = foodCostCents + laborCents;
+  const primeBps = hasSales ? Math.round((primeCents / foodRevenueCents) * 10000) : 0;
+  const foodCostShareBps = hasSales ? Math.round((foodCostCents / foodRevenueCents) * 10000) : 0;
+  const laborShareBps = hasSales ? Math.round((laborCents / foodRevenueCents) * 10000) : 0;
+  const overheadShareBps = hasSales ? Math.round((overheadCents / foodRevenueCents) * 10000) : 0;
+  const primeHealth = primeCostHealth(primeBps);
+
+  // True operating profit = sales − food − labour − overhead − recorded loss.
+  const trueProfitCents = grossMarginCents - lossCents - laborCents - overheadCents;
+  const trueProfitBps = hasSales ? Math.round((trueProfitCents / foodRevenueCents) * 10000) : 0;
+
   // The menu table's contribution column is menu-margin (pre-loss).
   const totalContribution = rows.reduce((s, r) => s + r.contributionCents, 0);
 
@@ -132,6 +188,78 @@ export default async function ProfitabilityPage({
         right={<RangeFilter basePath="/dashboard/profitability" current={range} />}
       />
 
+      {/* Prime Cost hero — food + labour vs the 55% health line */}
+      {hasOpCosts ? (
+        <Card className="mb-5">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-2 mb-1.5">
+                <Scale size={15} style={{ color: "var(--pine)" }} />
+                <span className="text-[15px] font-semibold" style={{ color: "var(--ink)" }}>Prime Cost</span>
+                <Hint text="Food cost + labour as a share of sales — the single most-watched number in a food business. At or under 55% is healthy; above it, profit is very hard. Bring it down by lowering food cost or labour." />
+                {hasSales && (
+                  <span className="ml-1 text-[11px] px-2 py-0.5 rounded-full font-semibold" style={{ background: TONE[primeHealth.tone].bg, color: TONE[primeHealth.tone].fg }}>
+                    {primeHealth.label}
+                  </span>
+                )}
+              </div>
+              {hasSales ? (
+                <>
+                  <div className="disp text-[34px] font-medium leading-none" style={{ color: TONE[primeHealth.tone].ink }}>
+                    {bpsToPercent(primeBps).toFixed(1)}%
+                  </div>
+                  <div className="text-[12px] mt-2" style={{ color: "var(--muted)" }}>
+                    Food {bpsToPercent(foodCostShareBps).toFixed(0)}% + Labour {bpsToPercent(laborShareBps).toFixed(0)}% · target under 55%
+                  </div>
+                </>
+              ) : (
+                <div className="text-[13px]" style={{ color: "var(--muted)" }}>No sales in this period yet — Prime Cost needs revenue to measure against.</div>
+              )}
+            </div>
+            {hasSales && (
+              <div className="text-right">
+                <div className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: "var(--muted)" }}>Prime cost ({rangeLabel(range).toLowerCase()})</div>
+                <div className="disp text-[20px] font-medium mt-1" style={{ color: "var(--ink)" }}>{formatCents(primeCents)}</div>
+                <div className="text-[12px]" style={{ color: "var(--muted)" }}>of {formatCents(foodRevenueCents)} sales</div>
+              </div>
+            )}
+          </div>
+          {hasSales && (
+            <div className="mt-4">
+              <div className="relative h-3 rounded-full overflow-hidden" style={{ background: "var(--sand)" }}>
+                <div className="absolute inset-y-0 left-0 flex">
+                  <div style={{ width: `${Math.min(100, bpsToPercent(foodCostShareBps))}%`, background: SEG.food }} />
+                  <div style={{ width: `${Math.min(100, bpsToPercent(laborShareBps))}%`, background: SEG.labour }} />
+                </div>
+                {/* 55% health line */}
+                <div className="absolute inset-y-0" style={{ left: "55%", width: 2, background: "var(--ink)" }} title="55% target" />
+              </div>
+              <div className="flex flex-wrap items-center gap-3 mt-2 text-[11px]" style={{ color: "var(--muted)" }}>
+                <span className="inline-flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm" style={{ background: SEG.food }} /> Food</span>
+                <span className="inline-flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm" style={{ background: SEG.labour }} /> Labour</span>
+                <span className="inline-flex items-center gap-1"><span className="w-3 h-0.5" style={{ background: "var(--ink)" }} /> 55% target</span>
+                <Link href="/dashboard/costs" className="ml-auto inline-flex items-center gap-1" style={{ color: "var(--pine)" }}>
+                  <Calculator size={12} /> Edit labour & overhead
+                </Link>
+              </div>
+            </div>
+          )}
+        </Card>
+      ) : (
+        <Link href="/dashboard/costs" className="block mb-5">
+          <div className="flex items-start gap-2.5 px-4 py-3.5 rounded-xl border" style={{ borderColor: "var(--line)", background: "var(--paper)" }}>
+            <Scale size={17} style={{ color: "var(--pine)", marginTop: 1 }} />
+            <div className="text-[13px]" style={{ color: "var(--ink)" }}>
+              <strong>Unlock Prime Cost &amp; true profit.</strong>{" "}
+              <span style={{ color: "var(--ink-soft)" }}>
+                PrepFlow knows your food cost — add your <strong>labour</strong> and <strong>overhead</strong> to see Prime Cost % (food + labour, the ≤55% health line) and what each plate <em>really</em> nets after everything.
+              </span>{" "}
+              <span className="inline-flex items-center gap-1 font-medium" style={{ color: "var(--pine)" }}>Add operating costs <Calculator size={12} /></span>
+            </div>
+          </div>
+        </Link>
+      )}
+
       {/* True P&L: food revenue − food cost − recorded losses */}
       <Card className="mb-5">
         <CardTitle icon={<DollarSign size={15} />} title="Profit & loss" note={rangeLabel(range)} />
@@ -145,11 +273,30 @@ export default async function ProfitabilityPage({
             </div>
             <Row l="Recorded food loss" v={`−${formatCents(lossCents)}`} />
             <div className="flex justify-between pt-2 mt-1" style={{ borderTop: "1px solid var(--line)" }}>
-              <span className="text-[14px] font-semibold" style={{ color: "var(--ink)" }}>Net contribution</span>
-              <span className="disp text-[18px] font-medium" style={{ color: netContributionCents >= 0 ? "var(--pine)" : "var(--clay)" }}>
+              <span className="text-[13.5px] font-medium" style={{ color: "var(--ink)" }}>Net contribution</span>
+              <span className="text-[13.5px] font-semibold" style={{ color: netContributionCents >= 0 ? "var(--ink)" : "var(--clay)" }}>
                 {formatCents(netContributionCents)}
               </span>
             </div>
+            {hasOpCosts ? (
+              <>
+                <Row l="Labour" v={`−${formatCents(laborCents)}`} />
+                <Row l="Overhead" v={`−${formatCents(overheadCents)}`} />
+                <div className="flex justify-between items-baseline pt-2 mt-1" style={{ borderTop: "1px solid var(--line)" }}>
+                  <span className="text-[14px] font-semibold" style={{ color: "var(--ink)" }}>True operating profit</span>
+                  <span className="disp text-[18px] font-medium" style={{ color: trueProfitCents >= 0 ? "var(--pine)" : "var(--clay)" }}>
+                    {formatCents(trueProfitCents)}
+                    {hasSales && (
+                      <span className="text-[12px] font-normal ml-1.5" style={{ color: "var(--muted)" }}>{bpsToPercent(trueProfitBps).toFixed(1)}%</span>
+                    )}
+                  </span>
+                </div>
+              </>
+            ) : (
+              <Link href="/dashboard/costs" className="inline-flex items-center gap-1.5 text-[12px] pt-1.5" style={{ color: "var(--pine)" }}>
+                <Calculator size={13} /> Add labour &amp; overhead to see true profit →
+              </Link>
+            )}
           </div>
 
           <div>
@@ -183,7 +330,7 @@ export default async function ProfitabilityPage({
           </div>
         </div>
         <p className="text-[11.5px] mt-3" style={{ color: "var(--muted)" }}>
-          Revenue and cost cover meals sold in the period (canceled/refunded excluded). Food loss is what you logged in Waste &amp; Loss{lossCents > 0 ? ` — eating ${bpsToPercent(lossShareBps).toFixed(1)}% of your gross margin` : ""}. This is contribution before labour, packaging, rent, and platform fees.
+          Revenue and cost cover meals sold in the period (canceled/refunded excluded). Food loss is what you logged in Waste &amp; Loss{lossCents > 0 ? ` — eating ${bpsToPercent(lossShareBps).toFixed(1)}% of your gross margin` : ""}. {hasOpCosts ? "True operating profit then subtracts your monthly labour and overhead (from Operating Costs, prorated to this period) — before platform fees and income tax." : "This is contribution before labour and overhead — add those in Operating Costs to see your true profit."}
         </p>
       </Card>
 
@@ -206,6 +353,21 @@ export default async function ProfitabilityPage({
               </span>
             ))}
             Margins on affected meals are dropping — reprice or re-source.
+          </div>
+        </div>
+      )}
+
+      {yieldAlerts.length > 0 && (
+        <div className="flex items-start gap-2.5 px-4 py-3 rounded-lg mb-5" style={{ background: "color-mix(in srgb, #c9a227 10%, transparent)", border: "1px solid color-mix(in srgb, #c9a227 30%, transparent)" }}>
+          <AlertTriangle size={16} style={{ color: "#8a6d1f", marginTop: 1 }} />
+          <div className="text-[13px]" style={{ color: "var(--ink)" }}>
+            <strong>Recipe yield is running short.</strong>{" "}
+            {yieldAlerts.map((y) => (
+              <span key={y.name}>
+                {y.name} <span style={{ color: "#8a6d1f" }}>+{bpsToPercent(y.overrunBps).toFixed(0)}% real cost</span>.{" "}
+              </span>
+            ))}
+            You&apos;re getting fewer servings than the recipe is costed for, so the true plate cost is higher than shown. Re-cost the recipe or fix the yield (portioning, trim, over-production).
           </div>
         </div>
       )}
@@ -267,6 +429,66 @@ export default async function ProfitabilityPage({
           );
         })}
       </div>
+
+      {/* Per-plate loaded profit: price − food − labour share − overhead share */}
+      {hasOpCosts && hasSales && rows.length > 0 && (
+        <Card className="mb-4">
+          <CardTitle
+            icon={<Scale size={15} />}
+            title="What each plate really nets"
+            note={`After food, labour & overhead · ${rangeLabel(range).toLowerCase()}`}
+          />
+          <p className="text-[12px] mb-3 -mt-2" style={{ color: "var(--muted)" }}>
+            Menu margin only subtracts food. This loads every plate with its share of labour ({bpsToPercent(laborShareBps).toFixed(0)}% of price)
+            and overhead ({bpsToPercent(overheadShareBps).toFixed(0)}%) — the real profit once everything is paid.
+          </p>
+          <div className="hidden sm:grid grid-cols-[1.7fr_70px_70px_75px_80px_92px] gap-3 px-1 pb-2 text-[11px] font-semibold uppercase tracking-wide" style={{ color: "var(--muted)", borderBottom: "1px solid var(--line)" }}>
+            <div>Meal</div>
+            <div className="text-right">Price</div>
+            <div className="text-right">Food</div>
+            <div className="text-right">Labour</div>
+            <div className="text-right">Overhead</div>
+            <div className="text-right">Real profit</div>
+          </div>
+          <div>
+            {rows.map((r) => {
+              const price = r.priceCents;
+              const laborShare = Math.round((price * laborShareBps) / 10000);
+              const overheadShare = Math.round((price * overheadShareBps) / 10000);
+              const realProfit = price - r.costCents - laborShare - overheadShare;
+              const realBps = price > 0 ? Math.round((realProfit / price) * 10000) : 0;
+              const seg = (c: number) => (price > 0 ? Math.max(0, Math.min(100, (c / price) * 100)) : 0);
+              return (
+                <div key={r.id} className="grid sm:grid-cols-[1.7fr_70px_70px_75px_80px_92px] grid-cols-2 gap-3 items-center px-1 py-2.5" style={{ borderBottom: "1px solid var(--line)" }}>
+                  <div className="min-w-0">
+                    <div className="text-[13px] font-medium truncate" style={{ color: "var(--ink)" }}>{r.name}</div>
+                    <div className="flex h-2 rounded-full overflow-hidden mt-1.5" style={{ background: "var(--sand)" }} title={`Food ${formatCents(r.costCents)} · Labour ${formatCents(laborShare)} · Overhead ${formatCents(overheadShare)} · Profit ${formatCents(realProfit)}`}>
+                      <div style={{ width: `${seg(r.costCents)}%`, background: SEG.food }} />
+                      <div style={{ width: `${seg(laborShare)}%`, background: SEG.labour }} />
+                      <div style={{ width: `${seg(overheadShare)}%`, background: SEG.overhead }} />
+                      <div style={{ width: `${seg(Math.max(0, realProfit))}%`, background: SEG.profit }} />
+                    </div>
+                  </div>
+                  <div className="text-[12.5px] text-right" style={{ color: "var(--ink-soft)" }}>{formatCents(price)}</div>
+                  <div className="text-[12.5px] text-right" style={{ color: "var(--muted)" }}>−{formatCents(r.costCents)}</div>
+                  <div className="text-[12.5px] text-right" style={{ color: "var(--muted)" }}>−{formatCents(laborShare)}</div>
+                  <div className="text-[12.5px] text-right" style={{ color: "var(--muted)" }}>−{formatCents(overheadShare)}</div>
+                  <div className="text-right">
+                    <div className="disp text-[14px] font-medium" style={{ color: realProfit >= 0 ? "var(--pine)" : "var(--clay)" }}>{formatCents(realProfit)}</div>
+                    <div className="text-[11px]" style={{ color: "var(--muted)" }}>{bpsToPercent(realBps).toFixed(0)}%</div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <div className="flex flex-wrap items-center gap-3 mt-3 text-[11px]" style={{ color: "var(--muted)" }}>
+            <span className="inline-flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm" style={{ background: SEG.food }} /> Food</span>
+            <span className="inline-flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm" style={{ background: SEG.labour }} /> Labour</span>
+            <span className="inline-flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm" style={{ background: SEG.overhead }} /> Overhead</span>
+            <span className="inline-flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm" style={{ background: SEG.profit }} /> Profit</span>
+          </div>
+        </Card>
+      )}
 
       {/* Menu engineering legend */}
       <Card>

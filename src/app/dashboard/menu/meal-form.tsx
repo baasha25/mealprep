@@ -53,6 +53,8 @@ export type MealFormInitial = {
   swatch: string;
   imageUrl: string;
   shelfLifeDays: string;
+  expectedServings: string;
+  actualServings: string;
   ingredients: IngredientRow[];
 };
 
@@ -302,6 +304,17 @@ export function MealForm({
     const after = Number(calcAfter);
     if (!(raw > 0) || !(after >= 0) || after > raw) return null;
     return Math.round(((raw - after) / raw) * 1000) / 10; // one decimal
+  })();
+
+  // Recipe yield: expected vs. actual servings. If you get fewer than the recipe
+  // is costed for, the real per-plate cost is higher by (expected/actual − 1).
+  const [yieldExp, setYieldExp] = useState(initial.expectedServings);
+  const [yieldAct, setYieldAct] = useState(initial.actualServings);
+  const yieldOverrunPct: number | null = (() => {
+    const e = Number(yieldExp);
+    const a = Number(yieldAct);
+    if (!(e > 0) || !(a > 0) || a >= e) return null;
+    return Math.round((e / a - 1) * 1000) / 10; // one decimal
   })();
 
   return (
@@ -666,6 +679,53 @@ export function MealForm({
             </span>
           </div>
         )}
+
+        {/* Recipe yield — food-cost lever: recipe vs. actual servings produced. */}
+        <div className="mt-4 pt-4" style={{ borderTop: "1px solid var(--line)" }}>
+          <label className="text-[12.5px] font-medium" style={{ color: "var(--ink)" }}>
+            Recipe yield <span style={{ color: "var(--muted)" }}>(optional)</span>
+          </label>
+          <p className="text-[11.5px] mt-0.5 mb-2" style={{ color: "var(--muted)" }}>
+            How many servings this recipe should make, vs. what you actually get. If you get fewer, your real
+            food cost per plate is higher — PrepFlow flags it on Profitability.
+          </p>
+          <div className="flex items-end gap-3 flex-wrap">
+            <label className="flex flex-col text-[11px]" style={{ color: "var(--muted)" }}>
+              Recipe makes
+              <input
+                name="expectedServings"
+                type="number"
+                step="1"
+                min="1"
+                value={yieldExp}
+                onChange={(e) => setYieldExp(e.target.value)}
+                placeholder="e.g. 12"
+                className={`${INP} w-28`}
+                style={inputStyle}
+              />
+            </label>
+            <label className="flex flex-col text-[11px]" style={{ color: "var(--muted)" }}>
+              Actually got
+              <input
+                name="actualServings"
+                type="number"
+                step="1"
+                min="1"
+                value={yieldAct}
+                onChange={(e) => setYieldAct(e.target.value)}
+                placeholder="e.g. 10"
+                className={`${INP} w-28`}
+                style={inputStyle}
+              />
+            </label>
+            {yieldOverrunPct != null && (
+              <div className="flex items-start gap-1.5 px-2.5 py-1.5 rounded-md text-[11.5px]" style={{ background: "#f3e9c9", color: "#7a5a1a" }}>
+                <AlertTriangle size={13} style={{ marginTop: 1, flexShrink: 0 }} />
+                <span>Real food cost is about <strong>+{yieldOverrunPct}%</strong> per plate — recost or fix the yield.</span>
+              </div>
+            )}
+          </div>
+        </div>
       </Card>
 
       <div className="flex items-center gap-3">

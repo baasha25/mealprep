@@ -144,6 +144,7 @@ model Business {
   orders      Order[]
   giftCards   GiftCard[]
   coupons     Coupon[]
+  operatingCosts OperatingCost[]
 }
 
 model BusinessSettings {
@@ -271,6 +272,10 @@ model Meal {
   allergens String[] @default([])
   active    Boolean  @default(true)
   shelfLifeDays Int?  // days the finished meal keeps; drives label "best by" (null = use kitchen default)
+  // Recipe yield (food-cost lever #3): servings the recipe is costed for vs. what
+  // the kitchen actually gets. If actual < expected, real per-plate cost is higher.
+  expectedServings Int? // recipe yield the plate cost assumes
+  actualServings   Int? // servings actually produced from that recipe
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -581,4 +586,20 @@ model Delivery {
   eta         DateTime?
   trackingUrl String?
   proofUrl    String?
+}
+
+/// Recurring monthly operating cost line item — labour or overhead. Feeds the
+/// Prime Cost metric (food + labour ≤ 55% of sales) and the true-profit P&L.
+model OperatingCost {
+  id           String   @id @default(cuid())
+  businessId   String
+  business     Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  label        String
+  category     String   @default("overhead") // "labor" | "overhead"
+  monthlyCents Int      @default(0)
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([businessId])
 }

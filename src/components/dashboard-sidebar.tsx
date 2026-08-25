@@ -32,6 +32,7 @@ import {
   Trash2,
   CreditCard,
   BookOpen,
+  Calculator,
   type LucideIcon,
 } from "lucide-react";
 
@@ -45,6 +46,7 @@ const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
       ["/dashboard", "Dashboard", LayoutDashboard],
       ["/dashboard/analytics", "Analytics", BarChart3],
       ["/dashboard/profitability", "Profitability", TrendingUp],
+      ["/dashboard/costs", "Operating Costs", Calculator],
       ["/dashboard/reports", "Reports", FileSpreadsheet],
     ],
   },

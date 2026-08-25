@@ -28,6 +28,8 @@ export default async function NewMealPage() {
     swatch: swatchForIndex(count),
     imageUrl: "",
     shelfLifeDays: "",
+    expectedServings: "",
+    actualServings: "",
     ingredients: [],
   };
 

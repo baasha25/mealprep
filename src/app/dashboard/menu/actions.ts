@@ -38,6 +38,16 @@ const MealInput = z.object({
     (v) => (v === "" || v == null || v === "0" ? null : v),
     z.coerce.number().int().min(1).max(60).nullable(),
   ),
+  // Recipe yield: servings the recipe is costed for vs. what's actually produced.
+  // Blank = unset (no yield tracking). Used to flag a real-vs-expected cost gap.
+  expectedServings: z.preprocess(
+    (v) => (v === "" || v == null || v === "0" ? null : v),
+    z.coerce.number().int().min(1).max(10000).nullable(),
+  ),
+  actualServings: z.preprocess(
+    (v) => (v === "" || v == null || v === "0" ? null : v),
+    z.coerce.number().int().min(1).max(10000).nullable(),
+  ),
   // Customer-facing photo URL from the client-side Cloudinary upload. Only accept
   // a genuine Cloudinary delivery URL; anything else is ignored (stored as null).
   imageUrl: z.preprocess((v) => {
@@ -83,6 +93,8 @@ function parseMealForm(formData: FormData) {
       active: formData.get("active") === "on",
       swatch: formData.get("swatch"),
       shelfLifeDays: formData.get("shelfLifeDays") ?? "",
+      expectedServings: formData.get("expectedServings") ?? "",
+      actualServings: formData.get("actualServings") ?? "",
       imageUrl: formData.get("imageUrl") ?? "",
     },
     ingredientRows,
@@ -164,6 +176,8 @@ export async function createMeal(
         allergens: d.allergens,
         active: d.active,
         shelfLifeDays: d.shelfLifeDays,
+        expectedServings: d.expectedServings,
+        actualServings: d.actualServings,
       },
     });
     await syncIngredients(tx, business.id, meal.id, ingParsed.data);
@@ -218,6 +232,8 @@ export async function updateMeal(
         allergens: d.allergens,
         active: d.active,
         shelfLifeDays: d.shelfLifeDays,
+        expectedServings: d.expectedServings,
+        actualServings: d.actualServings,
       },
     });
     await syncIngredients(tx, business.id, mealId, ingParsed.data);
