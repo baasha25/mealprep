@@ -6,7 +6,6 @@ export type GuideNumber = [term: string, definition: string];
 
 export type GuideSection = {
   id: string; // anchor slug
-  n: number; // display number (matches the manual)
   title: string;
   where: string; // breadcrumb, e.g. "Overview → Dashboard"
   does: string; // "What it does"
@@ -51,7 +50,6 @@ export const GUIDE: GuideArea[] = [
     sections: [
       {
         id: "dashboard",
-        n: 1,
         title: "Dashboard",
         where: "Overview → Dashboard",
         img: "01-dashboard.png",
@@ -73,7 +71,6 @@ export const GUIDE: GuideArea[] = [
       },
       {
         id: "analytics",
-        n: 2,
         title: "Analytics",
         where: "Overview → Analytics",
         img: "02-analytics.png",
@@ -91,7 +88,6 @@ export const GUIDE: GuideArea[] = [
       },
       {
         id: "profitability",
-        n: 3,
         title: "Profitability & P&L",
         where: "Overview → Profitability",
         img: "03-profitability.png",
@@ -129,7 +125,6 @@ export const GUIDE: GuideArea[] = [
       },
       {
         id: "operating-costs",
-        n: 27,
         title: "Operating Costs (labour & overhead)",
         where: "Overview → Operating Costs",
         does:
@@ -155,7 +150,6 @@ export const GUIDE: GuideArea[] = [
       },
       {
         id: "reports",
-        n: 4,
         title: "Reports",
         where: "Overview → Reports",
         img: "04-reports.png",
@@ -171,7 +165,6 @@ export const GUIDE: GuideArea[] = [
     sections: [
       {
         id: "menu",
-        n: 5,
         title: "Menu",
         where: "Sales → Menu",
         img: "05-menu.png",
@@ -194,7 +187,6 @@ export const GUIDE: GuideArea[] = [
       },
       {
         id: "adding-a-meal",
-        n: 6,
         title: "Adding a meal (the recipe)",
         where: "Sales → Menu → New menu item",
         img: "26-menu-new.png",
@@ -211,7 +203,6 @@ export const GUIDE: GuideArea[] = [
       },
       {
         id: "meal-plans",
-        n: 7,
         title: "Meal Plans",
         where: "Sales → Meal Plans",
         img: "06-plans.png",
@@ -229,7 +220,6 @@ export const GUIDE: GuideArea[] = [
       },
       {
         id: "subscriptions",
-        n: 8,
         title: "Subscriptions",
         where: "Sales → Subscriptions",
         img: "07-subscriptions.png",
@@ -244,7 +234,6 @@ export const GUIDE: GuideArea[] = [
       },
       {
         id: "orders",
-        n: 9,
         title: "Orders",
         where: "Sales → Orders",
         img: "08-orders.png",
@@ -261,7 +250,6 @@ export const GUIDE: GuideArea[] = [
       },
       {
         id: "customers",
-        n: 10,
         title: "Customers",
         where: "Sales → Customers",
         img: "09-customers.png",
@@ -279,7 +267,6 @@ export const GUIDE: GuideArea[] = [
       },
       {
         id: "pos",
-        n: 11,
         title: "POS Terminal",
         where: "Sales → POS Terminal",
         img: "10-pos.png",
@@ -300,7 +287,6 @@ export const GUIDE: GuideArea[] = [
     sections: [
       {
         id: "kitchen-os",
-        n: 12,
         title: "Kitchen OS (Production)",
         where: "Kitchen → Kitchen OS",
         img: "11-kitchen.png",
@@ -314,7 +300,6 @@ export const GUIDE: GuideArea[] = [
       },
       {
         id: "kds",
-        n: 13,
         title: "Kitchen Display (KDS)",
         where: "Kitchen → Kitchen Display",
         img: "12-kds.png",
@@ -328,7 +313,6 @@ export const GUIDE: GuideArea[] = [
       },
       {
         id: "purchasing",
-        n: 14,
         title: "Purchasing & Waste",
         where: "Kitchen → Purchasing",
         img: "13-purchasing.png",
@@ -346,7 +330,6 @@ export const GUIDE: GuideArea[] = [
       },
       {
         id: "inventory",
-        n: 15,
         title: "Inventory",
         where: "Kitchen → Inventory",
         img: "14-inventory.png",
@@ -367,7 +350,6 @@ export const GUIDE: GuideArea[] = [
       },
       {
         id: "waste",
-        n: 16,
         title: "Waste & Loss",
         where: "Kitchen → Waste & Loss",
         img: "15-waste.png",
@@ -392,7 +374,6 @@ export const GUIDE: GuideArea[] = [
       },
       {
         id: "labels",
-        n: 17,
         title: "Labels & Packing",
         where: "Kitchen → Labels & packing",
         img: "16-labels.png",
@@ -406,7 +387,6 @@ export const GUIDE: GuideArea[] = [
       },
       {
         id: "routes",
-        n: 18,
         title: "Delivery Routes",
         where: "Kitchen → Delivery Routes",
         img: "17-routes.png",
@@ -425,7 +405,6 @@ export const GUIDE: GuideArea[] = [
     sections: [
       {
         id: "promotions",
-        n: 19,
         title: "Promotions (Marketing)",
         where: "Marketing → Marketing",
         img: "18-marketing.png",
@@ -440,7 +419,6 @@ export const GUIDE: GuideArea[] = [
       },
       {
         id: "share",
-        n: 20,
         title: "Share Links",
         where: "Marketing → Share links",
         img: "19-share.png",
@@ -449,17 +427,20 @@ export const GUIDE: GuideArea[] = [
       },
       {
         id: "storefront",
-        n: 26,
         title: "Your Storefront (what customers see)",
         where: "Public — prepflow.ca/store/your-kitchen",
         img: "25-storefront.png",
-        does: "Your own branded ordering page. Customers browse meals, filter by diet, see macros and reviews, subscribe to a plan or order one-time, and pay — all themselves. This is what replaces taking orders by text and DM.",
+        does: "Your own branded ordering page. Customers browse meals, filter by diet, see macros and reviews, subscribe to a plan or order one-time, and pay — all themselves. A live countdown banner at the top ticks down to your weekly order cut-off, so customers feel the urgency to order before the deadline. This is what replaces taking orders by text and DM.",
         numbers: [
+          ["Order cut-off countdown", "A banner across the top counts down — days, hours, minutes, seconds — to your next order cut-off, and shows the delivery date it unlocks (e.g. \"Order by Sat 8:00 PM — arrives Mon\"). When the deadline passes it flips to an \"ordering has closed\" message until the next window opens. It runs in your kitchen's own timezone."],
           ["Subscription plans", "Your Meal Plans shown as weekly/bi-weekly options with the per-week price."],
           ["Meal cards", "Each meal with its price, diet tag, calories, protein, and star rating."],
           ["Your order", "The customer's running cart before checkout."],
         ],
-        tips: ["Everything a customer does here flows straight into your dashboard — orders, customers, production, and revenue. Share the link (see Share Links) on social and in your bio."],
+        tips: [
+          "Everything a customer does here flows straight into your dashboard — orders, customers, production, and revenue. Share the link (see Share Links) on social and in your bio.",
+          "The countdown timer is driven by the Order cut-off and timezone you set in Settings → Fulfillment. Change the cut-off there and the banner updates automatically — a real deadline is one of the simplest ways to get orders in before you shop and prep.",
+        ],
       },
     ],
   },
@@ -469,7 +450,6 @@ export const GUIDE: GuideArea[] = [
     sections: [
       {
         id: "billing",
-        n: 21,
         title: "Billing & Plan",
         where: "Admin → Billing & plan",
         img: "20-billing.png",
@@ -483,7 +463,6 @@ export const GUIDE: GuideArea[] = [
       },
       {
         id: "payouts",
-        n: 22,
         title: "Payouts",
         where: "Admin → Payouts",
         img: "21-payouts.png",
@@ -501,7 +480,6 @@ export const GUIDE: GuideArea[] = [
       },
       {
         id: "staff",
-        n: 23,
         title: "Staff",
         where: "Admin → Staff",
         img: "22-staff.png",
@@ -515,7 +493,6 @@ export const GUIDE: GuideArea[] = [
       },
       {
         id: "import",
-        n: 24,
         title: "Import Data",
         where: "Admin → Import data",
         img: "23-import.png",
@@ -533,7 +510,6 @@ export const GUIDE: GuideArea[] = [
       },
       {
         id: "settings",
-        n: 25,
         title: "Settings",
         where: "Admin → Settings",
         img: "24-settings.png",

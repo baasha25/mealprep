@@ -4,10 +4,15 @@ import { useMemo, useState, useEffect, useRef } from "react";
 import { Search, MapPin, ListChecks, Hash, Lightbulb, X, ChevronRight, BookOpen } from "lucide-react";
 import { GUIDE, GUIDE_INTRO, type GuideSection } from "@/lib/guide-content";
 
-// Flattened, searchable index of every section (with its area label).
-const ALL: (GuideSection & { area: string })[] = GUIDE.flatMap((a) =>
+// Flattened, searchable index of every section (with its area label). The
+// display number is computed from position here — never hardcoded — so the
+// badges always read 1, 2, 3… in order and can't drift when sections are added.
+const ALL: (GuideSection & { area: string; num: number })[] = GUIDE.flatMap((a) =>
   a.sections.map((s) => ({ ...s, area: a.label })),
-);
+).map((s, i) => ({ ...s, num: i + 1 }));
+// Section id → its display number, for the table of contents (which iterates
+// the raw GUIDE areas rather than the flattened ALL list).
+const NUM = new Map(ALL.map((s) => [s.id, s.num]));
 const haystack = (s: GuideSection & { area: string }) =>
   [
     s.title,
@@ -94,7 +99,7 @@ export function GuideView() {
                         className="flex items-center gap-1.5 px-2 py-1.5 rounded-md text-[12.5px] transition-colors"
                         style={{ background: on ? "var(--paper-2, #efe9dd)" : "transparent", color: on ? "var(--pine)" : "var(--ink-soft)", fontWeight: on ? 600 : 450 }}
                       >
-                        <span className="tabular-nums opacity-50 w-4 text-right">{s.n}</span>
+                        <span className="tabular-nums opacity-50 w-4 text-right">{NUM.get(s.id)}</span>
                         <span className="truncate">{s.title}</span>
                       </a>
                     );
@@ -165,7 +170,7 @@ function IntroBlock() {
       <details className="rounded-xl border" style={{ borderColor: "var(--line)", background: "var(--surface)" }}>
         <summary className="cursor-pointer list-none px-5 py-3 flex items-center gap-2 text-[13px] font-medium select-none" style={{ color: "var(--ink)" }}>
           <ChevronRight size={15} style={{ color: "var(--muted)" }} />
-          A few words you'll see everywhere
+          A few words you&apos;ll see everywhere
         </summary>
         <div className="px-5 pb-4">
           <dl className="rounded-lg overflow-hidden" style={{ border: "1px solid var(--line)" }}>
@@ -182,12 +187,12 @@ function IntroBlock() {
   );
 }
 
-function SectionCard({ s, highlight }: { s: GuideSection & { area: string }; highlight: string }) {
+function SectionCard({ s, highlight }: { s: GuideSection & { area: string; num: number }; highlight: string }) {
   return (
     <section id={s.id} className="scroll-mt-24 rounded-xl border overflow-hidden" style={{ borderColor: "var(--line)", background: "var(--surface)" }}>
       <div className="px-5 sm:px-6 py-5">
         <div className="flex items-center gap-2 mb-1">
-          <span className="grid place-items-center w-6 h-6 rounded-md text-[12px] font-semibold tabular-nums" style={{ background: "var(--pine)", color: "#f4f2ec" }}>{s.n}</span>
+          <span className="grid place-items-center w-6 h-6 rounded-md text-[12px] font-semibold tabular-nums" style={{ background: "var(--pine)", color: "#f4f2ec" }}>{s.num}</span>
           <span className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded" style={{ background: "var(--paper-2, #efe9dd)", color: "var(--clay)" }}>
             <MapPin size={11} /> {s.where}
           </span>
