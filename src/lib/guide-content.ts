@@ -127,6 +127,7 @@ export const GUIDE: GuideArea[] = [
         id: "operating-costs",
         title: "Operating Costs (labour & overhead)",
         where: "Overview → Operating Costs",
+        img: "operating-costs.png",
         does:
           "Where you tell PrepFlow the OTHER half of what it costs to run your kitchen. It already knows your food cost from recipes; here you add your monthly labour (wages) and overhead (rent, utilities, insurance, marketing, supplies). Once these are in, the Profitability screen can show your Prime Cost and your true profit after everything — not just the profit on the food.",
         use: [
