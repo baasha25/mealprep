@@ -10,6 +10,7 @@ import {
   LayoutDashboard,
   Store,
   TrendingUp,
+  Scale,
   Sprout,
   ChefHat,
   Megaphone,
@@ -75,6 +76,20 @@ const STEPS: Step[] = [
     ],
     img: "/demo/profitability.png",
     imgAlt: "Profitability and P&L view with per-meal margins and menu engineering",
+  },
+  {
+    icon: Scale,
+    kicker: "Money feature — the full picture",
+    title: "The true cost of everything — and what's really left",
+    blurb:
+      "Food is only half the story. Add your labour and overhead once, and PrepFlow shows your Prime Cost — the number every food business lives or dies by — and your real profit after everything, not just the margin on the food.",
+    points: [
+      "Prime Cost % (food + labour) with the industry 55% health line built in",
+      "A true P&L: revenue minus food, labour, and overhead — what you actually keep",
+      "Per-plate real profit, so you see what each meal nets after the whole kitchen",
+    ],
+    img: "/demo/prime-cost.png",
+    imgAlt: "Prime Cost metric and true-profit P&L after labour and overhead",
   },
   {
     icon: Sprout,

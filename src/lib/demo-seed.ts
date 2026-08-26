@@ -43,6 +43,24 @@ const MEALS = [
 
 const PLANS = [ { name: "Starter", meals: 5, perMeal: 11.5 }, { name: "Pro", meals: 10, perMeal: 10.5 }, { name: "Athlete", meals: 14, perMeal: 9.9 } ];
 
+// Monthly labour + overhead, sized to the demo's ~$428 of seeded sales so the
+// Profitability page shows a healthy story: Prime Cost (food + labour) lands
+// around the low-50s % (the ≤55% health line) and true operating profit is
+// positive. Populates the Prime Cost hero + true-profit P&L out of the gate.
+const OPERATING_COSTS = [
+  { label: "Part-time prep help", category: "labor", monthly: 75 },
+  { label: "Commissary kitchen rent", category: "overhead", monthly: 120 },
+  { label: "Utilities", category: "overhead", monthly: 25 },
+  { label: "Insurance", category: "overhead", monthly: 20 },
+  { label: "Packaging & labels", category: "overhead", monthly: 15 },
+] as const;
+
+// A single recipe whose actual yield runs short of what it's costed for, so the
+// demo shows the recipe-yield alert working (a real food-cost leak the tool catches).
+const YIELD: Record<string, [expected: number, actual: number]> = {
+  "Turkey Meatballs & Zoodles": [10, 9],
+};
+
 const ORDERS = [
   { cust: "Maria Lopez", type: "subscription", items: { "Grilled Chicken & Quinoa": 3, "Vegan Buddha Bowl": 2 }, addr: "418 Cedar Ave", zone: "North" },
   { cust: "Dwayne King", type: "one_time", items: { "Steak & Roasted Veg": 4, "Salmon & Sweet Potato": 1 }, addr: "92 Birch St", zone: "North" },
@@ -73,6 +91,7 @@ export async function seedDemoKitchen(businessId: string): Promise<void> {
       data: {
         businessId, name: m.name, description: m.desc, diet: m.diet, priceCents: cents(m.price), swatch: m.swatch, imageUrl: m.img,
         calories: m.cal, proteinG: m.p, carbsG: m.c, fatG: m.f, allergens: m.allergens,
+        expectedServings: YIELD[m.name]?.[0] ?? null, actualServings: YIELD[m.name]?.[1] ?? null,
         ingredients: { create: m.ing.map(([name, qty, unit, trim]) => ({ ingredientId: ingIds.get(name as string)!, qty: qty as number, unit: unit as string, trimBps: bps(trim as number) })) },
       },
       select: { id: true },
@@ -125,4 +144,9 @@ export async function seedDemoKitchen(businessId: string): Promise<void> {
 
   // A couple of promotions so the Marketing screen isn't empty.
   await db.coupon.createMany({ data: [ { businessId, code: "FRESH10", type: "percent", value: 10 }, { businessId, code: "WELCOME5", type: "flat", value: cents(5) } ] });
+
+  // Labour + overhead so Profitability shows Prime Cost and true profit populated.
+  await db.operatingCost.createMany({
+    data: OPERATING_COSTS.map((c) => ({ businessId, label: c.label, category: c.category, monthlyCents: cents(c.monthly) })),
+  });
 }
