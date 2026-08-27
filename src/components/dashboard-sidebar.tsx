@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { canAccess, type Role } from "@/lib/permissions";
@@ -33,6 +33,8 @@ import {
   CreditCard,
   BookOpen,
   Calculator,
+  PanelLeftClose,
+  PanelLeftOpen,
   type LucideIcon,
 } from "lucide-react";
 
@@ -109,51 +111,113 @@ export function DashboardSidebar({
 }) {
   const pathname = usePathname();
 
-  // Which groups are collapsed, persisted across reloads. Starts all-expanded
-  // to match SSR, then hydrates the saved state after mount (avoids mismatch).
-  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem("pf_sidebar_collapsed");
-      if (raw) setCollapsed(JSON.parse(raw));
-    } catch {
-      /* ignore malformed/unavailable storage */
-    }
-  }, []);
+  // The sidebar always opens CLOSED: the whole thing starts as an icon-only
+  // rail, and every section starts collapsed. State is session-only (survives
+  // in-app navigation since the layout stays mounted, resets on a fresh load),
+  // so it reliably starts closed on both the live dashboard and the demo.
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>(() =>
+    Object.fromEntries(NAV_GROUPS.map((g) => [g.label, true])),
+  );
+  const [rail, setRail] = useState(true);
   const toggleGroup = (label: string) =>
-    setCollapsed((prev) => {
-      const next = { ...prev, [label]: !prev[label] };
-      try {
-        localStorage.setItem("pf_sidebar_collapsed", JSON.stringify(next));
-      } catch {
-        /* ignore */
-      }
-      return next;
-    });
+    setCollapsed((prev) => ({ ...prev, [label]: !prev[label] }));
+  const toggleRail = () => setRail((prev) => !prev);
 
   const isActive = (href: string) =>
     pathname === href || (href !== "/dashboard" && pathname.startsWith(href));
 
+  const railToggle = (
+    <button
+      type="button"
+      onClick={toggleRail}
+      aria-label={rail ? "Expand sidebar" : "Collapse sidebar"}
+      aria-expanded={!rail}
+      title={rail ? "Expand sidebar" : "Collapse sidebar"}
+      className="grid place-items-center w-7 h-7 rounded-md shrink-0 transition-colors hover:bg-[#ffffff14]"
+      style={{ color: "#ffffff70" }}
+    >
+      {rail ? <PanelLeftOpen size={17} /> : <PanelLeftClose size={17} />}
+    </button>
+  );
+
   return (
     <aside
-      className="no-print w-[224px] shrink-0 flex flex-col px-3 py-5 sticky top-0 h-screen overflow-y-auto"
+      className={`no-print shrink-0 flex flex-col py-5 sticky top-0 h-screen overflow-y-auto overflow-x-hidden transition-[width] duration-200 ${
+        rail ? "w-[68px] px-2" : "w-[224px] px-3"
+      }`}
       style={{ background: "var(--sidebar)" }}
     >
-      <Link href="/" className="flex items-center gap-2.5 px-3 mb-7">
-        <div
-          className="grid place-items-center w-8 h-8 rounded-md"
-          style={{ background: "var(--pine)" }}
-        >
-          <Leaf size={17} color="#f4f2ec" />
+      {/* Brand + collapse toggle */}
+      {rail ? (
+        <div className="flex flex-col items-center gap-2 mb-6">
+          <Link
+            href="/"
+            title="PrepFlow — home"
+            className="grid place-items-center w-9 h-9 rounded-md"
+            style={{ background: "var(--pine)" }}
+          >
+            <Leaf size={18} color="#f4f2ec" />
+          </Link>
+          {railToggle}
         </div>
-        <div className="disp text-[19px] font-medium text-[#f4f2ec]">
-          PrepFlow
+      ) : (
+        <div className="flex items-center justify-between px-2 mb-7">
+          <Link href="/" className="flex items-center gap-2.5 min-w-0">
+            <div
+              className="grid place-items-center w-8 h-8 rounded-md shrink-0"
+              style={{ background: "var(--pine)" }}
+            >
+              <Leaf size={17} color="#f4f2ec" />
+            </div>
+            <div className="disp text-[19px] font-medium text-[#f4f2ec] truncate">
+              PrepFlow
+            </div>
+          </Link>
+          {railToggle}
         </div>
-      </Link>
-      <div className="flex flex-col gap-3">
-        {NAV_GROUPS.map((group) => {
+      )}
+
+      <div className={`flex flex-col ${rail ? "gap-1" : "gap-3"}`}>
+        {NAV_GROUPS.map((group, gi) => {
           const items = group.items.filter(([href]) => canAccess(role, href));
           if (items.length === 0) return null;
+
+          // ---- Collapsed rail: icon-only, no section headers, tooltips on hover.
+          if (rail) {
+            return (
+              <div key={group.label} className="flex flex-col gap-0.5">
+                {gi > 0 && (
+                  <div className="h-px mx-2 mb-1.5 mt-0.5" style={{ background: "#ffffff12" }} />
+                )}
+                {items.map(([href, label, Icon]) => {
+                  const on = isActive(href);
+                  return (
+                    <Link
+                      key={href}
+                      href={href}
+                      title={label}
+                      aria-label={label}
+                      className="relative grid place-items-center w-9 h-9 mx-auto rounded-md transition-colors"
+                      style={{
+                        background: on ? "#ffffff16" : "transparent",
+                        color: on ? "#f4f2ec" : "#ffffff7a",
+                      }}
+                    >
+                      <Icon size={18} style={{ opacity: on ? 1 : 0.75 }} />
+                      {on && (
+                        <span
+                          className="absolute -left-1 top-1/2 -translate-y-1/2 w-[3px] h-4 rounded-full"
+                          style={{ background: "var(--clay)" }}
+                        />
+                      )}
+                    </Link>
+                  );
+                })}
+              </div>
+            );
+          }
+
+          // ---- Expanded: labeled, collapsible section (unchanged behavior).
           const isCollapsed = !!collapsed[group.label];
           const groupActive = items.some(([href]) => isActive(href));
           return (
@@ -215,18 +279,22 @@ export function DashboardSidebar({
           );
         })}
       </div>
-      <div
-        className="mt-auto mx-1 rounded-lg px-3.5 py-3"
-        style={{ background: "#ffffff0a", border: "1px solid #ffffff12" }}
-      >
-        <div className="text-[#f4f2ec] text-[13px] font-medium mb-0.5">
-          {businessName}
+
+      {/* Business card — hidden in the collapsed rail to keep it clean. */}
+      {!rail && (
+        <div
+          className="mt-auto mx-1 rounded-lg px-3.5 py-3"
+          style={{ background: "#ffffff0a", border: "1px solid #ffffff12" }}
+        >
+          <div className="text-[#f4f2ec] text-[13px] font-medium mb-0.5 truncate">
+            {businessName}
+          </div>
+          <p className="text-[11px] leading-snug" style={{ color: "#ffffff5c" }}>
+            {stats}
+          </p>
+          {authEnabled && <SignOutButton />}
         </div>
-        <p className="text-[11px] leading-snug" style={{ color: "#ffffff5c" }}>
-          {stats}
-        </p>
-        {authEnabled && <SignOutButton />}
-      </div>
+      )}
     </aside>
   );
 }
