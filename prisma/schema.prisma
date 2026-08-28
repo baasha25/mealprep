@@ -117,6 +117,7 @@ model Business {
   slug            String?  @unique // public storefront URL segment: /store/<slug>
   customDomain    String?  @unique // white-label: serve the storefront on the kitchen's own domain
   brandColor      String   @default("#2f4536")
+  logoUrl         String?  // merchant logo (Cloudinary secure URL); shown on the storefront header + dashboard. null = leaf + brandColor fallback
   isDemo          Boolean  @default(false) // throwaway sales-demo tenant: read-write but isolated, no real emails/charges, auto-deleted, hidden from /admin + store index
   tier            BusinessTier @default(starter) // PrepFlow plan; sets the platform fee (see src/lib/tiers.ts)
   trialEndsAt     DateTime? // end of the 30-day free trial (null = no trial set, e.g. legacy)

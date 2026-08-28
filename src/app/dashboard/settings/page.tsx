@@ -20,6 +20,7 @@ export default async function SettingsPage() {
   const initial: SettingsInitial = {
     name: business.name,
     brandColor: business.brandColor,
+    logoUrl: business.logoUrl ?? "",
     tier: business.tier as TierKey,
     subDiscount: bpsToPercent(settings.subDiscountBps),
     taxRate: bpsToPercent(settings.taxRateBps),

@@ -45,6 +45,21 @@ export function cldImage(
   return url.replace("/upload/", `/upload/${t}/`);
 }
 
+/**
+ * Deliver a LOGO: fit within a bounding box (never crop or fill), keep any
+ * transparency, auto format + quality. Constrained by height (logos vary wildly
+ * in aspect ratio) with a generous max width. Requested at 2× for retina.
+ */
+export function cldLogo(
+  url: string | null | undefined,
+  { h = 48, maxW = 320 }: { h?: number; maxW?: number } = {},
+): string | null {
+  if (!url) return null;
+  if (!url.includes("res.cloudinary.com") || !url.includes("/upload/")) return url;
+  const t = ["c_fit", "f_auto", "q_auto", `h_${h * 2}`, `w_${maxW * 2}`].join(",");
+  return url.replace("/upload/", `/upload/${t}/`);
+}
+
 /** Guard for what we accept as a stored image URL (defends against arbitrary URLs). */
 export function isCloudinaryUrl(url: string): boolean {
   return /^https:\/\/res\.cloudinary\.com\/[\w.-]+\/image\/upload\//.test(url);

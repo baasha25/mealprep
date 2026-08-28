@@ -1,9 +1,9 @@
 "use client";
 
-import { useActionState, useState } from "react";
-import { Check, Store, Percent, Truck, Star, Bell } from "lucide-react";
+import { useActionState, useRef, useState } from "react";
+import { Check, Store, Percent, Truck, Star, Bell, ImagePlus, Loader2, X } from "lucide-react";
 import { Card, CardTitle, Field, INP, btnPrimary } from "@/components/ui";
-import { updateSettings, type SettingsActionState } from "./actions";
+import { updateSettings, signLogoUpload, type SettingsActionState } from "./actions";
 import { TIERS, TIER_KEYS, feePctLabel, type TierKey } from "@/lib/tiers";
 import { TIMEZONES } from "@/lib/cutoff";
 
@@ -12,6 +12,7 @@ const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
 export type SettingsInitial = {
   name: string;
   brandColor: string;
+  logoUrl: string;
   tier: TierKey;
   subDiscount: number;
   taxRate: number;
@@ -45,6 +46,121 @@ function ErrorText({ msg }: { msg?: string }) {
     <p className="text-[11.5px] mt-1" style={{ color: "var(--clay)" }}>
       {msg}
     </p>
+  );
+}
+
+/**
+ * Merchant logo uploader. The file goes straight from the browser to Cloudinary
+ * (signed on the server); we keep only the returned URL in a hidden field the
+ * form submits. The preview sits on a subtle checker so a transparent logo reads
+ * clearly. Degrades to a "not set up" note when Cloudinary isn't configured.
+ */
+function LogoUploadField({ initial }: { initial: string }) {
+  const [url, setUrl] = useState(initial);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  async function onPick(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // allow re-picking the same file
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setError("Please choose an image file (PNG, SVG, JPG, or WebP).");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setError("That logo is over 5 MB. Please choose a smaller file.");
+      return;
+    }
+    setError(null);
+    setBusy(true);
+    try {
+      const sig = await signLogoUpload();
+      if (!sig.ok) {
+        setError(sig.message);
+        return;
+      }
+      const body = new FormData();
+      body.append("file", file);
+      body.append("api_key", sig.apiKey);
+      body.append("timestamp", String(sig.timestamp));
+      body.append("signature", sig.signature);
+      body.append("folder", sig.folder);
+      const res = await fetch(`https://api.cloudinary.com/v1_1/${sig.cloudName}/image/upload`, {
+        method: "POST",
+        body,
+      });
+      const data = await res.json();
+      if (!res.ok || !data.secure_url) {
+        setError("Upload failed. Please try again.");
+        return;
+      }
+      setUrl(data.secure_url as string);
+    } catch {
+      setError("Upload failed — check your connection and try again.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Field
+      label="Logo"
+      className="mt-4"
+      hint="Shown on your storefront header and in your dashboard. A PNG or SVG with a transparent background looks best — at least 200px tall."
+    >
+      <input type="hidden" name="logoUrl" value={url} />
+      <div className="flex items-center gap-3">
+        <div
+          className="relative w-40 h-20 rounded-lg overflow-hidden grid place-items-center shrink-0"
+          style={{
+            border: "1px solid var(--line)",
+            background:
+              "repeating-conic-gradient(#0000000d 0% 25%, transparent 0% 50%) 50% / 16px 16px, var(--paper)",
+          }}
+        >
+          {url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={url} alt="Logo preview" className="max-w-[88%] max-h-[80%] object-contain" />
+          ) : (
+            <ImagePlus size={20} style={{ color: "var(--muted)" }} />
+          )}
+          {busy && (
+            <div className="absolute inset-0 grid place-items-center" style={{ background: "#00000055" }}>
+              <Loader2 size={18} className="animate-spin" color="#fff" />
+            </div>
+          )}
+        </div>
+        <div className="flex flex-col gap-2">
+          <button
+            type="button"
+            onClick={() => fileRef.current?.click()}
+            disabled={busy}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-[12.5px] font-medium disabled:opacity-60"
+            style={{ background: "var(--paper)", color: "var(--ink)", border: "1px solid var(--line)" }}
+          >
+            <ImagePlus size={14} /> {busy ? "Uploading…" : url ? "Replace logo" : "Upload logo"}
+          </button>
+          {url && !busy && (
+            <button
+              type="button"
+              onClick={() => setUrl("")}
+              className="flex items-center gap-1.5 text-[12px]"
+              style={{ color: "var(--clay)" }}
+            >
+              <X size={13} /> Remove
+            </button>
+          )}
+        </div>
+        <input ref={fileRef} type="file" accept="image/*" onChange={onPick} className="hidden" />
+      </div>
+      {error && (
+        <p className="text-[11.5px] mt-2" style={{ color: "var(--clay)" }}>
+          {error}
+        </p>
+      )}
+    </Field>
   );
 }
 
@@ -98,6 +214,7 @@ export function SettingsForm({ initial }: { initial: SettingsInitial }) {
             <ErrorText msg={errors.brandColor} />
           </Field>
         </div>
+        <LogoUploadField initial={initial.logoUrl} />
       </Card>
 
       {/* Pricing & fees */}

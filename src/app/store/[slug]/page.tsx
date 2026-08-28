@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { Leaf } from "lucide-react";
 import { db } from "@/lib/db";
 import { getStorefrontBusiness } from "@/lib/storefront";
-import { cldImage } from "@/lib/cloudinary";
+import { cldImage, cldLogo } from "@/lib/cloudinary";
 import { nextCutoffAt, nextDeliveryAfter, formatDeliveryLabel, DEFAULT_TIMEZONE } from "@/lib/cutoff";
 import { CutoffBanner } from "./cutoff-banner";
 import { PlanCards } from "./plan-cards";
@@ -91,19 +91,28 @@ export default async function StorePage({
         style={{ borderColor: "var(--line)", background: "var(--surface)" }}
       >
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="grid place-items-center w-8 h-8 rounded-md" style={{ background: "var(--pine)" }}>
-              <Leaf size={17} color="#f4f2ec" />
-            </div>
-            <div>
-              <div className="disp text-[18px] font-medium leading-none" style={{ color: "var(--ink)" }}>
-                {business.name}
+          {business.logoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={cldLogo(business.logoUrl, { h: 44 }) ?? business.logoUrl}
+              alt={business.name}
+              className="h-11 w-auto max-w-[220px] object-contain"
+            />
+          ) : (
+            <div className="flex items-center gap-2.5">
+              <div className="grid place-items-center w-8 h-8 rounded-md" style={{ background: "var(--pine)" }}>
+                <Leaf size={17} color="#f4f2ec" />
               </div>
-              <div className="text-[11.5px]" style={{ color: "var(--muted)" }}>
-                Fresh meals, made to order
+              <div>
+                <div className="disp text-[18px] font-medium leading-none" style={{ color: "var(--ink)" }}>
+                  {business.name}
+                </div>
+                <div className="text-[11.5px]" style={{ color: "var(--muted)" }}>
+                  Fresh meals, made to order
+                </div>
               </div>
             </div>
-          </div>
+          )}
           <Link href={`/store/${slug}/account`} className="text-[13px] font-medium" style={{ color: "var(--pine)" }}>
             My account →
           </Link>

@@ -100,11 +100,13 @@ const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
 
 export function DashboardSidebar({
   businessName,
+  logoUrl,
   stats,
   role,
   authEnabled,
 }: {
   businessName: string;
+  logoUrl?: string | null;
   stats: string;
   role: Role;
   authEnabled: boolean;
@@ -286,6 +288,16 @@ export function DashboardSidebar({
           className="mt-auto mx-1 rounded-lg px-3.5 py-3"
           style={{ background: "#ffffff0a", border: "1px solid #ffffff12" }}
         >
+          {logoUrl && (
+            // Merchant's own logo, on a light chip so any colour reads on the dark card.
+            <div
+              className="inline-flex items-center rounded-md px-2 py-1 mb-2"
+              style={{ background: "#f4f2ec" }}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={logoUrl} alt={businessName} className="h-6 w-auto max-w-[150px] object-contain" />
+            </div>
+          )}
           <div className="text-[#f4f2ec] text-[13px] font-medium mb-0.5 truncate">
             {businessName}
           </div>

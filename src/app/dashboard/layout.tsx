@@ -8,6 +8,7 @@ import { trialStatus } from "@/lib/trial";
 import { kitchenAccess, KITCHEN_BILLING_ENABLED, type BillingStatus } from "@/lib/kitchen-billing";
 import { Lock } from "lucide-react";
 import { DashboardSidebar } from "@/components/dashboard-sidebar";
+import { cldLogo } from "@/lib/cloudinary";
 import { exitStaffPreview } from "./staff/actions";
 
 // The dashboard is authenticated, per-tenant, live data — render on request,
@@ -64,6 +65,7 @@ export default async function DashboardLayout({
     >
       <DashboardSidebar
         businessName={business.name}
+        logoUrl={business.logoUrl ? (cldLogo(business.logoUrl, { h: 28 }) ?? business.logoUrl) : null}
         stats={sidebarStats}
         role={role}
         authEnabled={Boolean(process.env.CLERK_SECRET_KEY)}

@@ -7,6 +7,12 @@ import { requireBusiness, assertWritable } from "@/lib/auth";
 import { dollarsToCents, percentToBps } from "@/lib/money";
 import { TIERS } from "@/lib/tiers";
 import { TIMEZONE_VALUES, DEFAULT_TIMEZONE } from "@/lib/cutoff";
+import {
+  CLOUDINARY_ENABLED,
+  cloudinaryPublicConfig,
+  signCloudinaryParams,
+  isCloudinaryUrl,
+} from "@/lib/cloudinary";
 
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
 
@@ -16,6 +22,12 @@ const SettingsInput = z.object({
   brandColor: z
     .string()
     .regex(/^#[0-9a-fA-F]{6}$/, "Brand color must be a hex value like #2f4536"),
+  // Merchant logo URL from the client-side Cloudinary upload. Only a genuine
+  // Cloudinary delivery URL is stored; anything else (incl. empty) becomes null.
+  logoUrl: z.preprocess((v) => {
+    const s = String(v ?? "").trim();
+    return s && isCloudinaryUrl(s) ? s : null;
+  }, z.string().nullable()),
   subDiscount: z.coerce.number().min(0).max(100),
   taxRate: z.coerce.number().min(0).max(100),
   tier: z.enum(["starter", "growth", "pro"]),
@@ -65,6 +77,7 @@ export async function updateSettings(
   const parsed = SettingsInput.safeParse({
     name: formData.get("name"),
     brandColor: formData.get("brandColor"),
+    logoUrl: formData.get("logoUrl"),
     subDiscount: formData.get("subDiscount"),
     taxRate: formData.get("taxRate"),
     tier: formData.get("tier"),
@@ -104,7 +117,7 @@ export async function updateSettings(
   await db.$transaction([
     db.business.update({
       where: { id: business.id },
-      data: { name: d.name, brandColor: d.brandColor, tier: effectiveTier },
+      data: { name: d.name, brandColor: d.brandColor, logoUrl: d.logoUrl, tier: effectiveTier },
     }),
     db.businessSettings.upsert({
       where: { businessId: business.id },
@@ -155,4 +168,25 @@ export async function updateSettings(
   revalidatePath("/dashboard/settings");
   revalidatePath("/dashboard");
   return { ok: true, message: "Settings saved." };
+}
+
+export type UploadSignature =
+  | { ok: true; cloudName: string; apiKey: string; timestamp: number; signature: string; folder: string }
+  | { ok: false; message: string };
+
+/**
+ * Mint a short-lived signature so the browser can upload the merchant's logo
+ * straight to Cloudinary — the API secret never leaves the server. Scoped to the
+ * caller's business (its own folder) and owner-gated via requireBusiness.
+ */
+export async function signLogoUpload(): Promise<UploadSignature> {
+  const { business } = await requireBusiness();
+  if (!CLOUDINARY_ENABLED) {
+    return { ok: false, message: "Logo uploads aren't set up yet." };
+  }
+  const timestamp = Math.floor(Date.now() / 1000);
+  const folder = `prepflow/logos/${business.id}`;
+  const signature = signCloudinaryParams({ folder, timestamp });
+  const { cloudName, apiKey } = cloudinaryPublicConfig();
+  return { ok: true, cloudName, apiKey, timestamp, signature, folder };
 }
