@@ -60,7 +60,7 @@ const STEPS: Step[] = [
       "Diet filters, calories, protein, and star reviews per meal",
       "Stop taking orders by text and DM — it runs itself",
     ],
-    img: "/demo/storefront.png",
+    img: "/demo/storefront.jpg",
     imgAlt: "Branded customer storefront with subscription plans and meal cards",
   },
   {
