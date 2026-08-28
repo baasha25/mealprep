@@ -85,8 +85,15 @@ export function PlanCards({
               <button
                 onClick={() => subscribe(p.id)}
                 disabled={pending}
-                className="mt-3 w-full py-2 rounded-lg text-[13px] font-medium disabled:opacity-60"
-                style={{ background: "var(--pine)", color: "#f4f2ec" }}
+                className="mt-3 w-full py-2 rounded-lg text-[13px] font-medium transition-opacity"
+                style={{
+                  background: "var(--pine)",
+                  color: "#f4f2ec",
+                  // Only the plan you clicked shows the busy state; the others stay
+                  // put (still disabled, to prevent starting a second checkout).
+                  opacity: busyId === p.id ? 0.6 : 1,
+                  cursor: pending ? "default" : "pointer",
+                }}
               >
                 {busyId === p.id ? "Starting…" : "Subscribe"}
               </button>
