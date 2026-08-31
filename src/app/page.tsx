@@ -90,7 +90,7 @@ function Hero() {
             <Link href="/sign-up" className="inline-flex items-center gap-2 px-5 py-3 rounded-xl text-[14.5px] font-medium" style={{ background: "var(--pine)", color: "#f4f2ec" }}>
               Start free <ArrowRight size={17} />
             </Link>
-            <a href="https://calendly.com/gobie-thina6/30min" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-5 py-3 rounded-xl text-[14.5px] font-medium border" style={{ borderColor: "var(--line)", color: "var(--ink)", background: "var(--surface)" }}>
+            <a href="https://calendar.google.com/calendar/appointments/schedules/AcZssZ2IVtsCgKAaDwClQGL0ObL7F-2ZsvKvUaQ1jN7_yXGd5dVaRFm2SS6Gnq3iQkYzuhYBoOzbckrw" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-5 py-3 rounded-xl text-[14.5px] font-medium border" style={{ borderColor: "var(--line)", color: "var(--ink)", background: "var(--surface)" }}>
               Book a demo
             </a>
           </div>
@@ -421,7 +421,7 @@ function CtaBand() {
           <Link href="/sign-up" className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-[14.5px] font-medium" style={{ background: "#f4f2ec", color: "var(--pine)" }}>
             Start free <ArrowRight size={17} />
           </Link>
-          <a href="https://calendly.com/gobie-thina6/30min" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-[14.5px] font-medium" style={{ border: "1px solid #ffffff40", color: "#f4f2ec" }}>
+          <a href="https://calendar.google.com/calendar/appointments/schedules/AcZssZ2IVtsCgKAaDwClQGL0ObL7F-2ZsvKvUaQ1jN7_yXGd5dVaRFm2SS6Gnq3iQkYzuhYBoOzbckrw" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-[14.5px] font-medium" style={{ border: "1px solid #ffffff40", color: "#f4f2ec" }}>
             Book a demo
           </a>
         </div>
