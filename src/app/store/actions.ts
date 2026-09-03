@@ -9,6 +9,8 @@ import { orderLimitStatus } from "@/lib/usage";
 import { effectiveTier, type TierKey } from "@/lib/tiers";
 import { sendOrderConfirmation, sendOwnerNewOrder } from "@/lib/email";
 import { computeOrder, type AppliedCoupon } from "@/lib/pricing";
+import { nextCutoffAt, upcomingDeliveries, DEFAULT_TIMEZONE } from "@/lib/cutoff";
+import { enabledDeliveryDays } from "@/lib/delivery-days";
 import {
   pointsForOrder,
   resolveRedemption,
@@ -99,6 +101,7 @@ const PlaceOrderInput = z.object({
   redeemPoints: z.number().int().min(0).max(1_000_000).optional(),
   referralCode: z.string().trim().toUpperCase().max(24).optional(),
   fulfillment: z.enum(["delivery", "pickup"]),
+  deliveryDate: z.string().datetime().optional(),
   customer: z.object({
     name: z.string().trim().min(1, "Name is required").max(120),
     email: z.string().trim().toLowerCase().email("Enter a valid email"),
@@ -241,6 +244,23 @@ export async function placeOrder(input: PlaceOrderInputT): Promise<PlaceOrderRes
     update: { name: data.customer.name, phone: data.customer.phone || null },
   });
 
+  // Resolve the delivery date for a delivery order: it must match one of the
+  // kitchen's upcoming delivery days (never trust an arbitrary client date). If
+  // omitted or invalid, fall back to the soonest upcoming delivery day.
+  let deliveryDate: Date | null = null;
+  if (data.fulfillment === "delivery") {
+    const tz = s.timezone || DEFAULT_TIMEZONE;
+    const enabled = enabledDeliveryDays((s.deliveryDays ?? {}) as Record<string, boolean>);
+    const anchor = nextCutoffAt(s.cutoff, tz) ?? new Date();
+    const options = upcomingDeliveries(enabled, anchor, tz, 8, "weekly");
+    if (data.deliveryDate) {
+      const wanted = new Date(data.deliveryDate).getTime();
+      deliveryDate = options.find((d) => d.getTime() === wanted) ?? options[0] ?? null;
+    } else {
+      deliveryDate = options[0] ?? null;
+    }
+  }
+
   const order = await db.order.create({
     data: {
       businessId: business.id,
@@ -248,6 +268,7 @@ export async function placeOrder(input: PlaceOrderInputT): Promise<PlaceOrderRes
       type: data.subscribe ? "subscription" : "one_time",
       status: "pending", // until Stripe payment is wired
       fulfillment: data.fulfillment,
+      deliveryDate,
       address: data.customer.address || null,
       zone: data.customer.zone || null,
       subtotalCents: totals.subtotalCents,

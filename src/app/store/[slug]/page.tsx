@@ -4,8 +4,14 @@ import { Leaf } from "lucide-react";
 import { db } from "@/lib/db";
 import { getStorefrontBusiness } from "@/lib/storefront";
 import { cldImage, cldLogo } from "@/lib/cloudinary";
-import { nextCutoffAt, nextDeliveryAfter, formatDeliveryLabel, DEFAULT_TIMEZONE } from "@/lib/cutoff";
-import { enabledDeliveryDays } from "@/lib/delivery-days";
+import {
+  nextCutoffAt,
+  nextDeliveryAfter,
+  upcomingDeliveries,
+  formatDeliveryLabel,
+  DEFAULT_TIMEZONE,
+} from "@/lib/cutoff";
+import { enabledDeliveryDays, describeDeliveryDays } from "@/lib/delivery-days";
 import { CutoffBanner } from "./cutoff-banner";
 import { PlanCards } from "./plan-cards";
 import { Storefront, type StoreMeal, type StoreSettings } from "./storefront";
@@ -55,6 +61,19 @@ export default async function StorePage({
     ratingCount: ratingByMeal.get(m.id)?.count ?? 0,
   }));
 
+  // Live order-cut-off countdown, computed in the kitchen's own timezone.
+  const tz = s.timezone || DEFAULT_TIMEZONE;
+  const cutoffInstant = nextCutoffAt(s.cutoff, tz);
+
+  // Upcoming delivery dates a one-time order can pick from — the kitchen's
+  // enabled delivery days, resolved to concrete dates after the next cut-off.
+  const enabledDays = enabledDeliveryDays((s.deliveryDays ?? {}) as Record<string, boolean>);
+  const deliveryAnchor = cutoffInstant ?? new Date();
+  const deliveryDateOptions = upcomingDeliveries(enabledDays, deliveryAnchor, tz, 8, "weekly").map((d) => ({
+    value: d.toISOString(),
+    label: formatDeliveryLabel(d, tz),
+  }));
+
   const settings: StoreSettings = {
     subDiscountBps: s.subDiscountBps,
     taxRateBps: s.taxRateBps,
@@ -63,11 +82,11 @@ export default async function StorePage({
     minOrderCents: s.minOrderCents,
     fulfillment: s.fulfillment,
     pickupLocations: s.pickupLocations,
+    deliveryDateOptions,
+    deliveryDaysLabel: describeDeliveryDays(enabledDays),
+    singleDeliveryDay: enabledDays.length === 1,
   };
 
-  // Live order-cut-off countdown, computed in the kitchen's own timezone.
-  const tz = s.timezone || DEFAULT_TIMEZONE;
-  const cutoffInstant = nextCutoffAt(s.cutoff, tz);
   const cutoffISO = cutoffInstant?.toISOString() ?? null;
   const deliveryInstant = cutoffInstant
     ? nextDeliveryAfter((s.deliveryDays ?? {}) as Record<string, boolean>, cutoffInstant, tz)

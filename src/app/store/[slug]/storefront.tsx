@@ -54,6 +54,11 @@ export type StoreMeal = {
 export type StoreSettings = PricingSettings & {
   fulfillment: string; // "delivery" | "pickup" | "both"
   pickupLocations: string[];
+  // Upcoming delivery dates a one-time order can choose from (kitchen's enabled
+  // delivery days, resolved to concrete dates). Empty = no days configured.
+  deliveryDateOptions: { value: string; label: string }[];
+  deliveryDaysLabel: string; // e.g. "Mondays" or "Mondays & Thursdays"
+  singleDeliveryDay: boolean; // kitchen runs exactly one delivery weekday
 };
 
 const cardStyle = {
@@ -91,6 +96,10 @@ export function Storefront({
   const [giftCard, setGiftCard] = useState<GiftCardResult | null>(null);
   const [fulfillment, setFulfillment] = useState<"delivery" | "pickup">(
     settings.fulfillment === "pickup" ? "pickup" : "delivery",
+  );
+  // Chosen delivery date for a one-time order — defaults to the soonest.
+  const [deliveryDate, setDeliveryDate] = useState<string>(
+    settings.deliveryDateOptions[0]?.value ?? "",
   );
   const [form, setForm] = useState({ name: "", email: "", phone: "", address: "", zone: "" });
   const [loyalty, setLoyalty] = useState<LoyaltyLookup | null>(null);
@@ -161,6 +170,7 @@ export function Storefront({
         redeemPoints: applyLoyalty && loyalty?.found ? loyalty.points : 0,
         referralCode: referralInput.trim() || undefined,
         fulfillment,
+        deliveryDate: fulfillment === "delivery" && deliveryDate ? deliveryDate : undefined,
         customer: form,
       });
       if (result.ok) {
@@ -546,6 +556,54 @@ export function Storefront({
                       {f}
                     </button>
                   ))}
+                </div>
+              )}
+
+              {/* Delivery day — the kitchen's delivery days as concrete dates */}
+              {fulfillment === "delivery" && settings.deliveryDateOptions.length > 0 && (
+                <div className="mb-3">
+                  <label className="text-[12px] font-medium block mb-1.5" style={{ color: "var(--ink)" }}>
+                    Delivery day
+                  </label>
+                  {settings.singleDeliveryDay ? (
+                    // One delivery weekday: nothing to choose between — show it, and
+                    // pick the soonest date (still editable if several are upcoming).
+                    <>
+                      <p className="text-[12px] mb-1.5" style={{ color: "var(--muted)" }}>
+                        {businessName} delivers on {settings.deliveryDaysLabel}.
+                      </p>
+                      <select
+                        value={deliveryDate}
+                        onChange={(e) => setDeliveryDate(e.target.value)}
+                        className="w-full px-3 py-2 rounded-md border text-[13px] outline-none"
+                        style={inputStyle}
+                      >
+                        {settings.deliveryDateOptions.map((o) => (
+                          <option key={o.value} value={o.value}>
+                            {o.label}
+                          </option>
+                        ))}
+                      </select>
+                    </>
+                  ) : (
+                    <>
+                      <select
+                        value={deliveryDate}
+                        onChange={(e) => setDeliveryDate(e.target.value)}
+                        className="w-full px-3 py-2 rounded-md border text-[13px] outline-none"
+                        style={inputStyle}
+                      >
+                        {settings.deliveryDateOptions.map((o) => (
+                          <option key={o.value} value={o.value}>
+                            {o.label}
+                          </option>
+                        ))}
+                      </select>
+                      <p className="text-[11.5px] mt-1" style={{ color: "var(--muted)" }}>
+                        We deliver on {settings.deliveryDaysLabel}.
+                      </p>
+                    </>
+                  )}
                 </div>
               )}
 
