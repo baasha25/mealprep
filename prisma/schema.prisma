@@ -277,6 +277,10 @@ model Meal {
   // the kitchen actually gets. If actual < expected, real per-plate cost is higher.
   expectedServings Int? // recipe yield the plate cost assumes
   actualServings   Int? // servings actually produced from that recipe
+  // Recipe builder: the cooking method the chef authors, kept with the meal so a
+  // retired recipe can be brought back later intact (see the menu "library" view).
+  methodSteps      String[] @default([]) // ordered cooking/prep steps
+  prepNotes        String? // free-form batch/prep notes
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -452,6 +456,11 @@ model Subscription {
   status               SubStatus    @default(active)
   frequency            SubFrequency @default(weekly)
   nextDeliveryDate     DateTime?
+  // The weekday(s) this customer receives on — a subset of the kitchen's enabled
+  // delivery days (e.g. ["Mon"] or ["Mon","Thu"]). Empty = not chosen; falls back
+  // to the kitchen's soonest delivery day. Multiple days split the plan across
+  // drops (same price), not a bigger charge.
+  preferredDeliveryDays String[]    @default([])
   stripeSubscriptionId String?
   createdAt            DateTime     @default(now())
   updatedAt            DateTime     @updatedAt

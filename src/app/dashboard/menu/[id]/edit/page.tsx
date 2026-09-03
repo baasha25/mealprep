@@ -38,6 +38,8 @@ export default async function EditMealPage({
     shelfLifeDays: meal.shelfLifeDays != null ? String(meal.shelfLifeDays) : "",
     expectedServings: meal.expectedServings != null ? String(meal.expectedServings) : "",
     actualServings: meal.actualServings != null ? String(meal.actualServings) : "",
+    prepNotes: meal.prepNotes ?? "",
+    methodSteps: meal.methodSteps,
     ingredients: meal.ingredients.map((mi) => ({
       name: mi.ingredient.name,
       qty: String(mi.qty),

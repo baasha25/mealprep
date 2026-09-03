@@ -30,6 +30,8 @@ export default async function NewMealPage() {
     shelfLifeDays: "",
     expectedServings: "",
     actualServings: "",
+    prepNotes: "",
+    methodSteps: [],
     ingredients: [],
   };
 

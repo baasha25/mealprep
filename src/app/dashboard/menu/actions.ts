@@ -48,6 +48,10 @@ const MealInput = z.object({
     (v) => (v === "" || v == null || v === "0" ? null : v),
     z.coerce.number().int().min(1).max(10000).nullable(),
   ),
+  // Recipe method — ordered cooking steps + free-form prep notes. Kept with the
+  // meal so a retired recipe can be brought back intact.
+  methodSteps: z.array(z.string().trim().min(1).max(1000)).max(60),
+  prepNotes: z.string().trim().max(2000).optional().default(""),
   // Customer-facing photo URL from the client-side Cloudinary upload. Only accept
   // a genuine Cloudinary delivery URL; anything else is ignored (stored as null).
   imageUrl: z.preprocess((v) => {
@@ -78,6 +82,11 @@ function parseMealForm(formData: FormData) {
     }))
     .filter((r) => r.name.length > 0);
 
+  const methodSteps = formData
+    .getAll("methodStep")
+    .map((s) => String(s).trim())
+    .filter((s) => s.length > 0);
+
   const dietRaw = String(formData.get("diet") ?? "");
   return {
     base: {
@@ -95,6 +104,8 @@ function parseMealForm(formData: FormData) {
       shelfLifeDays: formData.get("shelfLifeDays") ?? "",
       expectedServings: formData.get("expectedServings") ?? "",
       actualServings: formData.get("actualServings") ?? "",
+      methodSteps,
+      prepNotes: formData.get("prepNotes") ?? "",
       imageUrl: formData.get("imageUrl") ?? "",
     },
     ingredientRows,
@@ -178,6 +189,8 @@ export async function createMeal(
         shelfLifeDays: d.shelfLifeDays,
         expectedServings: d.expectedServings,
         actualServings: d.actualServings,
+        methodSteps: d.methodSteps,
+        prepNotes: d.prepNotes || null,
       },
     });
     await syncIngredients(tx, business.id, meal.id, ingParsed.data);
@@ -234,6 +247,8 @@ export async function updateMeal(
         shelfLifeDays: d.shelfLifeDays,
         expectedServings: d.expectedServings,
         actualServings: d.actualServings,
+        methodSteps: d.methodSteps,
+        prepNotes: d.prepNotes || null,
       },
     });
     await syncIngredients(tx, business.id, mealId, ingParsed.data);

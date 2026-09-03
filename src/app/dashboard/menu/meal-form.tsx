@@ -17,6 +17,9 @@ import {
   Loader2,
   X,
   Calculator,
+  ListOrdered,
+  ArrowUp,
+  ArrowDown,
   type LucideIcon,
 } from "lucide-react";
 import { Card, CardTitle, Field, INP, btnPrimary } from "@/components/ui";
@@ -55,6 +58,8 @@ export type MealFormInitial = {
   shelfLifeDays: string;
   expectedServings: string;
   actualServings: string;
+  prepNotes: string;
+  methodSteps: string[];
   ingredients: IngredientRow[];
 };
 
@@ -316,6 +321,25 @@ export function MealForm({
     if (!(e > 0) || !(a > 0) || a >= e) return null;
     return Math.round((e / a - 1) * 1000) / 10; // one decimal
   })();
+
+  // Recipe method: ordered cooking steps the chef writes, kept with the meal so a
+  // retired recipe comes back intact. Start with one blank row when none exist.
+  const [steps, setSteps] = useState<string[]>(
+    initial.methodSteps.length ? initial.methodSteps : [""],
+  );
+  const updStep = (i: number, v: string) =>
+    setSteps((cur) => cur.map((s, x) => (x === i ? v : s)));
+  const addStep = () => setSteps((cur) => [...cur, ""]);
+  const remStep = (i: number) =>
+    setSteps((cur) => (cur.length === 1 ? [""] : cur.filter((_, x) => x !== i)));
+  const moveStep = (i: number, dir: -1 | 1) =>
+    setSteps((cur) => {
+      const j = i + dir;
+      if (j < 0 || j >= cur.length) return cur;
+      const next = [...cur];
+      [next[i], next[j]] = [next[j], next[i]];
+      return next;
+    });
 
   return (
     <form action={formAction} className="space-y-4">
@@ -725,6 +749,97 @@ export function MealForm({
               </div>
             )}
           </div>
+        </div>
+      </Card>
+
+      <Card>
+        <CardTitle
+          icon={<ListOrdered size={15} />}
+          title="Method"
+          note="Kept with the recipe — restore it anytime"
+        />
+        <p className="flex items-start gap-1.5 text-[11.5px] mb-3 -mt-1" style={{ color: "var(--muted)" }}>
+          <Info size={13} style={{ marginTop: 1, flexShrink: 0, color: "var(--pine)" }} />
+          <span>
+            Write down how to make this dish. It stays saved even if you take the meal off the
+            menu, so you can bring a recipe back later exactly as you built it.
+          </span>
+        </p>
+        <label className="text-[12.5px] font-medium" style={{ color: "var(--ink)" }}>
+          Steps <span style={{ color: "var(--muted)" }}>(optional)</span>
+        </label>
+        <div className="space-y-2 mt-1.5">
+          {steps.map((s, i) => (
+            <div key={i} className="flex items-start gap-2">
+              <div
+                className="grid place-items-center w-7 h-9 rounded-md text-[12.5px] font-semibold shrink-0"
+                style={{ background: "var(--paper)", border: "1px solid var(--line)", color: "var(--pine)" }}
+              >
+                {i + 1}
+              </div>
+              <textarea
+                name="methodStep"
+                value={s}
+                onChange={(e) => updStep(i, e.target.value)}
+                placeholder={i === 0 ? "e.g. Season the chicken and sear 4 min per side." : "Next step…"}
+                rows={2}
+                className={`${INP} flex-1 resize-y`}
+                style={inputStyle}
+              />
+              <div className="flex flex-col gap-1">
+                <button
+                  type="button"
+                  onClick={() => moveStep(i, -1)}
+                  disabled={i === 0}
+                  className="grid place-items-center w-7 h-[18px] rounded-md disabled:opacity-30"
+                  style={{ background: "var(--paper)", border: "1px solid var(--line)" }}
+                  aria-label="Move step up"
+                >
+                  <ArrowUp size={12} style={{ color: "var(--ink)" }} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => moveStep(i, 1)}
+                  disabled={i === steps.length - 1}
+                  className="grid place-items-center w-7 h-[18px] rounded-md disabled:opacity-30"
+                  style={{ background: "var(--paper)", border: "1px solid var(--line)" }}
+                  aria-label="Move step down"
+                >
+                  <ArrowDown size={12} style={{ color: "var(--ink)" }} />
+                </button>
+              </div>
+              <button
+                type="button"
+                onClick={() => remStep(i)}
+                className="grid place-items-center w-8 h-9 rounded-md"
+                style={{ background: "var(--paper)", border: "1px solid var(--line)" }}
+                aria-label="Remove step"
+              >
+                <Trash2 size={14} style={{ color: "var(--clay)" }} />
+              </button>
+            </div>
+          ))}
+        </div>
+        <button
+          type="button"
+          onClick={addStep}
+          className="mt-2 flex items-center gap-1 text-[12.5px] font-medium"
+          style={{ color: "var(--pine)" }}
+        >
+          <Plus size={13} /> Add step
+        </button>
+
+        <div className="mt-4 pt-4" style={{ borderTop: "1px solid var(--line)" }}>
+          <Field label="Prep notes (optional)">
+            <textarea
+              name="prepNotes"
+              defaultValue={initial.prepNotes}
+              placeholder="Batch tips, plating, storage, substitutions…"
+              rows={3}
+              className={`${INP} resize-y`}
+              style={inputStyle}
+            />
+          </Field>
         </div>
       </Card>
 
