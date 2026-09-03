@@ -169,7 +169,7 @@ export const GUIDE: GuideArea[] = [
         title: "Menu",
         where: "Sales → Menu",
         img: "05-menu.png",
-        does: "Your list of meals — this is what customers see on your storefront. Add, edit, price, and turn meals on/off here. Each meal can also carry a recipe (ingredients), which powers the cost and margin features.",
+        does: "Your list of meals — this is what customers see on your storefront, and your recipe library. Add, edit, price, and retire/restore meals here. Each meal can carry a full recipe (ingredients + method), which powers the cost and margin features. Use the On menu / Retired / All tabs and the search box to find any recipe.",
         use: [
           "Menu → New menu item.",
           "Enter the name and the price (what a customer pays).",
@@ -181,10 +181,11 @@ export const GUIDE: GuideArea[] = [
         numbers: [
           ["Price", "What the customer pays for this meal."],
           ["Photo", "The meal's picture, shown large on your storefront. Optional, but the single biggest driver of orders — customers buy food with their eyes. Upload a landscape or square photo (at least 1000px wide; JPG, PNG, or WebP). PrepFlow optimizes it automatically."],
-          ["Active / inactive", "Whether the meal shows on your storefront. Turn a meal off to hide it without deleting it."],
+          ["Retire / Restore", "Retire takes a meal off the storefront but KEEPS its recipe (ingredients, method, costs) — it moves to the Retired tab. Restore brings it back exactly as it was. Nothing is lost, so you can rotate a menu item out for the season and bring it back later."],
+          ["On menu / Retired / All", "Tabs that filter the library: what's currently sold, what you've retired, or everything. The search box finds a recipe by name or diet."],
           ["Recipe / ingredients", "The ingredients (and amounts) that make the meal. Optional to sell, but required for cost, margin, purchasing, and waste numbers to work."],
         ],
-        tips: ["Prices can be changed any time — Menu → click the meal → edit → Save. The change is live immediately.", "No photo yet? The card falls back to a clean color tile, so your storefront still looks tidy — but a real photo converts far better."],
+        tips: ["Prices can be changed any time — Menu → click the meal → edit → Save. The change is live immediately.", "No photo yet? The card falls back to a clean color tile, so your storefront still looks tidy — but a real photo converts far better.", "Retiring is also the safe way to 'remove' a meal that appears in past orders — its history and recipe stay intact."],
       },
       {
         id: "adding-a-meal",
@@ -199,8 +200,9 @@ export const GUIDE: GuideArea[] = [
           ["Ingredient", "Pick an existing ingredient (so it reuses the price you've set) or type a new one."],
           ["Qty + Unit", "How much of that ingredient the recipe uses (e.g. 8 oz chicken). Units can be imperial or metric (oz, lb, g, kg, cup, ml, l…) — PrepFlow converts automatically (buy in lb, cook in g)."],
           ["Trim %", "The share of that ingredient lost in prep — peels, fat, stalks, ends. This is what powers the 'over-bought' waste number in Purchasing. Not sure of the number? Tap the calculator icon on the row, enter the raw and trimmed weight, and it works out the % for you."],
+          ["Method (steps + prep notes)", "Write down HOW to make the dish — ordered cooking steps you can reorder, plus free-form prep notes. It's saved with the recipe and kept even if you retire the meal, so a returning recipe comes back exactly as you built it."],
         ],
-        tips: ["Always pick an ingredient from the dropdown when it already exists, so it uses the cost you set instead of creating a new $0 copy."],
+        tips: ["Always pick an ingredient from the dropdown when it already exists, so it uses the cost you set instead of creating a new $0 copy.", "The Method section makes the meal a full recipe your team can cook from — not just a costing sheet."],
       },
       {
         id: "meal-plans",
@@ -228,10 +230,11 @@ export const GUIDE: GuideArea[] = [
         numbers: [
           ["Plan", "Which meal plan the customer is on."],
           ["Frequency", "Weekly or bi-weekly."],
-          ["Next delivery", "The date their next box goes out."],
+          ["Next delivery", "The date their next box goes out — now aligned to a real delivery day the customer chose (see Delivery days below), not a generic +5 days."],
           ["Status", "Active, paused, or canceled. Paused/canceled subscriptions don't generate orders."],
+          ["Delivery days (customer's choice)", "If you run more than one delivery day (set in Settings), each subscriber picks which day(s) they want — one day, or BOTH. Choosing both splits their weekly meals across the two deliveries for freshness, at the SAME price (not a double charge). They pick this at sign-up and can change it, and assign which meals go on which day, from their account page."],
         ],
-        tips: ["Subscribers (or you) can skip, pause, or swap meals before the weekly cut-off time you set in Settings. After cut-off, that week's order is locked for the kitchen."],
+        tips: ["Subscribers (or you) can skip, pause, or swap meals before the weekly cut-off time you set in Settings. After cut-off, that week's order is locked for the kitchen.", "To offer a choice of delivery days, tick 2+ days in Settings → Delivery days. With one day enabled there's simply nothing for the customer to choose."],
       },
       {
         id: "orders",
@@ -337,6 +340,7 @@ export const GUIDE: GuideArea[] = [
         does: "What you have on hand and what each ingredient costs — the backbone of every cost, margin, and purchasing number. Set opening stock, log deliveries, run a stock count, and (on Pro) scan supplier invoices with AI to update stock and costs automatically.",
         use: [
           "Enter your opening (starting) stock with each ingredient's cost per unit.",
+          "(Optional) Use 'Auto-fill from nutrition library' to search a common ingredient and drop in its unit, density, and calories/macros automatically — then verify.",
           "When a delivery arrives, log it (or scan the invoice) to add stock and set the real cost.",
           "Run a stock count any time to correct on-hand amounts.",
         ],
@@ -344,10 +348,12 @@ export const GUIDE: GuideArea[] = [
           ["Ingredient + on-hand", "What you have in stock right now, in the unit you buy it (lb, cup, ea, etc.)."],
           ["Cost / unit", "What you pay per unit. This is what your plate cost, margins, and P&L are calculated from — keep it current."],
           ["Trim %", "Default share lost to prep for this ingredient (feeds the over-bought number)."],
+          ["Auto-fill from nutrition library", "A search of common ingredients backed by USDA FoodData Central & Health Canada's Canadian Nutrient File (CNF). Pick one and it fills the unit, pack density, and per-unit calories/protein/carbs/fat — converted to the unit you buy in, and re-figured if you change the unit. Saves typing nutrition by hand; verify the values for your product."],
+          ["Nutrition / unit (cal, P, C, F)", "Per-unit macros for the ingredient. When it's used in a meal, the meal's nutrition can auto-sum from the recipe (Menu → meal → Calc from recipe) — and those macros flow onto printed labels."],
           ["Low-stock threshold", "When on-hand drops below this, the ingredient is flagged so you reorder in time."],
           ["Shelf life / expiry", "How long the ingredient keeps — helps flag what to use first."],
         ],
-        tips: ["AI Invoice Scanner (Pro): snap a photo or upload a PDF of a supplier invoice and PrepFlow reads the line items, updates your stock, and sets the real costs — no manual typing. It needs an Anthropic API key set up by the platform to run."],
+        tips: ["AI Invoice Scanner (Pro): snap a photo or upload a PDF of a supplier invoice and PrepFlow reads the line items, updates your stock, and sets the real costs — no manual typing. It needs an Anthropic API key set up by the platform to run.", "The nutrition library covers common ingredients; for anything unusual or brand-specific, enter the macros from the product's own label."],
       },
       {
         id: "waste",
@@ -529,6 +535,7 @@ export const GUIDE: GuideArea[] = [
           ["Processing fee", "An optional fee added per order."],
           ["Tax rate", "The sales tax applied at checkout (as a %)."],
           ["Order cut-off", "The day/time each week after which orders lock for the kitchen (e.g. 'Sat 8:00 PM'). Customers can edit/skip before this; after it, the kitchen's list is fixed."],
+          ["Delivery days", "The weekday(s) your kitchen delivers. Tick every day you run. Customers then pick which of those they want: subscribers choose one or both (and split their week across two days if they want), and one-time orders pick a delivery date from these days at checkout."],
           ["Minimum order", "The smallest order value a customer can check out with."],
           ["Subscription discount", "An automatic discount for subscribers vs one-time buyers."],
           ["Points per $1", "How many loyalty points customers earn per dollar spent."],
