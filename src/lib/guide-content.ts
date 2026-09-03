@@ -529,4 +529,26 @@ export const GUIDE: GuideArea[] = [
       },
     ],
   },
+  {
+    label: "Help",
+    blurb: "Guides, and how to reach us.",
+    sections: [
+      {
+        id: "support",
+        title: "Contact support",
+        where: "Help → Contact support",
+        does: "Send the PrepFlow team a message straight from your dashboard when you're stuck or spot a bug. Your message is emailed to us with your kitchen's name attached, and we reply to the email you enter.",
+        use: [
+          "Open Help → Contact support.",
+          "Check the reply-to email (it's pre-filled with your account email — change it if you want the reply elsewhere).",
+          "Pick a topic, add a short subject, and describe what you need — include order or customer names if it helps.",
+          "Send. You'll see a confirmation, and we reply by email.",
+        ],
+        tips: [
+          "For anything urgent that's blocking orders going out, put 'URGENT' in the subject.",
+          "Looking for how a screen works before you write in? This Guide covers every page — try the search box at the top.",
+        ],
+      },
+    ],
+  },
 ];

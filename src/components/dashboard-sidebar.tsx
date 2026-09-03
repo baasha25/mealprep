@@ -35,6 +35,7 @@ import {
   Calculator,
   PanelLeftClose,
   PanelLeftOpen,
+  LifeBuoy,
   type LucideIcon,
 } from "lucide-react";
 
@@ -94,7 +95,10 @@ const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
   },
   {
     label: "Help",
-    items: [["/dashboard/guide", "Guide", BookOpen]],
+    items: [
+      ["/dashboard/guide", "Guide", BookOpen],
+      ["/dashboard/support", "Contact support", LifeBuoy],
+    ],
   },
 ];
 

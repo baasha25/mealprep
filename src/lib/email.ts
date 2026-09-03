@@ -81,6 +81,65 @@ async function send(opts: {
   }
 }
 
+/* ------------------------------- Support -------------------------------- */
+
+/**
+ * A merchant's help request from the dashboard. Emails the PrepFlow support
+ * inbox (SUPPORT_EMAIL) with the message and who sent it, reply-to set to the
+ * merchant so we can respond directly. Gated + never throws; returns false only
+ * when a configured send actually failed (a disabled/unconfigured env logs and
+ * returns true, so the merchant still gets a "we got it" — see the action).
+ */
+export async function sendSupportRequest(opts: {
+  businessId: string;
+  businessName: string;
+  fromName: string;
+  fromEmail: string;
+  subject: string;
+  message: string;
+}): Promise<boolean> {
+  const to = process.env.SUPPORT_EMAIL || "";
+  const rows = [
+    ["From", `${opts.fromName} &lt;${escapeHtml(opts.fromEmail)}&gt;`],
+    ["Business", `${escapeHtml(opts.businessName)} (${escapeHtml(opts.businessId)})`],
+    ["Subject", escapeHtml(opts.subject)],
+  ]
+    .map(
+      ([k, v]) =>
+        `<tr><td style="padding:4px 12px 4px 0;color:${SOFT};font-size:13px;">${k}</td><td style="padding:4px 0;color:${INK};font-size:13px;">${v}</td></tr>`,
+    )
+    .join("");
+  const bodyHtml = `
+    <table style="width:100%;margin-bottom:16px;">${rows}</table>
+    <div style="white-space:pre-wrap;color:${INK};font-size:14px;line-height:1.5;border-top:1px solid ${LINE};padding-top:16px;">${escapeHtml(opts.message)}</div>`;
+  const html = layout({
+    businessName: "PrepFlow Support",
+    heading: "New support request",
+    subheading: `${escapeHtml(opts.businessName)} needs a hand`,
+    bodyHtml,
+  });
+
+  try {
+    if (!resend || !to) {
+      console.log(
+        `[support] request from ${opts.businessName} <${opts.fromEmail}>: ${opts.subject}\n${opts.message}`,
+      );
+      return true; // treat as received; owner must set SUPPORT_EMAIL for real delivery
+    }
+    await resend.emails.send({
+      from: FROM,
+      to,
+      replyTo: opts.fromEmail,
+      subject: `[Support] ${opts.businessName}: ${opts.subject}`.slice(0, 180),
+      html,
+    });
+    return true;
+  } catch (err) {
+    console.error("[support] send failed:", err);
+    return false;
+  }
+}
+
 /* ------------------------- Order-shaped helpers ------------------------- */
 
 type OrderRow = {
