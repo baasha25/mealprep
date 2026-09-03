@@ -378,13 +378,22 @@ export const GUIDE: GuideArea[] = [
         title: "Labels & Packing",
         where: "Kitchen → Labels & packing",
         img: "16-labels.png",
-        does: "Print meal labels (name, macros, allergens, expiry) and packing slips for each order — built from the same orders and recipes, so nothing is re-typed. Choose label sizes and print a sheet or single labels.",
+        does: "Print meal labels (name, macros, allergens, expiry) and packing slips for each order — built from the same orders and recipes, so nothing is re-typed. Print on paper sheets from your browser, or export to a Zebra thermal printer.",
         use: [
-          "Open Labels & packing for the delivery.",
-          "Pick your label size/template.",
-          "Print — labels for every meal and packing slips for every order.",
+          "Open Labels & packing, then the 'Meal labels' tab.",
+          "Tick which meals to print, and set a quantity for each — type any number to run a big batch (e.g. 500), not just what's in today's orders.",
+          "Paper printer: pick a sheet size (3-up / 2-up / 1-up) and hit Print.",
+          "Zebra printer: pick the label size (4×2 or 2×1) and 'Download .zpl', then send that file to your Zebra (via Zebra Browser Print, Zebra Setup Utilities, or your print queue).",
         ],
-        tips: ["Labels pull the macros, allergens, and expiry straight from the meal's recipe and shelf-life — accurate and consistent every time."],
+        numbers: [
+          ["Download .zpl (N)", "Exports N labels as a ZPL file — the language Zebra printers read directly. The quantity you set per meal becomes the printer's copy count, so one file can print 100–10,000 labels."],
+          ["Sheet size (paper)", "How many labels per row when printing to a regular/office printer."],
+        ],
+        tips: [
+          "Labels pull the macros, allergens, and expiry straight from the meal's recipe and shelf-life — accurate and consistent every time.",
+          "For very large runs the screen shows only the first 300 labels (so your browser stays fast) — the .zpl download always contains the full quantity.",
+          "Food labels are regulated (allergens, best-by, etc.) — you're responsible for meeting your local rules (CFIA in Canada, FDA in the US).",
+        ],
       },
       {
         id: "routes",
