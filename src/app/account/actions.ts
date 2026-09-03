@@ -6,6 +6,13 @@ import { db } from "@/lib/db";
 import { stripe, STRIPE_ENABLED } from "@/lib/stripe";
 import { getCustomerContext } from "@/lib/customer-auth";
 import { advanceDeliveryDate, canModifyNextDelivery, canPause, canResume } from "@/lib/subscriptions";
+import {
+  currentCycleDeliveries,
+  upcomingDeliveries,
+  nextCutoffAt,
+  DEFAULT_TIMEZONE,
+} from "@/lib/cutoff";
+import { enabledDeliveryDays, sanitizePreferredDays } from "@/lib/delivery-days";
 
 /** Best-effort sync of a subscription state change to Stripe (never throws). */
 async function syncStripe(
@@ -109,11 +116,31 @@ export async function skipNextDelivery(subscriptionId: string): Promise<SubActio
 
 const UpdateSelectionInput = z.object({
   subscriptionId: z.string().min(1),
+  // Which delivery in the current cycle this selection is for. Omitted = the
+  // soonest (single-day subscribers). Multi-day subscribers split their plan by
+  // sending one call per delivery date.
+  deliveryDate: z.string().datetime().optional(),
   items: z.array(z.object({ mealId: z.string().min(1), qty: z.number().int().min(1).max(99) })).max(50),
 });
 
+// The delivery dates a subscriber can currently edit (this cycle), computed from
+// their chosen days + the kitchen's timezone. Falls back to the primary date.
+async function editableDeliveryDates(sub: {
+  businessId: string;
+  nextDeliveryDate: Date | null;
+  preferredDeliveryDays: string[];
+}): Promise<Date[]> {
+  if (!sub.nextDeliveryDate) return [];
+  const settings = await db.businessSettings.findUnique({ where: { businessId: sub.businessId } });
+  const tz = settings?.timezone || DEFAULT_TIMEZONE;
+  const enabled = enabledDeliveryDays((settings?.deliveryDays ?? {}) as Record<string, boolean>);
+  const chosen = sanitizePreferredDays(sub.preferredDeliveryDays, enabled);
+  return currentCycleDeliveries(chosen, sub.nextDeliveryDate, tz);
+}
+
 export async function updateSelection(input: {
   subscriptionId: string;
+  deliveryDate?: string;
   items: { mealId: string; qty: number }[];
 }): Promise<SubActionResult> {
   const parsed = UpdateSelectionInput.safeParse(input);
@@ -143,7 +170,16 @@ export async function updateSelection(input: {
   const items = parsed.data.items.filter((i) => validIds.has(i.mealId));
   if (items.length === 0) return { ok: false, message: "Pick at least one meal." };
 
-  const deliveryDate = sub.nextDeliveryDate!;
+  // Resolve which delivery date this selection targets, guarding it to a date the
+  // subscriber can actually edit this cycle (so nothing writes to an arbitrary date).
+  let deliveryDate = sub.nextDeliveryDate!;
+  if (parsed.data.deliveryDate) {
+    const target = new Date(parsed.data.deliveryDate).getTime();
+    const allowed = await editableDeliveryDates(sub);
+    const match = allowed.find((d) => d.getTime() === target);
+    if (!match) return { ok: false, message: "That delivery date isn't available to edit." };
+    deliveryDate = match;
+  }
 
   // Replace the selection's items for the upcoming delivery.
   await db.$transaction(async (tx) => {
@@ -160,6 +196,69 @@ export async function updateSelection(input: {
 
   revalidatePath("/store/[slug]/account", "page");
   return { ok: true, message: "Meals updated for your next delivery." };
+}
+
+const UpdateDeliveryDaysInput = z.object({
+  subscriptionId: z.string().min(1),
+  days: z.array(z.string()).min(1).max(7),
+});
+
+/**
+ * Change which weekday(s) a subscription is delivered on. Days are constrained
+ * to what the kitchen actually delivers; the next delivery date is realigned to
+ * the soonest chosen day, and the current meal selection is carried over so the
+ * customer doesn't lose their picks.
+ */
+export async function updateDeliveryDays(input: {
+  subscriptionId: string;
+  days: string[];
+}): Promise<SubActionResult> {
+  const parsed = UpdateDeliveryDaysInput.safeParse(input);
+  if (!parsed.success) return { ok: false, message: "Pick at least one delivery day." };
+
+  const owned = await loadOwnedSubscription(parsed.data.subscriptionId);
+  if (!owned) return { ok: false, message: "Subscription not found." };
+  const { sub } = owned;
+  if (sub.status === "canceled") return { ok: false, message: "This subscription is canceled." };
+
+  const settings = await db.businessSettings.findUnique({ where: { businessId: sub.businessId } });
+  const tz = settings?.timezone || DEFAULT_TIMEZONE;
+  const enabled = enabledDeliveryDays((settings?.deliveryDays ?? {}) as Record<string, boolean>);
+  const chosen = sanitizePreferredDays(parsed.data.days, enabled);
+  if (chosen.length === 0) {
+    return { ok: false, message: "Those days aren't available for this kitchen." };
+  }
+
+  // Realign the next delivery to the soonest chosen day, after the next cut-off.
+  const anchor = (settings ? nextCutoffAt(settings.cutoff, tz) : null) ?? new Date();
+  const soonest = upcomingDeliveries(chosen, anchor, tz, 1, sub.frequency as "weekly" | "biweekly")[0];
+  const oldDate = sub.nextDeliveryDate;
+  const newDate = soonest ?? oldDate;
+
+  await db.$transaction(async (tx) => {
+    await tx.subscription.update({
+      where: { id: sub.id },
+      data: { preferredDeliveryDays: chosen, nextDeliveryDate: newDate },
+    });
+    // Carry the current meal picks forward to the new soonest date (if it moved
+    // and the target date is free — the [subscriptionId, deliveryDate] pair is
+    // unique, so never collide with an existing selection there).
+    if (oldDate && newDate && oldDate.getTime() !== newDate.getTime()) {
+      const taken = await tx.subscriptionSelection.findUnique({
+        where: { subscriptionId_deliveryDate: { subscriptionId: sub.id, deliveryDate: newDate } },
+        select: { id: true },
+      });
+      if (!taken) {
+        await tx.subscriptionSelection.updateMany({
+          where: { subscriptionId: sub.id, deliveryDate: oldDate },
+          data: { deliveryDate: newDate },
+        });
+      }
+    }
+  });
+
+  revalidatePath("/store/[slug]/account", "page");
+  return { ok: true, message: "Delivery days updated." };
 }
 
 const AddressInput = z.object({

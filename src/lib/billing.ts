@@ -3,6 +3,8 @@ import { db } from "@/lib/db";
 import { referralCodeFrom } from "@/lib/loyalty";
 import { appUrl } from "@/lib/app-url";
 import { sendSubscriptionConfirmation } from "@/lib/email";
+import { nextCutoffAt, upcomingDeliveries, DEFAULT_TIMEZONE } from "@/lib/cutoff";
+import { enabledDeliveryDays, sanitizePreferredDays } from "@/lib/delivery-days";
 
 /**
  * Create our Subscription row from a completed subscription-mode Checkout
@@ -45,7 +47,26 @@ export async function ensureSubscriptionFromCheckout(
     update: { stripeCustomerId: custId },
   });
 
-  const nextDeliveryDate = new Date(Date.now() + 5 * 86_400_000);
+  // Align the first delivery to a real delivery day the customer chose (falling
+  // back to the kitchen's own delivery days), after the next order cut-off —
+  // instead of a blind "now + 5 days". The chosen day(s) are also stored so the
+  // account page can split the plan across them.
+  const settingsRow = await db.businessSettings.findUnique({ where: { businessId } });
+  const tz = settingsRow?.timezone || DEFAULT_TIMEZONE;
+  const enabled = enabledDeliveryDays((settingsRow?.deliveryDays ?? {}) as Record<string, boolean>);
+  const chosen = sanitizePreferredDays(
+    (session.metadata?.deliveryDays ?? "")
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean),
+    enabled,
+  );
+  const effectiveDays = chosen.length ? chosen : enabled;
+  const anchor = (settingsRow ? nextCutoffAt(settingsRow.cutoff, tz) : null) ?? new Date();
+  const nextDeliveryDate =
+    upcomingDeliveries(effectiveDays, anchor, tz, 1, frequency)[0] ??
+    new Date(Date.now() + 5 * 86_400_000);
+
   await db.subscription.create({
     data: {
       businessId,
@@ -54,6 +75,7 @@ export async function ensureSubscriptionFromCheckout(
       status: "active",
       frequency,
       nextDeliveryDate,
+      preferredDeliveryDays: chosen,
       stripeSubscriptionId: subId,
     },
   });

@@ -1,5 +1,15 @@
 import { describe, it, expect } from "vitest";
-import { parseCutoff, nextCutoffAt, nextDeliveryAfter, formatDeliveryLabel } from "./cutoff";
+import {
+  parseCutoff,
+  nextCutoffAt,
+  nextDeliveryAfter,
+  formatDeliveryLabel,
+  upcomingDeliveries,
+  currentCycleDeliveries,
+} from "./cutoff";
+
+const TZ = "America/Toronto";
+const labels = (ds: Date[]) => ds.map((d) => formatDeliveryLabel(d, TZ));
 
 describe("parseCutoff", () => {
   it("parses 12-hour with AM/PM", () => {
@@ -48,5 +58,64 @@ describe("nextDeliveryAfter", () => {
   it("returns null when no delivery days are enabled", () => {
     const none = { Sun: false, Mon: false, Tue: false, Wed: false, Thu: false, Fri: false, Sat: false };
     expect(nextDeliveryAfter(none, new Date(), "America/Toronto")).toBeNull();
+  });
+});
+
+describe("upcomingDeliveries", () => {
+  // Mon Aug 24 2026 08:00 EDT — anchor a subscriber on Mon + Thu.
+  const after = new Date("2026-08-24T12:00:00Z");
+
+  it("weekly: every chosen day, in order", () => {
+    const r = upcomingDeliveries(["Mon", "Thu"], after, TZ, 4, "weekly");
+    expect(labels(r)).toEqual([
+      "Thursday, Aug 27",
+      "Monday, Aug 31",
+      "Thursday, Sep 3",
+      "Monday, Sep 7",
+    ]);
+  });
+
+  it("biweekly: both chosen days, then skips a week (calendar-week aligned)", () => {
+    const r = upcomingDeliveries(["Mon", "Thu"], after, TZ, 4, "biweekly");
+    expect(labels(r)).toEqual([
+      "Thursday, Aug 27",
+      "Monday, Sep 7",
+      "Thursday, Sep 10",
+      "Monday, Sep 21",
+    ]);
+  });
+
+  it("single day matches nextDeliveryAfter's soonest", () => {
+    const cutoff = new Date("2026-08-30T00:00:00Z"); // Sat 8pm EDT
+    const one = upcomingDeliveries(["Sun"], cutoff, TZ, 1)[0];
+    const legacy = nextDeliveryAfter(
+      { Sun: true, Mon: false, Tue: false, Wed: false, Thu: false, Fri: false, Sat: false },
+      cutoff,
+      TZ,
+    );
+    expect(one.toISOString()).toBe(legacy!.toISOString());
+  });
+
+  it("empty when no days chosen", () => {
+    expect(upcomingDeliveries([], after, TZ, 3)).toEqual([]);
+  });
+});
+
+describe("currentCycleDeliveries", () => {
+  it("both chosen days when the soonest is the earlier one", () => {
+    const nextMon = new Date("2026-08-31T16:00:00Z"); // Mon Aug 31 noon EDT
+    const r = currentCycleDeliveries(["Mon", "Thu"], nextMon, TZ);
+    expect(labels(r)).toEqual(["Monday, Aug 31", "Thursday, Sep 3"]);
+  });
+
+  it("only the rest of the week — a Thursday soonest doesn't pull next Monday", () => {
+    const nextThu = new Date("2026-08-27T16:00:00Z"); // Thu Aug 27 noon EDT
+    const r = currentCycleDeliveries(["Mon", "Thu"], nextThu, TZ);
+    expect(labels(r)).toEqual(["Thursday, Aug 27"]);
+  });
+
+  it("falls back to the single date when no days given", () => {
+    const d = new Date("2026-08-31T16:00:00Z");
+    expect(currentCycleDeliveries([], d, TZ)).toEqual([d]);
   });
 });

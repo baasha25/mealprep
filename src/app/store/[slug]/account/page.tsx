@@ -6,8 +6,15 @@ import { SignOutButton } from "@/components/sign-out-button";
 import { db } from "@/lib/db";
 import { getStorefrontBusiness } from "@/lib/storefront";
 import { getKitchenCustomer } from "@/lib/customer-auth";
-import { canModifyNextDelivery, cutoffAt, advanceDeliveryDate } from "@/lib/subscriptions";
-import { SubscriptionManager, type ManagerMeal } from "@/app/account/subscription-manager";
+import { canModifyNextDelivery, cutoffAt } from "@/lib/subscriptions";
+import {
+  currentCycleDeliveries,
+  upcomingDeliveries,
+  formatDeliveryLabel,
+  DEFAULT_TIMEZONE,
+} from "@/lib/cutoff";
+import { enabledDeliveryDays, sanitizePreferredDays } from "@/lib/delivery-days";
+import { SubscriptionManager, type ManagerMeal, type DeliverySlot } from "@/app/account/subscription-manager";
 import { RateMeals, type ReviewableMeal } from "@/app/account/rate-meals";
 import { DeliveryAddress } from "@/app/account/delivery-address";
 
@@ -95,7 +102,7 @@ export default async function KitchenAccountPage({
     orderBy: { createdAt: "desc" },
     include: {
       plan: true,
-      selections: { orderBy: { deliveryDate: "asc" }, include: { items: true }, take: 1 },
+      selections: { include: { items: true } },
     },
   });
 
@@ -136,17 +143,40 @@ export default async function KitchenAccountPage({
 
   const dateFmt = new Intl.DateTimeFormat("en-US", { weekday: "short", month: "short", day: "numeric" });
 
-  // Cut-off countdown target + the next few delivery dates for the account UI.
+  // Cut-off countdown target + the delivery days/dates for the account UI.
+  const tz = business.settings?.timezone || DEFAULT_TIMEZONE;
+  const enabledDays = enabledDeliveryDays((business.settings?.deliveryDays ?? {}) as Record<string, boolean>);
   const nextDate = subscription?.nextDeliveryDate ?? null;
   const cutoffISO = nextDate ? cutoffAt(nextDate).toISOString() : null;
-  const upcomingDates: string[] = [];
-  if (nextDate && subscription) {
-    let d = new Date(nextDate);
-    for (let i = 0; i < 4; i++) {
-      upcomingDates.push(dateFmt.format(d));
-      d = advanceDeliveryDate(d, subscription.frequency as "weekly" | "biweekly");
-    }
-  }
+  const chosenDays = subscription
+    ? sanitizePreferredDays(subscription.preferredDeliveryDays, enabledDays)
+    : [];
+  const freq = (subscription?.frequency ?? "weekly") as "weekly" | "biweekly";
+
+  // The 1–2 deliveries the customer can edit this cycle, each with its own meals.
+  const selByDate = new Map(
+    (subscription?.selections ?? []).map((s) => [
+      s.deliveryDate.getTime(),
+      Object.fromEntries(s.items.map((i) => [i.mealId, i.qty])) as Record<string, number>,
+    ]),
+  );
+  const deliveries: DeliverySlot[] =
+    nextDate && subscription
+      ? currentCycleDeliveries(chosenDays, nextDate, tz).map((d) => ({
+          dateISO: d.toISOString(),
+          label: dateFmt.format(d),
+          fullLabel: formatDeliveryLabel(d, tz),
+          selection: selByDate.get(d.getTime()) ?? {},
+        }))
+      : [];
+
+  // Upcoming deliveries further out (both days when the customer picked two).
+  const upcomingDates: string[] =
+    nextDate && subscription && chosenDays.length
+      ? upcomingDeliveries(chosenDays, cutoffAt(nextDate), tz, 4, freq).map((d) => dateFmt.format(d))
+      : nextDate
+        ? [dateFmt.format(nextDate)]
+        : [];
 
   return (
     <Shell businessName={business.name} brandColor={business.brandColor} storeHref={storeHref} showUser>
@@ -215,7 +245,7 @@ export default async function KitchenAccountPage({
           status={subscription.status as "active" | "paused" | "canceled"}
           planName={subscription.plan.name}
           frequencyLabel={subscription.frequency === "weekly" ? "Weekly" : "Every 2 weeks"}
-          nextDeliveryLabel={subscription.nextDeliveryDate ? dateFmt.format(subscription.nextDeliveryDate) : "—"}
+          nextDeliveryLabel={deliveries[0]?.label ?? (nextDate ? dateFmt.format(nextDate) : "—")}
           cutoffLabel={business.settings?.cutoff ?? "48h before delivery"}
           cutoffISO={cutoffISO}
           upcomingDates={upcomingDates}
@@ -225,9 +255,9 @@ export default async function KitchenAccountPage({
             subscription.nextDeliveryDate,
           )}
           perMealPriceCents={subscription.plan.perMealPriceCents}
-          initialSelection={Object.fromEntries(
-            (subscription.selections[0]?.items ?? []).map((i) => [i.mealId, i.qty]),
-          )}
+          deliveries={deliveries}
+          chosenDays={chosenDays}
+          allDeliveryDays={enabledDays}
           meals={managerMeals}
         />
       )}

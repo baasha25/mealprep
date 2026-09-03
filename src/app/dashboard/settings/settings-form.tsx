@@ -352,7 +352,11 @@ export function SettingsForm({ initial }: { initial: SettingsInitial }) {
             <ErrorText msg={errors.fulfillment} />
           </Field>
         </div>
-        <Field label="Delivery days" className="mb-4">
+        <Field
+          label="Delivery days"
+          hint="The days your kitchen delivers. Subscribers pick which of these they want — one day, or several to split their week."
+          className="mb-4"
+        >
           <div className="flex flex-wrap gap-1.5">
             {DAYS.map((d) => (
               <label

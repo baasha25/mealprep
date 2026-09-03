@@ -103,6 +103,66 @@ export function nextDeliveryAfter(
   return null;
 }
 
+/**
+ * Upcoming delivery dates (local noon in `tz`) landing on any of `days`
+ * (weekday abbreviations like "Mon"), strictly after `after`, in chronological
+ * order. For "biweekly", only every other delivery WEEK is kept — anchored on
+ * the calendar week of the first upcoming delivery — so a two-day subscriber
+ * still delivers on both chosen days, then skips a week. Returns up to `count`.
+ */
+export function upcomingDeliveries(
+  days: readonly string[],
+  after: Date,
+  tz: string,
+  count: number,
+  freq: "weekly" | "biweekly" = "weekly",
+): Date[] {
+  const set = new Set(days);
+  if (set.size === 0 || count <= 0) return [];
+  const out: Date[] = [];
+  const p = partsInTz(after, tz);
+  let anchorWeekStart: number | null = null; // day-offset of the first kept date's (Sun-anchored) week
+  const maxScan = 7 * count + 21; // enough to satisfy `count` even for biweekly multi-day
+  for (let add = 1; add <= maxScan && out.length < count; add++) {
+    const weekday = (p.weekday + add) % 7;
+    if (!set.has(DAY_ABBR[weekday])) continue;
+    // Offset of this date's Sunday, so weeks are counted by the calendar, not by
+    // 7-day chunks from the anchor day (which would misalign Mon vs Thu).
+    const weekStart = add - weekday;
+    if (anchorWeekStart === null) anchorWeekStart = weekStart;
+    const weekIndex = (weekStart - anchorWeekStart) / 7;
+    if (freq === "biweekly" && weekIndex % 2 !== 0) continue;
+    out.push(zonedWallTimeToUtc(p.year, p.month, p.day + add, 12, 0, tz));
+  }
+  return out;
+}
+
+/**
+ * The chosen delivery dates in the SAME delivery week as `nextDeliveryDate`,
+ * from that date forward (itself included) — i.e. the 1–2 drops the subscriber
+ * can still edit this cycle. Used to split a plan across two days. Falls back to
+ * just `[nextDeliveryDate]` when no days are given or none line up.
+ */
+export function currentCycleDeliveries(
+  days: readonly string[],
+  nextDeliveryDate: Date,
+  tz: string,
+): Date[] {
+  const set = new Set(days);
+  if (set.size === 0) return [nextDeliveryDate];
+  const p = partsInTz(nextDeliveryDate, tz);
+  const out: Date[] = [];
+  // Only the rest of this Sun-anchored calendar week, so a soonest-date that's
+  // (say) Thursday doesn't pull in next week's Monday.
+  const daysLeftInWeek = 6 - p.weekday;
+  for (let add = 0; add <= daysLeftInWeek; add++) {
+    if (set.has(DAY_ABBR[(p.weekday + add) % 7])) {
+      out.push(zonedWallTimeToUtc(p.year, p.month, p.day + add, 12, 0, tz));
+    }
+  }
+  return out.length ? out : [nextDeliveryDate];
+}
+
 /** Format a date as e.g. "Sunday, Aug 30" in the given timezone. */
 export function formatDeliveryLabel(d: Date, tz: string): string {
   return new Intl.DateTimeFormat("en-US", {

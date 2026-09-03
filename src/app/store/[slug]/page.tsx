@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { getStorefrontBusiness } from "@/lib/storefront";
 import { cldImage, cldLogo } from "@/lib/cloudinary";
 import { nextCutoffAt, nextDeliveryAfter, formatDeliveryLabel, DEFAULT_TIMEZONE } from "@/lib/cutoff";
+import { enabledDeliveryDays } from "@/lib/delivery-days";
 import { CutoffBanner } from "./cutoff-banner";
 import { PlanCards } from "./plan-cards";
 import { Storefront, type StoreMeal, type StoreSettings } from "./storefront";
@@ -139,6 +140,7 @@ export default async function StorePage({
               perMealPriceCents: p.perMealPriceCents,
             }))}
             subDiscountPct={Math.round(s.subDiscountBps / 100)}
+            deliveryDays={enabledDeliveryDays((s.deliveryDays ?? {}) as Record<string, boolean>)}
           />
         )}
 

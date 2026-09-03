@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { formatCents } from "@/lib/money";
+import { dayFullName } from "@/lib/delivery-days";
 import { startPlanSubscription } from "./subscribe-actions";
 
 export type PlanCard = {
@@ -15,21 +16,45 @@ export function PlanCards({
   slug,
   plans,
   subDiscountPct,
+  deliveryDays = [],
 }: {
   slug: string;
   plans: PlanCard[];
   subDiscountPct: number;
+  /** The kitchen's enabled delivery weekdays, in week order (e.g. ["Mon","Thu"]). */
+  deliveryDays?: string[];
 }) {
   const [freq, setFreq] = useState<"weekly" | "biweekly">("weekly");
   const [pending, startTransition] = useTransition();
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState("");
 
+  // Let the customer pick which delivery day(s) they want — only meaningful when
+  // the kitchen runs more than one. Default to the soonest single day.
+  const canChooseDays = deliveryDays.length >= 2;
+  const [chosenDays, setChosenDays] = useState<string[]>(
+    deliveryDays.length ? [deliveryDays[0]] : [],
+  );
+  const toggleDay = (d: string) =>
+    setChosenDays((cur) => {
+      if (cur.includes(d)) {
+        // Keep at least one day selected.
+        return cur.length === 1 ? cur : cur.filter((x) => x !== d);
+      }
+      // Preserve week order so the soonest day stays first.
+      return deliveryDays.filter((x) => cur.includes(x) || x === d);
+    });
+
   const subscribe = (planId: string) => {
     setError("");
     setBusyId(planId);
     startTransition(async () => {
-      const r = await startPlanSubscription({ slug, planId, frequency: freq });
+      const r = await startPlanSubscription({
+        slug,
+        planId,
+        frequency: freq,
+        deliveryDays: canChooseDays ? chosenDays : undefined,
+      });
       if (r.ok) {
         window.location.href = r.url;
         return;
@@ -61,6 +86,45 @@ export function PlanCards({
           ))}
         </div>
       </div>
+
+      {canChooseDays && (
+        <div
+          className="rounded-xl border p-3.5 mb-3"
+          style={{ borderColor: "var(--line)", background: "var(--surface)" }}
+        >
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <div>
+              <div className="text-[13px] font-semibold" style={{ color: "var(--ink)" }}>
+                Delivery day
+              </div>
+              <div className="text-[11.5px]" style={{ color: "var(--muted)" }}>
+                Pick a day — or choose both to split your week into two fresh drops (same price).
+              </div>
+            </div>
+            <div className="flex gap-1.5 flex-wrap">
+              {deliveryDays.map((d) => {
+                const on = chosenDays.includes(d);
+                return (
+                  <button
+                    key={d}
+                    type="button"
+                    onClick={() => toggleDay(d)}
+                    aria-pressed={on}
+                    className="px-3 py-1.5 rounded-md text-[12.5px] font-medium border transition-colors"
+                    style={{
+                      background: on ? "var(--pine)" : "transparent",
+                      color: on ? "#f4f2ec" : "var(--ink-soft)",
+                      borderColor: on ? "var(--pine)" : "var(--line)",
+                    }}
+                  >
+                    {dayFullName(d)}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="grid sm:grid-cols-3 gap-3">
         {plans.map((p) => {

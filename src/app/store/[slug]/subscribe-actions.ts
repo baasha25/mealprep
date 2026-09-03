@@ -5,12 +5,16 @@ import { headers } from "next/headers";
 import { db } from "@/lib/db";
 import { stripe, STRIPE_ENABLED, PLATFORM_CURRENCY } from "@/lib/stripe";
 import { getStorefrontBusiness } from "@/lib/storefront";
+import { enabledDeliveryDays, sanitizePreferredDays } from "@/lib/delivery-days";
 
 const Input = z.object({
   slug: z.string().min(1),
   planId: z.string().min(1),
   frequency: z.enum(["weekly", "biweekly"]),
   email: z.string().trim().toLowerCase().email().optional(),
+  // Weekday(s) the customer wants to receive on — validated against the kitchen's
+  // own delivery days server-side below.
+  deliveryDays: z.array(z.string()).max(7).optional(),
 });
 
 export type SubscribeResult =
@@ -33,6 +37,12 @@ export async function startPlanSubscription(input: unknown): Promise<SubscribeRe
 
   const business = await getStorefrontBusiness(slug);
   if (!business) return { ok: false, message: "Store unavailable." };
+
+  // Only keep delivery days the kitchen actually delivers on.
+  const enabled = enabledDeliveryDays(
+    (business.settings?.deliveryDays ?? {}) as Record<string, boolean>,
+  );
+  const chosenDays = sanitizePreferredDays(parsed.data.deliveryDays, enabled);
 
   const plan = await db.plan.findFirst({
     where: { id: planId, businessId: business.id, active: true },
@@ -67,9 +77,9 @@ export async function startPlanSubscription(input: unknown): Promise<SubscribeRe
         },
       },
     ],
-    metadata: { businessId: business.id, planId: plan.id, frequency },
+    metadata: { businessId: business.id, planId: plan.id, frequency, deliveryDays: chosenDays.join(",") },
     subscription_data: {
-      metadata: { businessId: business.id, planId: plan.id, frequency },
+      metadata: { businessId: business.id, planId: plan.id, frequency, deliveryDays: chosenDays.join(",") },
       ...(connected
         ? {
             // on_behalf_of makes the kitchen the settlement merchant, so Stripe's
