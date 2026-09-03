@@ -7,6 +7,9 @@ import { Hint } from "@/components/ui";
 import {
   searchNutritionLibrary,
   perUnitMacros,
+  sourceOf,
+  sourceLabel,
+  NUTRITION_DATA_CREDIT,
   type LibraryIngredient,
 } from "@/lib/nutrition-library";
 import { setOpeningStock } from "./actions";
@@ -155,7 +158,9 @@ export function OpeningStockForm({ ingredients }: { ingredients: { name: string;
                 >
                   <span className="text-[13px]" style={{ color: "var(--ink)" }}>
                     {r.name}
-                    <span className="text-[11px] ml-1.5" style={{ color: "var(--muted)" }}>{r.category}</span>
+                    <span className="text-[11px] ml-1.5" style={{ color: "var(--muted)" }}>
+                      {r.category} · {sourceLabel(sourceOf(r))}
+                    </span>
                   </span>
                   <span className="text-[11px] whitespace-nowrap" style={{ color: "var(--muted)" }}>
                     {r.per100g.cal} cal · {r.per100g.proteinG}g P /100g
@@ -167,9 +172,13 @@ export function OpeningStockForm({ ingredients }: { ingredients: { name: string;
         </div>
         {libEntry && (
           <p className="text-[11.5px] mt-1.5 flex items-center gap-1.5" style={{ color: "var(--pine)" }}>
-            <Sparkles size={12} /> Filled from library: <strong>{libEntry.name}</strong> — verify &amp; adjust below.
+            <Sparkles size={12} /> Filled from library: <strong>{libEntry.name}</strong>{" "}
+            <span style={{ color: "var(--muted)" }}>({sourceLabel(sourceOf(libEntry))})</span> — verify &amp; adjust below.
           </p>
         )}
+        <p className="text-[10.5px] mt-1" style={{ color: "var(--muted)" }}>
+          {NUTRITION_DATA_CREDIT}
+        </p>
       </div>
 
       <div className="grid sm:grid-cols-[1.4fr_80px_90px_100px_80px_auto] gap-2.5 items-end">

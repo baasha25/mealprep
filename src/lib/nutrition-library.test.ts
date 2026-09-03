@@ -4,6 +4,8 @@ import {
   searchNutritionLibrary,
   gramsPerUnit,
   perUnitMacros,
+  sourceOf,
+  sourceLabel,
 } from "./nutrition-library";
 
 const byId = (id: string) => NUTRITION_LIBRARY.find((i) => i.id === id)!;
@@ -66,12 +68,32 @@ describe("perUnitMacros", () => {
   });
 });
 
+describe("data source tags (USDA / CNF)", () => {
+  it("sourceOf defaults to 'both' and sourceLabel reads well", () => {
+    const egg = byId("egg");
+    expect(sourceOf(egg)).toBe("both");
+    expect(sourceLabel("both")).toBe("USDA · CNF");
+    expect(sourceLabel("cnf")).toBe("CNF");
+    expect(sourceLabel("usda")).toBe("USDA");
+  });
+  it("every entry resolves to a valid source", () => {
+    for (const i of NUTRITION_LIBRARY) {
+      expect(["usda", "cnf", "both"]).toContain(sourceOf(i));
+    }
+  });
+});
+
 describe("library data integrity", () => {
-  it("has unique ids and sane macros", () => {
+  it("has a healthy catalog size and unique ids", () => {
+    expect(NUTRITION_LIBRARY.length).toBeGreaterThanOrEqual(90);
     const ids = new Set<string>();
     for (const i of NUTRITION_LIBRARY) {
       expect(ids.has(i.id)).toBe(false);
       ids.add(i.id);
+    }
+  });
+  it("has sane macros", () => {
+    for (const i of NUTRITION_LIBRARY) {
       expect(i.per100g.cal).toBeGreaterThanOrEqual(0);
       expect(i.per100g.cal).toBeLessThan(1000); // no food exceeds ~900 cal/100g
       for (const k of ["proteinG", "carbsG", "fatG"] as const) {

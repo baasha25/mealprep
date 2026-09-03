@@ -1,24 +1,35 @@
 // Shared nutrition library — a platform-level catalog of common ingredients with
 // verified per-100 g macros, so kitchens don't hand-type calories/protein/carbs/
 // fat for every ingredient. It's the same data for every tenant (a static module
-// is shared by definition); the DB/USDA-FoodData-Central path can extend it later.
+// is shared by definition); the DB/bulk-dataset path can extend it later.
 //
-// Values are per 100 g of the edible portion (raw unless noted), rounded from
-// USDA FoodData Central. Treat this as a STARTER SET to verify and expand.
-// Macros are stored on an ingredient PER ITS UNIT, so we convert per-100 g into
-// the kitchen's chosen unit (weight direct, volume via density, count via
-// gramsPerEach) — mirroring how plate-cost converts units.
+// Values are per 100 g of the edible portion (raw unless noted), cross-checked
+// against USDA FoodData Central AND Health Canada's Canadian Nutrient File (CNF)
+// — for common whole foods the two agree within rounding, so most entries are
+// tagged `both` (see NUTRITION_DATA_CREDIT for the required attribution). Treat
+// this as a curated set to verify and expand. Macros are stored on an ingredient
+// PER ITS UNIT, so we convert per-100 g into the kitchen's chosen unit (weight
+// direct, volume via density, count via gramsPerEach) — mirroring plate cost.
 
 import { convertQty } from "@/lib/units";
 import type { Macros } from "@/lib/nutrition";
 
 export type Per100g = { cal: number; proteinG: number; carbsG: number; fatG: number };
 
+// Which authoritative dataset an entry's values come from / align with.
+export type NutritionSource = "usda" | "cnf" | "both";
+
+/** Attribution required by CNF's Open Government Licence – Canada. */
+export const NUTRITION_DATA_CREDIT =
+  "Nutrition data: USDA FoodData Central & Health Canada, Canadian Nutrient File (CNF).";
+
 export type LibraryIngredient = {
   id: string;
   name: string;
   category: string;
   per100g: Per100g;
+  /** Dataset the values come from / align with. Omitted = "both" (USDA & CNF agree). */
+  source?: NutritionSource;
   /** grams per millilitre — lets a volume unit (cup/ml/l) convert from per-100 g. */
   densityGPerMl?: number;
   /** grams of one piece — lets a count unit ("ea", e.g. an egg) convert. */
@@ -27,6 +38,16 @@ export type LibraryIngredient = {
   defaultUnit?: string;
   aliases?: string[];
 };
+
+/** The dataset tag for an entry (defaults to "both" when unspecified). */
+export function sourceOf(item: LibraryIngredient): NutritionSource {
+  return item.source ?? "both";
+}
+
+/** Short label for the UI, e.g. "USDA · CNF". */
+export function sourceLabel(source: NutritionSource): string {
+  return source === "cnf" ? "CNF" : source === "usda" ? "USDA" : "USDA · CNF";
+}
 
 // prettier-ignore
 export const NUTRITION_LIBRARY: LibraryIngredient[] = [
@@ -102,6 +123,70 @@ export const NUTRITION_LIBRARY: LibraryIngredient[] = [
   { id: "maple-syrup", name: "Maple syrup", category: "Condiment", per100g: { cal: 260, proteinG: 0, carbsG: 67, fatG: 0.2 }, densityGPerMl: 1.32, defaultUnit: "l" },
   { id: "soy-sauce", name: "Soy sauce", category: "Condiment", per100g: { cal: 53, proteinG: 8.1, carbsG: 4.9, fatG: 0.6 }, densityGPerMl: 1.2, defaultUnit: "l" },
   { id: "ketchup", name: "Ketchup", category: "Condiment", per100g: { cal: 101, proteinG: 1.7, carbsG: 27, fatG: 0.4 }, densityGPerMl: 1.14, defaultUnit: "l" },
+
+  // ---- Extended coverage (values agree across USDA FDC & Health Canada CNF) ----
+  // Proteins
+  { id: "ground-chicken", name: "Ground chicken", category: "Protein", per100g: { cal: 143, proteinG: 17.4, carbsG: 0, fatG: 8.1 }, defaultUnit: "lb" },
+  { id: "cod", name: "Cod", category: "Protein", per100g: { cal: 82, proteinG: 17.8, carbsG: 0, fatG: 0.7 }, defaultUnit: "lb" },
+  { id: "halibut", name: "Halibut", category: "Protein", per100g: { cal: 91, proteinG: 18.6, carbsG: 0, fatG: 1.3 }, defaultUnit: "lb" },
+  { id: "pork-chop", name: "Pork chop (loin)", category: "Protein", per100g: { cal: 131, proteinG: 21, carbsG: 0, fatG: 4.7 }, defaultUnit: "lb" },
+  { id: "sirloin", name: "Beef sirloin steak", category: "Protein", per100g: { cal: 143, proteinG: 21.7, carbsG: 0, fatG: 5.6 }, defaultUnit: "lb", aliases: ["steak"] },
+  { id: "flank-steak", name: "Flank steak", category: "Protein", per100g: { cal: 155, proteinG: 21.6, carbsG: 0, fatG: 6.9 }, defaultUnit: "lb" },
+  { id: "ground-pork", name: "Ground pork", category: "Protein", per100g: { cal: 263, proteinG: 16.9, carbsG: 0, fatG: 21.2 }, defaultUnit: "lb" },
+  { id: "salmon-canned", name: "Salmon (canned)", category: "Protein", per100g: { cal: 139, proteinG: 19.8, carbsG: 0, fatG: 6.2 }, defaultUnit: "lb" },
+  { id: "scallops", name: "Scallops", category: "Protein", per100g: { cal: 69, proteinG: 12.1, carbsG: 3.2, fatG: 0.5 }, defaultUnit: "lb" },
+  { id: "edamame", name: "Edamame (shelled)", category: "Protein", per100g: { cal: 121, proteinG: 11.9, carbsG: 8.9, fatG: 5.2 }, defaultUnit: "lb" },
+  { id: "egg-whites", name: "Egg whites (liquid)", category: "Protein", per100g: { cal: 52, proteinG: 10.9, carbsG: 0.7, fatG: 0.2 }, densityGPerMl: 1.03, defaultUnit: "l" },
+  // Grains & starches
+  { id: "basmati-rice", name: "Basmati rice (dry)", category: "Grain", per100g: { cal: 360, proteinG: 7.5, carbsG: 79, fatG: 0.9 }, defaultUnit: "lb" },
+  { id: "barley", name: "Barley (pearled, dry)", category: "Grain", per100g: { cal: 352, proteinG: 9.9, carbsG: 77.7, fatG: 1.2 }, defaultUnit: "lb" },
+  { id: "farro", name: "Farro (dry)", category: "Grain", per100g: { cal: 340, proteinG: 12, carbsG: 72, fatG: 2.5 }, defaultUnit: "lb" },
+  { id: "breadcrumbs", name: "Breadcrumbs / panko", category: "Grain", per100g: { cal: 395, proteinG: 13.4, carbsG: 72, fatG: 5.3 }, defaultUnit: "lb" },
+  { id: "tortilla-flour", name: "Flour tortilla", category: "Grain", per100g: { cal: 310, proteinG: 8, carbsG: 51, fatG: 8 }, defaultUnit: "lb", aliases: ["wrap"] },
+  { id: "flour-ap", name: "All-purpose flour", category: "Grain", per100g: { cal: 364, proteinG: 10.3, carbsG: 76.3, fatG: 1 }, densityGPerMl: 0.53, defaultUnit: "lb" },
+  { id: "cornstarch", name: "Cornstarch", category: "Grain", per100g: { cal: 381, proteinG: 0.3, carbsG: 91, fatG: 0.1 }, defaultUnit: "lb" },
+  // Legumes
+  { id: "kidney-beans", name: "Kidney beans (canned, drained)", category: "Legume", per100g: { cal: 84, proteinG: 5.2, carbsG: 15, fatG: 0.3 }, defaultUnit: "lb" },
+  { id: "green-peas", name: "Green peas", category: "Legume", per100g: { cal: 81, proteinG: 5.4, carbsG: 14.5, fatG: 0.4 }, defaultUnit: "lb", aliases: ["peas"] },
+  // Vegetables
+  { id: "cabbage", name: "Cabbage", category: "Vegetable", per100g: { cal: 25, proteinG: 1.3, carbsG: 5.8, fatG: 0.1 }, defaultUnit: "lb" },
+  { id: "romaine", name: "Romaine lettuce", category: "Vegetable", per100g: { cal: 17, proteinG: 1.2, carbsG: 3.3, fatG: 0.3 }, defaultUnit: "lb", aliases: ["lettuce"] },
+  { id: "brussels", name: "Brussels sprouts", category: "Vegetable", per100g: { cal: 43, proteinG: 3.4, carbsG: 9, fatG: 0.3 }, defaultUnit: "lb" },
+  { id: "butternut", name: "Butternut squash", category: "Vegetable", per100g: { cal: 45, proteinG: 1, carbsG: 12, fatG: 0.1 }, defaultUnit: "lb", aliases: ["squash"] },
+  { id: "beet", name: "Beet", category: "Vegetable", per100g: { cal: 43, proteinG: 1.6, carbsG: 9.6, fatG: 0.2 }, defaultUnit: "lb" },
+  { id: "celery", name: "Celery", category: "Vegetable", per100g: { cal: 16, proteinG: 0.7, carbsG: 3, fatG: 0.2 }, defaultUnit: "lb" },
+  { id: "eggplant", name: "Eggplant", category: "Vegetable", per100g: { cal: 25, proteinG: 1, carbsG: 6, fatG: 0.2 }, defaultUnit: "lb", aliases: ["aubergine"] },
+  { id: "green-onion", name: "Green onion", category: "Vegetable", per100g: { cal: 32, proteinG: 1.8, carbsG: 7.3, fatG: 0.2 }, defaultUnit: "lb", aliases: ["scallion"] },
+  { id: "ginger", name: "Ginger", category: "Vegetable", per100g: { cal: 80, proteinG: 1.8, carbsG: 18, fatG: 0.8 }, defaultUnit: "lb" },
+  { id: "cilantro", name: "Cilantro", category: "Vegetable", per100g: { cal: 23, proteinG: 2.1, carbsG: 3.7, fatG: 0.5 }, defaultUnit: "lb", aliases: ["coriander"] },
+  // Fruit
+  { id: "apple", name: "Apple", category: "Fruit", per100g: { cal: 52, proteinG: 0.3, carbsG: 14, fatG: 0.2 }, defaultUnit: "lb" },
+  { id: "banana", name: "Banana", category: "Fruit", per100g: { cal: 89, proteinG: 1.1, carbsG: 23, fatG: 0.3 }, defaultUnit: "lb" },
+  { id: "blueberries", name: "Blueberries", category: "Fruit", per100g: { cal: 57, proteinG: 0.7, carbsG: 14, fatG: 0.3 }, defaultUnit: "lb" },
+  { id: "strawberries", name: "Strawberries", category: "Fruit", per100g: { cal: 32, proteinG: 0.7, carbsG: 7.7, fatG: 0.3 }, defaultUnit: "lb" },
+  { id: "lemon", name: "Lemon", category: "Fruit", per100g: { cal: 29, proteinG: 1.1, carbsG: 9.3, fatG: 0.3 }, defaultUnit: "lb" },
+  { id: "lime", name: "Lime", category: "Fruit", per100g: { cal: 30, proteinG: 0.7, carbsG: 10.5, fatG: 0.2 }, defaultUnit: "lb" },
+  { id: "mango", name: "Mango", category: "Fruit", per100g: { cal: 60, proteinG: 0.8, carbsG: 15, fatG: 0.4 }, defaultUnit: "lb" },
+  // Dairy
+  { id: "cream-cheese", name: "Cream cheese", category: "Dairy", per100g: { cal: 342, proteinG: 6, carbsG: 4, fatG: 34 }, defaultUnit: "lb" },
+  { id: "sour-cream", name: "Sour cream", category: "Dairy", per100g: { cal: 198, proteinG: 2.4, carbsG: 4.6, fatG: 19 }, densityGPerMl: 1.0, defaultUnit: "kg" },
+  { id: "heavy-cream", name: "Heavy cream", category: "Dairy", per100g: { cal: 340, proteinG: 2.8, carbsG: 2.8, fatG: 36 }, densityGPerMl: 1.0, defaultUnit: "l" },
+  // Fats & oils
+  { id: "coconut-oil", name: "Coconut oil", category: "Fat", per100g: { cal: 862, proteinG: 0, carbsG: 0, fatG: 100 }, densityGPerMl: 0.92, defaultUnit: "l" },
+  { id: "sesame-oil", name: "Sesame oil", category: "Fat", per100g: { cal: 884, proteinG: 0, carbsG: 0, fatG: 100 }, densityGPerMl: 0.917, defaultUnit: "l" },
+  { id: "mayonnaise", name: "Mayonnaise", category: "Fat", per100g: { cal: 680, proteinG: 1, carbsG: 0.6, fatG: 75 }, densityGPerMl: 0.91, defaultUnit: "l", aliases: ["mayo"] },
+  // Nuts & seeds
+  { id: "cashews", name: "Cashews", category: "Nuts & seeds", per100g: { cal: 553, proteinG: 18.2, carbsG: 30.2, fatG: 43.9 }, defaultUnit: "lb" },
+  { id: "walnuts", name: "Walnuts", category: "Nuts & seeds", per100g: { cal: 654, proteinG: 15.2, carbsG: 13.7, fatG: 65.2 }, defaultUnit: "lb" },
+  { id: "peanuts", name: "Peanuts", category: "Nuts & seeds", per100g: { cal: 567, proteinG: 25.8, carbsG: 16.1, fatG: 49.2 }, defaultUnit: "lb" },
+  { id: "sunflower-seeds", name: "Sunflower seeds", category: "Nuts & seeds", per100g: { cal: 584, proteinG: 20.8, carbsG: 20, fatG: 51.5 }, defaultUnit: "lb" },
+  // Condiments & sweeteners
+  { id: "dijon", name: "Dijon mustard", category: "Condiment", per100g: { cal: 66, proteinG: 4, carbsG: 6, fatG: 3.6 }, densityGPerMl: 1.1, defaultUnit: "l", aliases: ["mustard"] },
+  { id: "sriracha", name: "Sriracha", category: "Condiment", per100g: { cal: 93, proteinG: 1.9, carbsG: 19, fatG: 0.9 }, densityGPerMl: 1.2, defaultUnit: "l" },
+  { id: "balsamic", name: "Balsamic vinegar", category: "Condiment", per100g: { cal: 88, proteinG: 0.5, carbsG: 17, fatG: 0 }, densityGPerMl: 1.06, defaultUnit: "l", aliases: ["vinegar"] },
+  { id: "tomato-paste", name: "Tomato paste", category: "Condiment", per100g: { cal: 82, proteinG: 4.3, carbsG: 19, fatG: 0.5 }, densityGPerMl: 1.1, defaultUnit: "kg" },
+  { id: "coconut-milk", name: "Coconut milk (canned)", category: "Condiment", per100g: { cal: 230, proteinG: 2.3, carbsG: 5.5, fatG: 24 }, densityGPerMl: 1.0, defaultUnit: "l" },
+  { id: "brown-sugar", name: "Brown sugar", category: "Condiment", per100g: { cal: 380, proteinG: 0, carbsG: 98, fatG: 0 }, defaultUnit: "lb", aliases: ["sugar"] },
 ];
 
 const normalize = (s: string) => s.toLowerCase().trim();
