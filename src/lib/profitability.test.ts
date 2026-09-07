@@ -4,7 +4,25 @@ import {
   mealEconomics,
   classifyMenu,
   priceChangeBps,
+  suggestedPriceCents,
 } from "./profitability";
+
+describe("suggestedPriceCents", () => {
+  it("prices to hit a target margin (rounded up)", () => {
+    // cost 400¢, target 60% margin → 400 / 0.40 = 1000
+    expect(suggestedPriceCents(400, 6000)).toBe(1000);
+    // cost 350¢, target 65% → 350 / 0.35 = 1000
+    expect(suggestedPriceCents(350, 6500)).toBe(1000);
+    // rounds up to the whole cent so it always clears the target
+    expect(suggestedPriceCents(333, 6500)).toBe(952); // 333/0.35 = 951.4 → 952
+  });
+  it("returns 0 when cost is unknown", () => {
+    expect(suggestedPriceCents(0, 6500)).toBe(0);
+  });
+  it("caps the target below 100% to avoid blow-up", () => {
+    expect(Number.isFinite(suggestedPriceCents(400, 100000))).toBe(true);
+  });
+});
 
 describe("plateCostCents", () => {
   it("sums gross ingredient cost incl. trim", () => {

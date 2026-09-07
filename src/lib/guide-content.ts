@@ -109,6 +109,7 @@ export const GUIDE: GuideArea[] = [
           ["Avg food cost %", "On average, what share of a meal's price goes to ingredients."],
           ["Menu contribution (pre-loss)", "Total profit from the menu before waste is subtracted."],
           ["Money-losing meals", "How many meals cost more to make than you charge — fix these first."],
+          ["Price coach", "Pick a target margin (60 / 65 / 70%) and it lists the meals priced below it, with the exact price each needs to hit that margin on your real ingredient cost. Money-losing meals show first. It's a starting point — always sanity-check against what your market will pay before raising a price."],
           ["Per-meal — Price", "What you charge for the meal."],
           ["Per-meal — Cost", "What its ingredients cost you (its 'plate cost')."],
           ["Per-meal — Margin", "Price minus cost, in dollars, per meal."],

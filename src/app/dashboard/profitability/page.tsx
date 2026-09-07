@@ -15,6 +15,7 @@ import { revenueStatusWhere } from "@/lib/order-status";
 import { RangeFilter } from "@/components/range-filter";
 import { toRangeKey, rangeWhere, rangeLabel } from "@/lib/date-range";
 import { summarizeLosses, LOSS_REASON_META, type LossReason } from "@/lib/loss";
+import { PriceCoach } from "./price-coach";
 import {
   plateCostFromRecipe,
   mealEconomics,
@@ -339,6 +340,20 @@ export default async function ProfitabilityPage({
         <Kpi icon={<DollarSign size={16} />} label={<span className="inline-flex items-center gap-1">Avg food cost <Hint text="On average, what share of a meal's price goes to ingredients. The lower this is, the more each sale keeps." /></span>} value={`${bpsToPercent(avgFoodCostBps).toFixed(1)}%`} />
         <Kpi icon={<ChefHat size={16} />} label={<span className="inline-flex items-center gap-1">Menu contribution (pre-loss) <Hint text="Each meal's margin × how many sold, added up — BEFORE food losses. Your true bottom line is 'Net contribution' in the P&L above, which subtracts losses." /></span>} value={formatCents(totalContribution)} />
         <Kpi icon={<AlertTriangle size={16} />} label={<span className="inline-flex items-center gap-1">Money-losing meals <Hint text="Meals priced below what they cost to make — every one you sell loses money. Reprice, re-cost the recipe, or retire them." /></span>} value={losers} />
+      </div>
+
+      <div className="mb-5">
+        <PriceCoach
+          meals={base.map((b) => ({
+            id: b.id,
+            name: b.name,
+            priceCents: b.priceCents,
+            costCents: b.costCents,
+            marginBps: b.marginBps,
+            hasRecipe: b.hasRecipe,
+            losing: b.losing,
+          }))}
+        />
       </div>
 
       {alerts.length > 0 && (

@@ -94,3 +94,18 @@ export function priceChangeBps(oldCents: number, newCents: number): number {
   if (oldCents <= 0) return 0;
   return Math.round(((newCents - oldCents) / oldCents) * 10000);
 }
+
+/**
+ * The price (integer cents) that hits a target margin for a given plate cost.
+ * Margin = (price − cost) / price, so price = cost / (1 − targetMargin). Rounded
+ * UP to the whole cent so the meal always clears the target. Returns 0 when the
+ * cost is unknown (no recipe). Target is capped below 100% to avoid blow-up.
+ */
+export function suggestedPriceCents(costCents: number, targetMarginBps: number): number {
+  if (costCents <= 0) return 0;
+  const m = Math.min(Math.max(targetMarginBps, 0), 9500) / 10000;
+  // Round to 6 dp before ceil so float noise (e.g. 1 − 0.65 ≠ 0.35) doesn't
+  // push an exact result up a whole cent.
+  const raw = Math.round((costCents / (1 - m)) * 1e6) / 1e6;
+  return Math.ceil(raw);
+}
