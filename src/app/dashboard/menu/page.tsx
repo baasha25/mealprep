@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Plus } from "lucide-react";
+import { Plus, ScanLine } from "lucide-react";
 import { requireBusiness } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { Page, Head } from "@/components/ui";
@@ -43,13 +43,22 @@ export default async function MenuPage() {
         title="Menu & recipes"
         sub="Every meal is a saved recipe. Retire one to take it off the storefront — its recipe is kept so you can bring it back anytime."
         right={
-          <Link
-            href="/dashboard/menu/new"
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[13px] font-medium"
-            style={{ background: "var(--pine)", color: "#f4f2ec" }}
-          >
-            <Plus size={15} /> Add menu item
-          </Link>
+          <div className="flex items-center gap-2 flex-wrap">
+            <Link
+              href="/dashboard/menu/import"
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[13px] font-medium border"
+              style={{ borderColor: "var(--line)", color: "var(--ink)", background: "var(--surface)" }}
+            >
+              <ScanLine size={15} /> Import from photo
+            </Link>
+            <Link
+              href="/dashboard/menu/new"
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[13px] font-medium"
+              style={{ background: "var(--pine)", color: "#f4f2ec" }}
+            >
+              <Plus size={15} /> Add menu item
+            </Link>
+          </div>
         }
       />
 

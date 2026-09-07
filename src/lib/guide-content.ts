@@ -190,7 +190,8 @@ export const GUIDE: GuideArea[] = [
         img: "05-menu.png",
         does: "Your list of meals — this is what customers see on your storefront, and your recipe library. Add, edit, price, and retire/restore meals here. Each meal can carry a full recipe (ingredients + method), which powers the cost and margin features. Use the On menu / Retired / All tabs and the search box to find any recipe.",
         use: [
-          "Menu → New menu item.",
+          "Fastest start: Menu → Import from photo. Upload a photo or PDF of your existing menu and PrepFlow reads the dishes, prices and descriptions into menu items for you — you review before anything is added.",
+          "Or add one by hand: Menu → New menu item.",
           "Enter the name and the price (what a customer pays).",
           "(Recommended) Add a photo — it's the #1 thing that sells a meal on your storefront.",
           "Add a description, diet tag, calories/macros, and allergens if you have them.",
@@ -200,6 +201,7 @@ export const GUIDE: GuideArea[] = [
         numbers: [
           ["Price", "What the customer pays for this meal."],
           ["Photo", "The meal's picture, shown large on your storefront. Optional, but the single biggest driver of orders — customers buy food with their eyes. Upload a landscape or square photo (at least 1000px wide; JPG, PNG, or WebP). PrepFlow optimizes it automatically."],
+          ["Import from photo", "Upload a photo or PDF of your current menu and PrepFlow builds the menu items for you — names, prices and descriptions — which you review and edit before adding. The fastest way to move an existing menu in. (Needs the AI key configured by the platform.) Add photos, recipes and macros to each meal afterward."],
           ["Retire / Restore", "Retire takes a meal off the storefront but KEEPS its recipe (ingredients, method, costs) — it moves to the Retired tab. Restore brings it back exactly as it was. Nothing is lost, so you can rotate a menu item out for the season and bring it back later."],
           ["On menu / Retired / All", "Tabs that filter the library: what's currently sold, what you've retired, or everything. The search box finds a recipe by name or diet."],
           ["Recipe / ingredients", "The ingredients (and amounts) that make the meal. Optional to sell, but required for cost, margin, purchasing, and waste numbers to work."],
