@@ -50,6 +50,24 @@ describe("labelZpl", () => {
   });
 });
 
+describe("labelZpl label config", () => {
+  it("hides fields that are toggled off and adds a footer", () => {
+    const z = labelZpl(base, "4x2", {
+      showBusinessName: false,
+      showMacros: false,
+      showBestBy: true,
+      showAllergens: false,
+      footer: "Keep refrigerated",
+    });
+    expect(z).not.toContain("Greenleaf Kitchen"); // business name off
+    expect(z).not.toContain("540 cal"); // macros off
+    expect(z).not.toContain("Contains:"); // allergens off
+    expect(z).toContain("Best by Sep 10, 2026"); // best-by on
+    expect(z).toContain("Keep refrigerated"); // footer added
+    expect(z).toContain("Grilled Chicken & Quinoa"); // name always shows
+  });
+});
+
 describe("batchZpl", () => {
   it("emits one block per meal and skips zero-qty", () => {
     const out = batchZpl([base, { ...base, name: "Salmon", qty: 0 }, { ...base, name: "Tofu", qty: 2 }]);

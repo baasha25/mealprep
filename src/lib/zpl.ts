@@ -20,6 +20,8 @@ export type ZplLabel = {
 
 export type ZplSize = "2x1" | "4x2";
 
+import { DEFAULT_LABEL_CONFIG, type LabelConfig } from "@/lib/labels";
+
 type SizeSpec = { pw: number; ll: number; x: number; biz: number; title: number; body: number };
 
 // 203 dpi: 2"x1" = 406x203 dots, 4"x2" = 812x406 dots.
@@ -40,28 +42,38 @@ function clean(s: string): string {
     .trim();
 }
 
-/** One label definition, printed `qty` times via ^PQ. */
-export function labelZpl(l: ZplLabel, size: ZplSize = "4x2"): string {
+/** One label definition, printed `qty` times via ^PQ. Honors the label config. */
+export function labelZpl(l: ZplLabel, size: ZplSize = "4x2", cfg: LabelConfig = DEFAULT_LABEL_CONFIG): string {
   const s = SIZES[size];
   const qty = Math.max(1, Math.min(100000, Math.round(l.qty || 1)));
   const gap = Math.round(s.title * 0.5);
   let y = Math.round(s.body * 0.6);
   const lines: string[] = ["^XA", "^CI28", `^PW${s.pw}`, `^LL${s.ll}`];
 
-  lines.push(`^FO${s.x},${y}^A0N,${s.biz},${s.biz}^FD${clean(l.businessName)}^FS`);
-  y += s.biz + 6;
+  if (cfg.showBusinessName) {
+    lines.push(`^FO${s.x},${y}^A0N,${s.biz},${s.biz}^FD${clean(l.businessName)}^FS`);
+    y += s.biz + 6;
+  }
   lines.push(`^FO${s.x},${y}^A0N,${s.title},${s.title}^FD${clean(l.name)}^FS`);
   y += s.title + gap;
-  lines.push(
-    `^FO${s.x},${y}^A0N,${s.body},${s.body}^FD${l.calories} cal  ${l.proteinG}P  ${l.carbsG}C  ${l.fatG}F^FS`,
-  );
-  y += s.body + 8;
-  lines.push(`^FO${s.x},${y}^A0N,${s.body},${s.body}^FDBest by ${clean(l.bestByLabel)}^FS`);
-  if (l.allergens.length > 0) {
+  if (cfg.showMacros) {
+    lines.push(
+      `^FO${s.x},${y}^A0N,${s.body},${s.body}^FD${l.calories} cal  ${l.proteinG}P  ${l.carbsG}C  ${l.fatG}F^FS`,
+    );
+    y += s.body + 8;
+  }
+  if (cfg.showBestBy) {
+    lines.push(`^FO${s.x},${y}^A0N,${s.body},${s.body}^FDBest by ${clean(l.bestByLabel)}^FS`);
     y += s.body + 6;
+  }
+  if (cfg.showAllergens && l.allergens.length > 0) {
     lines.push(
       `^FO${s.x},${y}^A0N,${s.body},${s.body}^FDContains: ${clean(l.allergens.join(", "))}^FS`,
     );
+    y += s.body + 6;
+  }
+  if (cfg.footer.trim()) {
+    lines.push(`^FO${s.x},${y}^A0N,${s.body},${s.body}^FD${clean(cfg.footer)}^FS`);
   }
 
   lines.push(`^PQ${qty}`, "^XZ");
@@ -69,9 +81,9 @@ export function labelZpl(l: ZplLabel, size: ZplSize = "4x2"): string {
 }
 
 /** A whole batch — one label block per meal, each with its own print quantity. */
-export function batchZpl(labels: ZplLabel[], size: ZplSize = "4x2"): string {
+export function batchZpl(labels: ZplLabel[], size: ZplSize = "4x2", cfg: LabelConfig = DEFAULT_LABEL_CONFIG): string {
   return labels
     .filter((l) => (l.qty || 0) > 0)
-    .map((l) => labelZpl(l, size))
+    .map((l) => labelZpl(l, size, cfg))
     .join("\n");
 }

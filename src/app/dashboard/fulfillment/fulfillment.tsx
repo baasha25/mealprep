@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from "react";
-import { Printer, Tag, ClipboardList, AlertTriangle, Check, Download } from "lucide-react";
+import { useState, useTransition } from "react";
+import { Printer, Tag, ClipboardList, AlertTriangle, Check, Download, SlidersHorizontal } from "lucide-react";
 import { batchZpl, type ZplLabel, type ZplSize } from "@/lib/zpl";
+import { type LabelConfig } from "@/lib/labels";
+import { saveLabelConfig } from "./actions";
 
 export type PackingSlip = {
   id: string;
@@ -31,14 +33,33 @@ export function Fulfillment({
   businessName,
   slips,
   labels,
+  labelConfig,
 }: {
   businessName: string;
   slips: PackingSlip[];
   labels: MealLabel[];
+  labelConfig: LabelConfig;
 }) {
   const [tab, setTab] = useState<"packing" | "labels">("packing");
   const [size, setSize] = useState<"small" | "medium" | "large">("small");
   const [excluded, setExcluded] = useState<Record<string, boolean>>({});
+
+  // Label design (which fields print + footer), persisted per kitchen.
+  const [cfg, setCfg] = useState<LabelConfig>(labelConfig);
+  const [designOpen, setDesignOpen] = useState(false);
+  const [savedToast, setSavedToast] = useState(false);
+  const [saving, startSaving] = useTransition();
+  const cfgDirty = JSON.stringify(cfg) !== JSON.stringify(labelConfig);
+  const setField = <K extends keyof LabelConfig>(k: K, v: LabelConfig[K]) =>
+    setCfg((c) => ({ ...c, [k]: v }));
+  const saveDesign = () =>
+    startSaving(async () => {
+      const r = await saveLabelConfig(cfg);
+      if (r.ok) {
+        setSavedToast(true);
+        setTimeout(() => setSavedToast(false), 2500);
+      }
+    });
   // Per-meal print quantity, overriding the production count (blank = use it).
   const [qtyOverride, setQtyOverride] = useState<Record<string, number>>({});
   const [zplSize, setZplSize] = useState<ZplSize>("4x2");
@@ -72,7 +93,7 @@ export function Fulfillment({
       bestByLabel: l.bestByLabel,
       qty: qtyOf(l),
     }));
-    const zpl = batchZpl(zplLabels, zplSize);
+    const zpl = batchZpl(zplLabels, zplSize, cfg);
     const blob = new Blob([zpl], { type: "text/plain;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -254,6 +275,77 @@ export function Fulfillment({
                 Send the file to your Zebra — via Zebra Browser Print, Zebra Setup Utilities, or your print queue.
               </span>
             </div>
+
+            {/* Label design — choose which fields print (paper + Zebra), persisted. */}
+            <div className="pt-3" style={{ borderTop: "1px solid var(--line)" }}>
+              <button
+                onClick={() => setDesignOpen((o) => !o)}
+                className="flex items-center gap-1.5 text-[12.5px] font-medium"
+                style={{ color: "var(--ink)" }}
+              >
+                <SlidersHorizontal size={14} style={{ color: "var(--pine)" }} /> Label design {designOpen ? "▾" : "▸"}
+              </button>
+              {designOpen && (
+                <div className="mt-3 rounded-lg border p-3.5" style={{ borderColor: "var(--line)", background: "var(--surface)" }}>
+                  <div className="text-[12px] mb-2" style={{ color: "var(--muted)" }}>Show on the label</div>
+                  <div className="flex flex-wrap gap-2">
+                    {(
+                      [
+                        ["showBusinessName", "Kitchen name"],
+                        ["showMacros", "Macros"],
+                        ["showBestBy", "Best-by date"],
+                        ["showAllergens", "Allergens"],
+                      ] as const
+                    ).map(([k, label]) => {
+                      const on = cfg[k];
+                      return (
+                        <button
+                          key={k}
+                          onClick={() => setField(k, !on)}
+                          aria-pressed={on}
+                          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[12.5px] border"
+                          style={{
+                            borderColor: on ? "var(--pine)" : "var(--line)",
+                            background: on ? "color-mix(in srgb, var(--pine) 8%, transparent)" : "var(--surface)",
+                            color: on ? "var(--pine)" : "var(--muted)",
+                          }}
+                        >
+                          {on ? <Check size={13} /> : <span style={{ width: 13 }} />} {label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <div className="mt-3">
+                    <label className="text-[11.5px] block mb-1" style={{ color: "var(--muted)" }}>
+                      Custom footer line (optional)
+                    </label>
+                    <input
+                      value={cfg.footer}
+                      onChange={(e) => setField("footer", e.target.value.slice(0, 120))}
+                      placeholder="e.g. Keep refrigerated · Consume within 3 days"
+                      maxLength={120}
+                      className="w-full rounded-lg border px-3 py-2 text-[13px] outline-none"
+                      style={{ borderColor: "var(--line)", background: "var(--paper)", color: "var(--ink)" }}
+                    />
+                  </div>
+                  <div className="mt-3 flex items-center gap-3">
+                    <button
+                      onClick={saveDesign}
+                      disabled={!cfgDirty || saving}
+                      className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[12.5px] font-medium disabled:opacity-50"
+                      style={{ background: "var(--pine)", color: "#f4f2ec" }}
+                    >
+                      <Check size={14} /> {saving ? "Saving…" : "Save design"}
+                    </button>
+                    {savedToast && <span className="text-[12px]" style={{ color: "var(--pine)" }}>Saved ✓</span>}
+                    {cfgDirty && !savedToast && <span className="text-[12px]" style={{ color: "var(--muted)" }}>Unsaved — preview updates live below</span>}
+                  </div>
+                  <p className="text-[11px] mt-2" style={{ color: "var(--muted)" }}>
+                    Applies to both the paper labels and the Zebra .zpl export. The labels below are a live preview.
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
 
           {shownLabels.length === 0 ? (
@@ -285,24 +377,36 @@ export function Fulfillment({
                     className="rounded-lg border p-3"
                     style={{ borderColor: "var(--line)", background: "var(--surface)", breakInside: "avoid" }}
                   >
+                {cfg.showBusinessName && (
+                  <div className="text-[10px] font-medium mb-1" style={{ color: "var(--muted)" }}>{businessName}</div>
+                )}
                 <div className="flex items-center gap-2 mb-2">
                   <span className="w-2.5 h-2.5 rounded-full" style={{ background: l.swatch }} />
                   <span className="text-[13px] font-semibold leading-tight" style={{ color: "var(--ink)" }}>{l.name}</span>
                 </div>
-                <div className="grid grid-cols-4 gap-1 mb-2 text-center">
-                  {([["Cal", l.calories], ["P", `${l.proteinG}g`], ["C", `${l.carbsG}g`], ["F", `${l.fatG}g`]] as const).map(([k, v]) => (
-                    <div key={k} className="rounded py-1" style={{ background: "var(--paper)" }}>
-                      <div className="text-[9px]" style={{ color: "var(--muted)" }}>{k}</div>
-                      <div className="text-[11.5px] font-semibold" style={{ color: "var(--ink)" }}>{v}</div>
-                    </div>
-                  ))}
-                </div>
-                <div className="flex items-center justify-between text-[10.5px]">
-                  <span style={{ color: "var(--muted)" }}>Best by {l.bestByLabel}</span>
-                  {l.allergens.length > 0 && (
-                    <span className="capitalize" style={{ color: "var(--clay)" }}>{l.allergens.join(", ")}</span>
-                  )}
-                </div>
+                {cfg.showMacros && (
+                  <div className="grid grid-cols-4 gap-1 mb-2 text-center">
+                    {([["Cal", l.calories], ["P", `${l.proteinG}g`], ["C", `${l.carbsG}g`], ["F", `${l.fatG}g`]] as const).map(([k, v]) => (
+                      <div key={k} className="rounded py-1" style={{ background: "var(--paper)" }}>
+                        <div className="text-[9px]" style={{ color: "var(--muted)" }}>{k}</div>
+                        <div className="text-[11.5px] font-semibold" style={{ color: "var(--ink)" }}>{v}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {(cfg.showBestBy || (cfg.showAllergens && l.allergens.length > 0)) && (
+                  <div className="flex items-center justify-between text-[10.5px]">
+                    <span style={{ color: "var(--muted)" }}>{cfg.showBestBy ? `Best by ${l.bestByLabel}` : ""}</span>
+                    {cfg.showAllergens && l.allergens.length > 0 && (
+                      <span className="capitalize" style={{ color: "var(--clay)" }}>{l.allergens.join(", ")}</span>
+                    )}
+                  </div>
+                )}
+                {cfg.footer.trim() && (
+                  <div className="text-[9.5px] mt-1 pt-1" style={{ color: "var(--muted)", borderTop: "1px solid var(--line)" }}>
+                    {cfg.footer}
+                  </div>
+                )}
                   </div>
               ))}
             </div>

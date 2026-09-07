@@ -179,6 +179,10 @@ model BusinessSettings {
   deliveryDays    Json     @default("{\"Mon\":true,\"Tue\":false,\"Wed\":true,\"Thu\":false,\"Fri\":true,\"Sat\":false,\"Sun\":false}")
   pickupLocations String[] @default([])
 
+  // Meal-label design: which fields print on the nutrition/allergen labels (both
+  // paper and Zebra), plus an optional custom footer line (e.g. "Keep refrigerated").
+  labelConfig     Json     @default("{\"showBusinessName\":true,\"showMacros\":true,\"showAllergens\":true,\"showBestBy\":true,\"footer\":\"\"}")
+
   updatedAt DateTime @updatedAt
 }
 

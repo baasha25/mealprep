@@ -1,6 +1,7 @@
 import { requireBusiness } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { Page, Head } from "@/components/ui";
+import { parseLabelConfig } from "@/lib/labels";
 import { Fulfillment, type PackingSlip, type MealLabel } from "./fulfillment";
 
 const PRODUCING = ["paid", "in_production"] as const;
@@ -16,6 +17,12 @@ function bestByLabelFor(shelfLifeDays: number | null): string {
 
 export default async function FulfillmentPage() {
   const { business } = await requireBusiness();
+
+  const settings = await db.businessSettings.findUnique({
+    where: { businessId: business.id },
+    select: { labelConfig: true },
+  });
+  const labelConfig = parseLabelConfig(settings?.labelConfig);
 
   const orders = await db.order.findMany({
     where: { businessId: business.id, status: { in: [...PRODUCING] } },
@@ -92,6 +99,7 @@ export default async function FulfillmentPage() {
         businessName={business.name}
         slips={slips}
         labels={labels}
+        labelConfig={labelConfig}
       />
     </Page>
   );
