@@ -21,6 +21,13 @@ function buttonSnippet(url: string, text: string, color: string): string {
   return `<a href="${url}" style="display:inline-block;background:${color};color:#ffffff;padding:11px 20px;border-radius:8px;font-family:sans-serif;font-size:15px;font-weight:600;text-decoration:none;">${text}</a>`;
 }
 
+// A button that opens the storefront in a centered pop-up window (like the
+// delivery apps), so customers order without fully leaving the merchant's site.
+// Falls back to a normal new-tab open if the browser blocks the pop-up.
+function popupSnippet(url: string, text: string, color: string): string {
+  return `<a href="${url}" target="prepflow" onclick="window.open(this.href,'prepflow','width=460,height=780,menubar=no,toolbar=no');return false;" style="display:inline-block;background:${color};color:#ffffff;padding:11px 20px;border-radius:8px;font-family:sans-serif;font-size:15px;font-weight:600;text-decoration:none;">${text}</a>`;
+}
+
 export function ShareLinks({ links, brandColor }: { links: ShareLink[]; brandColor: string }) {
   const [copied, setCopied] = useState<string | null>(null);
 
@@ -97,6 +104,26 @@ export function ShareLinks({ links, brandColor }: { links: ShareLink[]; brandCol
               </pre>
               <CopyBtn id={`${l.key}-html`} text={buttonSnippet(l.url, l.buttonText, brandColor)} />
             </div>
+          </div>
+
+          {/* Pop-up button snippet — opens ordering in a window, no navigating away */}
+          <div className="mt-3">
+            <div className="text-[11px] font-semibold uppercase tracking-wide mb-1.5" style={{ color: "var(--muted)" }}>
+              Pop-up button (opens in a window)
+            </div>
+            <div className="flex items-start gap-2">
+              <pre
+                className="flex-1 min-w-0 overflow-x-auto rounded-lg border px-3 py-2 text-[11.5px] font-mono"
+                style={{ borderColor: "var(--line)", background: "var(--paper)", color: "var(--ink-soft)" }}
+              >
+                {popupSnippet(l.url, l.buttonText, brandColor)}
+              </pre>
+              <CopyBtn id={`${l.key}-popup`} text={popupSnippet(l.url, l.buttonText, brandColor)} />
+            </div>
+            <p className="text-[11px] mt-1.5" style={{ color: "var(--muted)" }}>
+              Opens your ordering page in a pop-up window so customers don&apos;t leave your site. If a browser
+              blocks the pop-up, it opens in a new tab instead.
+            </p>
           </div>
         </div>
       ))}

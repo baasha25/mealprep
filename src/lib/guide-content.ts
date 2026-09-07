@@ -473,6 +473,24 @@ export const GUIDE: GuideArea[] = [
           "The countdown timer is driven by the Order cut-off and timezone you set in Settings → Fulfillment. Change the cut-off there and the banner updates automatically — a real deadline is one of the simplest ways to get orders in before you shop and prep.",
         ],
       },
+      {
+        id: "share",
+        title: "Share links & order button",
+        where: "Marketing → Share links",
+        does: "Copy-and-paste ways to send customers to your ordering page — for your Instagram bio, Linktree, or your own website. No separate customer site to build.",
+        use: [
+          "Open Marketing → Share links.",
+          "Copy the plain Link for a bio or a text message.",
+          "Copy the Paste-ready button (HTML) to drop a branded button onto your website.",
+          "Or copy the Pop-up button to open ordering in a window over your site.",
+        ],
+        numbers: [
+          ["Link", "The raw web address of your storefront (or the account / sign-up pages). Paste it anywhere."],
+          ["Paste-ready button (HTML)", "A styled button in your brand color that links to your ordering page — paste the HTML into your website builder."],
+          ["Pop-up button", "Same button, but it opens ordering in a pop-up window so customers don't fully leave your site (like the delivery apps). Falls back to a new tab if the browser blocks pop-ups."],
+        ],
+        tips: ["An inline embed (your storefront showing right inside your own page) is coming — for now the pop-up button is the closest 'order without leaving my site' option."],
+      },
     ],
   },
   {
