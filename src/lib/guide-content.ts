@@ -67,7 +67,10 @@ export const GUIDE: GuideArea[] = [
           ["Avg order value", "Revenue ÷ number of orders — the average amount a customer spends per order."],
           ["Plan usage", "How many orders you've taken this month vs. how many your PrepFlow plan includes. The bar fills as you approach the limit."],
         ],
-        tips: ["Everything here is calculated automatically from real orders — nothing is typed in by hand. If a number looks off, it's a reflection of the orders, not a bug."],
+        tips: [
+          "Everything here is calculated automatically from real orders — nothing is typed in by hand. If a number looks off, it's a reflection of the orders, not a bug.",
+          "See a small ⓘ icon next to a number (here, on Purchasing, Profitability, and more)? Hover it for a plain-English definition — no need to leave the screen.",
+        ],
       },
       {
         id: "analytics",

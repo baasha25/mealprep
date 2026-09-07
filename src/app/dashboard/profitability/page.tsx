@@ -335,10 +335,10 @@ export default async function ProfitabilityPage({
       </Card>
 
       <div className="grid sm:grid-cols-4 gap-3.5 mb-5">
-        <Kpi icon={<TrendingUp size={16} />} label="Avg margin" value={`${bpsToPercent(avgMarginBps).toFixed(1)}%`} />
-        <Kpi icon={<DollarSign size={16} />} label="Avg food cost" value={`${bpsToPercent(avgFoodCostBps).toFixed(1)}%`} />
+        <Kpi icon={<TrendingUp size={16} />} label={<span className="inline-flex items-center gap-1">Avg margin <Hint text="On average, what share of a meal's price is profit after its ingredient (food) cost." /></span>} value={`${bpsToPercent(avgMarginBps).toFixed(1)}%`} />
+        <Kpi icon={<DollarSign size={16} />} label={<span className="inline-flex items-center gap-1">Avg food cost <Hint text="On average, what share of a meal's price goes to ingredients. The lower this is, the more each sale keeps." /></span>} value={`${bpsToPercent(avgFoodCostBps).toFixed(1)}%`} />
         <Kpi icon={<ChefHat size={16} />} label={<span className="inline-flex items-center gap-1">Menu contribution (pre-loss) <Hint text="Each meal's margin × how many sold, added up — BEFORE food losses. Your true bottom line is 'Net contribution' in the P&L above, which subtracts losses." /></span>} value={formatCents(totalContribution)} />
-        <Kpi icon={<AlertTriangle size={16} />} label="Money-losing meals" value={losers} />
+        <Kpi icon={<AlertTriangle size={16} />} label={<span className="inline-flex items-center gap-1">Money-losing meals <Hint text="Meals priced below what they cost to make — every one you sell loses money. Reprice, re-cost the recipe, or retire them." /></span>} value={losers} />
       </div>
 
       {alerts.length > 0 && (

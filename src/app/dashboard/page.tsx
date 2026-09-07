@@ -2,7 +2,16 @@ import Link from "next/link";
 import { TrendingUp, ChefHat, Repeat, Receipt, Gauge, ArrowUpCircle, Monitor, Tag, Wallet } from "lucide-react";
 import { requireBusiness } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { Page, Head, Kpi, Card, CardTitle } from "@/components/ui";
+import { Page, Head, Kpi, Card, CardTitle, Hint } from "@/components/ui";
+
+// Small helper: a KPI label with an info tooltip.
+function L({ children, hint }: { children: React.ReactNode; hint: string }) {
+  return (
+    <span className="inline-flex items-center gap-1">
+      {children} <Hint text={hint} />
+    </span>
+  );
+}
 import { formatCents, formatCents0 } from "@/lib/money";
 import { orderLimitStatus } from "@/lib/usage";
 import { TIERS, effectiveTier, type TierKey } from "@/lib/tiers";
@@ -100,10 +109,10 @@ export default async function DashboardPage({
       {fin ? (
         <>
           <div className="grid sm:grid-cols-4 gap-3.5 mb-4">
-            <Kpi icon={<TrendingUp size={16} />} label="Revenue (period)" value={formatCents0(fin.revenueCents)} />
-            <Kpi icon={<ChefHat size={16} />} label="Meals ordered" value={fin.mealsOrdered} />
-            <Kpi icon={<Repeat size={16} />} label="Active subscriptions" value={fin.subCount} />
-            <Kpi icon={<Receipt size={16} />} label="Avg order value" value={formatCents(fin.aovCents)} />
+            <Kpi icon={<TrendingUp size={16} />} label={<L hint="Money from PAID orders in the period you picked. Canceled and refunded orders are not counted — that money was never really earned.">Revenue (period)</L>} value={formatCents0(fin.revenueCents)} />
+            <Kpi icon={<ChefHat size={16} />} label={<L hint="How many individual meals were ordered in the period (a 5-meal order counts as 5).">Meals ordered</L>} value={fin.mealsOrdered} />
+            <Kpi icon={<Repeat size={16} />} label={<L hint="Customers currently on a repeating weekly or bi-weekly plan right now.">Active subscriptions</L>} value={fin.subCount} />
+            <Kpi icon={<Receipt size={16} />} label={<L hint="Revenue ÷ number of orders — the average a customer spends per order.">Avg order value</L>} value={formatCents(fin.aovCents)} />
           </div>
           <Card>
             <CardTitle icon={<Gauge size={15} />} title="Plan usage" note={`${fin.planName} plan`} />

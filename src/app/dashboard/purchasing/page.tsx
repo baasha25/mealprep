@@ -1,7 +1,15 @@
 import { Carrot, DollarSign, TrendingDown, ShoppingCart, AlertTriangle } from "lucide-react";
 import { requireBusiness } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { Page, Head, Kpi } from "@/components/ui";
+import { Page, Head, Kpi, Hint } from "@/components/ui";
+
+function L({ children, hint }: { children: React.ReactNode; hint: string }) {
+  return (
+    <span className="inline-flex items-center gap-1">
+      {children} <Hint text={hint} />
+    </span>
+  );
+}
 import { formatCents, bpsToPercent } from "@/lib/money";
 import { buildShoppingList, type PurchaseLine } from "@/lib/purchasing";
 import { toPurchaseQty } from "@/lib/units";
@@ -71,17 +79,17 @@ export default async function PurchasingPage() {
       <div className="grid sm:grid-cols-3 gap-3.5 mb-5">
         <Kpi
           icon={<ShoppingCart size={16} />}
-          label="To purchase"
+          label={<L hint="Total cost to buy everything on this list — the gross amount, including what you'll trim away.">To purchase</L>}
           value={formatCents(list.totalBuyCents)}
         />
         <Kpi
           icon={<TrendingDown size={16} />}
-          label="Over-bought (trim waste)"
+          label={<L hint="Dollars of ingredient you buy only to trim away and throw out (peels, fat, ends). This is real money — reducing it is pure margin.">Over-bought (trim waste)</L>}
           value={formatCents(list.totalWasteCents)}
         />
         <Kpi
           icon={<DollarSign size={16} />}
-          label="Waste share"
+          label={<L hint="Over-bought as a share of the total purchase — how much of every dollar you spend on ingredients is trimmed away.">Waste share</L>}
           value={`${bpsToPercent(list.wasteBps).toFixed(1)}%`}
         />
       </div>
