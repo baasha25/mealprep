@@ -121,9 +121,28 @@ export default async function ReportsPage({
           >
             <Download size={15} /> Meal sales
           </a>
+          {(
+            [
+              ["/dashboard/reports/customers", "Customers"],
+              ["/dashboard/reports/subscriptions", "Subscriptions"],
+              ["/dashboard/reports/shopping-list", "Shopping list"],
+              ["/dashboard/reports/inventory", "Inventory"],
+            ] as const
+          ).map(([href, label]) => (
+            <a
+              key={href}
+              href={href}
+              download
+              className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-[13px] font-medium border"
+              style={{ borderColor: "var(--line)", color: "var(--ink)", background: "var(--paper)" }}
+            >
+              <Download size={15} /> {label}
+            </a>
+          ))}
         </div>
         <p className="text-[11.5px] mt-3" style={{ color: "var(--muted)" }}>
-          Exports cover the selected period ({rangeLabel(range).toLowerCase()}), with the kitchen name on the file. For a PDF, use “Print / Save as PDF” above.
+          Orders &amp; meal sales cover the selected period ({rangeLabel(range).toLowerCase()}); customers, subscriptions,
+          shopping list and inventory are a live snapshot. Every file opens in Excel or Google Sheets. For a PDF, use “Print / Save as PDF” above.
         </p>
       </Card>
     </Page>
