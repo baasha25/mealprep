@@ -93,7 +93,14 @@ export async function lookupGiftCard(slug: string, rawCode: string): Promise<Gif
 const PlaceOrderInput = z.object({
   slug: z.string().min(1, "Store unavailable."),
   items: z
-    .array(z.object({ mealId: z.string().min(1), qty: z.number().int().min(1).max(99) }))
+    .array(
+      z.object({
+        mealId: z.string().min(1),
+        qty: z.number().int().min(1).max(99),
+        // Per-item delivery date when a one-time order is split across two days.
+        deliveryDate: z.string().datetime().optional(),
+      }),
+    )
     .min(1, "Your cart is empty."),
   subscribe: z.boolean(),
   couponCode: z.string().optional(),
@@ -151,7 +158,33 @@ export async function placeOrder(input: PlaceOrderInputT): Promise<PlaceOrderRes
   });
   const mealById = new Map(meals.map((m) => [m.id, m]));
 
-  const lineItems = data.items.map((i) => {
+  // Resolve delivery dates: the order's headline date, plus a per-item date when
+  // a one-time order is split across two days. Client dates must match one of the
+  // kitchen's upcoming delivery days (never trust an arbitrary date).
+  let deliveryDate: Date | null = null;
+  const itemDates: (Date | null)[] = data.items.map(() => null);
+  if (data.fulfillment === "delivery") {
+    const tz = s.timezone || DEFAULT_TIMEZONE;
+    const enabled = enabledDeliveryDays((s.deliveryDays ?? {}) as Record<string, boolean>);
+    const anchor = nextCutoffAt(s.cutoff, tz) ?? new Date();
+    const options = upcomingDeliveries(enabled, anchor, tz, 8, "weekly");
+    const resolve = (iso?: string): Date | null => {
+      if (!iso) return null;
+      const wanted = new Date(iso).getTime();
+      return options.find((d) => d.getTime() === wanted) ?? null;
+    };
+    deliveryDate = resolve(data.deliveryDate) ?? options[0] ?? null;
+    // Per-item dates for a split order (null = use the order's single date).
+    data.items.forEach((it, i) => {
+      itemDates[i] = resolve(it.deliveryDate);
+    });
+    const specified = itemDates.filter((d): d is Date => d != null);
+    if (specified.length) {
+      deliveryDate = specified.reduce((a, b) => (a.getTime() <= b.getTime() ? a : b));
+    }
+  }
+
+  const lineItems = data.items.map((i, idx) => {
     const meal = mealById.get(i.mealId);
     if (!meal) throw new Error("MEAL_UNAVAILABLE");
     return {
@@ -159,6 +192,7 @@ export async function placeOrder(input: PlaceOrderInputT): Promise<PlaceOrderRes
       qty: i.qty,
       unitPriceCentsSnapshot: meal.priceCents,
       nameSnapshot: meal.name,
+      deliveryDate: itemDates[idx],
     };
   });
 
@@ -243,23 +277,6 @@ export async function placeOrder(input: PlaceOrderInputT): Promise<PlaceOrderRes
     },
     update: { name: data.customer.name, phone: data.customer.phone || null },
   });
-
-  // Resolve the delivery date for a delivery order: it must match one of the
-  // kitchen's upcoming delivery days (never trust an arbitrary client date). If
-  // omitted or invalid, fall back to the soonest upcoming delivery day.
-  let deliveryDate: Date | null = null;
-  if (data.fulfillment === "delivery") {
-    const tz = s.timezone || DEFAULT_TIMEZONE;
-    const enabled = enabledDeliveryDays((s.deliveryDays ?? {}) as Record<string, boolean>);
-    const anchor = nextCutoffAt(s.cutoff, tz) ?? new Date();
-    const options = upcomingDeliveries(enabled, anchor, tz, 8, "weekly");
-    if (data.deliveryDate) {
-      const wanted = new Date(data.deliveryDate).getTime();
-      deliveryDate = options.find((d) => d.getTime() === wanted) ?? options[0] ?? null;
-    } else {
-      deliveryDate = options[0] ?? null;
-    }
-  }
 
   const order = await db.order.create({
     data: {

@@ -33,16 +33,28 @@ export default async function FulfillmentPage() {
     },
   });
 
-  const slips: PackingSlip[] = orders.map((o) => ({
-    id: o.id,
-    code: o.id.slice(-6),
-    customerName: o.customer?.name ?? "Guest",
-    address: o.address,
-    zone: o.zone,
-    fulfillment: o.fulfillment,
-    customerAllergens: o.customer?.allergens ?? [],
-    items: o.items.map((it) => ({ name: it.nameSnapshot, qty: it.qty })),
-  }));
+  const dayFmt = new Intl.DateTimeFormat("en-US", { weekday: "short", month: "short", day: "numeric" });
+  const slips: PackingSlip[] = orders.map((o) => {
+    const itemDays = o.items.map((it) => it.deliveryDate?.getTime()).filter(Boolean);
+    const isSplit = new Set(itemDays).size > 1;
+    return {
+      id: o.id,
+      code: o.id.slice(-6),
+      customerName: o.customer?.name ?? "Guest",
+      address: o.address,
+      zone: o.zone,
+      fulfillment: o.fulfillment,
+      customerAllergens: o.customer?.allergens ?? [],
+      deliveryLabel: o.deliveryDate ? dayFmt.format(o.deliveryDate) : null,
+      isSplit,
+      items: o.items.map((it) => ({
+        name: it.nameSnapshot,
+        qty: it.qty,
+        // Only surface a per-item day when the order is actually split.
+        deliveryLabel: isSplit && it.deliveryDate ? dayFmt.format(it.deliveryDate) : null,
+      })),
+    };
+  });
 
   // Aggregate meals to label (one label per unit produced).
   const items = await db.orderItem.findMany({

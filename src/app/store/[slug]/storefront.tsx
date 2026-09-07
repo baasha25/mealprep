@@ -101,6 +101,15 @@ export function Storefront({
   const [deliveryDate, setDeliveryDate] = useState<string>(
     settings.deliveryDateOptions[0]?.value ?? "",
   );
+  // Optional: split the order across two delivery days, assigning each meal.
+  const canSplit = !settings.singleDeliveryDay && settings.deliveryDateOptions.length >= 2;
+  const [splitDelivery, setSplitDelivery] = useState(false);
+  const [dayB, setDayB] = useState<string>(settings.deliveryDateOptions[1]?.value ?? "");
+  const [itemDay, setItemDay] = useState<Record<string, "A" | "B">>({});
+  const dateOf = (mealId: string) =>
+    splitDelivery && itemDay[mealId] === "B" ? dayB : deliveryDate;
+  const labelFor = (v: string) =>
+    settings.deliveryDateOptions.find((o) => o.value === v)?.label ?? v;
   const [form, setForm] = useState({ name: "", email: "", phone: "", address: "", zone: "" });
   const [loyalty, setLoyalty] = useState<LoyaltyLookup | null>(null);
   const [applyLoyalty, setApplyLoyalty] = useState(false);
@@ -163,7 +172,13 @@ export function Storefront({
     startTransition(async () => {
       const result = await placeOrder({
         slug,
-        items: Object.entries(cart).map(([mealId, qty]) => ({ mealId, qty })),
+        items: Object.entries(cart).map(([mealId, qty]) => ({
+          mealId,
+          qty,
+          // Per-item delivery date only when splitting; else the order's single date.
+          deliveryDate:
+            fulfillment === "delivery" && splitDelivery && deliveryDate ? dateOf(mealId) : undefined,
+        })),
         subscribe,
         couponCode: coupon?.valid ? coupon.code : undefined,
         giftCardCode: giftCard?.valid ? giftCard.code : undefined,
@@ -603,6 +618,77 @@ export function Storefront({
                         We deliver on {settings.deliveryDaysLabel}.
                       </p>
                     </>
+                  )}
+
+                  {/* Split across two delivery days — assign each meal to a day */}
+                  {canSplit && (
+                    <div className="mt-2.5">
+                      <label className="flex items-center gap-2 text-[12.5px] cursor-pointer select-none" style={{ color: "var(--ink)" }}>
+                        <input
+                          type="checkbox"
+                          checked={splitDelivery}
+                          onChange={(e) => setSplitDelivery(e.target.checked)}
+                        />
+                        Split my order across two delivery days
+                      </label>
+                      {splitDelivery && (
+                        <div className="mt-2 rounded-lg border p-3" style={{ borderColor: "var(--line)", background: "var(--paper)" }}>
+                          <label className="text-[11.5px] block mb-1" style={{ color: "var(--muted)" }}>
+                            Second delivery day
+                          </label>
+                          <select
+                            value={dayB}
+                            onChange={(e) => setDayB(e.target.value)}
+                            className="w-full px-3 py-2 rounded-md border text-[13px] outline-none mb-2.5"
+                            style={inputStyle}
+                          >
+                            {settings.deliveryDateOptions
+                              .filter((o) => o.value !== deliveryDate)
+                              .map((o) => (
+                                <option key={o.value} value={o.value}>
+                                  {o.label}
+                                </option>
+                              ))}
+                          </select>
+                          <div className="text-[11.5px] mb-1.5" style={{ color: "var(--muted)" }}>
+                            Which day for each meal?
+                          </div>
+                          <div className="space-y-1.5">
+                            {Object.entries(cart).map(([id, q]) => {
+                              const m = mealById.get(id);
+                              if (!m) return null;
+                              const onB = itemDay[id] === "B";
+                              return (
+                                <div key={id} className="flex items-center justify-between gap-2 text-[12.5px]">
+                                  <span className="truncate" style={{ color: "var(--ink)" }}>
+                                    {q}× {m.name}
+                                  </span>
+                                  <div className="inline-flex rounded-md border p-0.5 shrink-0" style={{ borderColor: "var(--line)" }}>
+                                    {(["A", "B"] as const).map((slot) => {
+                                      const active = (slot === "B") === onB;
+                                      return (
+                                        <button
+                                          key={slot}
+                                          type="button"
+                                          onClick={() => setItemDay((d) => ({ ...d, [id]: slot }))}
+                                          className="px-2 py-1 rounded text-[11px] font-medium"
+                                          style={{
+                                            background: active ? "var(--pine)" : "transparent",
+                                            color: active ? "#f4f2ec" : "var(--muted)",
+                                          }}
+                                        >
+                                          {labelFor(slot === "B" ? dayB : deliveryDate)}
+                                        </button>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   )}
                 </div>
               )}

@@ -472,6 +472,7 @@ export const GUIDE: GuideArea[] = [
           ["Subscription plans", "Your Meal Plans shown as weekly/bi-weekly options with the per-week price."],
           ["Meal cards", "Each meal with its price, diet tag, calories, protein, and star rating."],
           ["Your order", "The customer's running cart before checkout."],
+          ["Delivery day (one-time orders)", "When you run more than one delivery day, a one-time customer picks a day at checkout — and can tick \"Split my order across two delivery days\" to receive some meals on each day, assigning each meal itself. On a split order, the packing slip shows which meals go on which day, flagged \"Split delivery.\""],
         ],
         tips: [
           "Everything a customer does here flows straight into your dashboard — orders, customers, production, and revenue. Share the link (see Share Links) on social and in your bio.",

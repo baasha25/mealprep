@@ -541,6 +541,9 @@ model OrderItem {
   qty                    Int
   unitPriceCentsSnapshot Int
   nameSnapshot           String
+  // Per-item delivery date — set when a one-time order is split across two
+  // delivery days (each meal assigned to a day). Null = the order's single date.
+  deliveryDate           DateTime?
 
   @@index([orderId])
 }

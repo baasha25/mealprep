@@ -14,7 +14,9 @@ export type PackingSlip = {
   zone: string | null;
   fulfillment: string;
   customerAllergens: string[];
-  items: { name: string; qty: number }[];
+  deliveryLabel: string | null;
+  isSplit: boolean;
+  items: { name: string; qty: number; deliveryLabel: string | null }[];
 };
 
 export type MealLabel = {
@@ -158,7 +160,14 @@ export function Fulfillment({
                 </div>
                 <div className="text-right">
                   <div className="text-[13.5px] font-semibold" style={{ color: "var(--ink)" }}>{s.customerName}</div>
-                  <div className="text-[12px] capitalize" style={{ color: "var(--muted)" }}>{s.fulfillment}{s.zone ? ` · ${s.zone}` : ""}</div>
+                  <div className="text-[12px] capitalize" style={{ color: "var(--muted)" }}>
+                    {s.fulfillment}{s.zone ? ` · ${s.zone}` : ""}{s.deliveryLabel && !s.isSplit ? ` · ${s.deliveryLabel}` : ""}
+                  </div>
+                  {s.isSplit && (
+                    <div className="text-[11px] font-medium mt-0.5" style={{ color: "var(--clay)" }}>
+                      Split delivery — see days below
+                    </div>
+                  )}
                 </div>
               </div>
               {s.address && (
@@ -172,7 +181,14 @@ export function Fulfillment({
               <div className="space-y-1.5">
                 {s.items.map((it, i) => (
                   <div key={i} className="flex justify-between text-[13.5px]">
-                    <span style={{ color: "var(--ink)" }}>{it.name}</span>
+                    <span style={{ color: "var(--ink)" }}>
+                      {it.name}
+                      {it.deliveryLabel && (
+                        <span className="text-[11px] ml-1.5 px-1.5 py-0.5 rounded" style={{ background: "var(--sand)", color: "var(--clay)" }}>
+                          {it.deliveryLabel}
+                        </span>
+                      )}
+                    </span>
                     <span className="font-semibold" style={{ color: "var(--ink)" }}>×{it.qty}</span>
                   </div>
                 ))}
