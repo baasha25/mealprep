@@ -433,7 +433,7 @@ function CtaBand() {
 function Footer() {
   return (
     <footer className="border-t" style={{ borderColor: "var(--line)" }}>
-      <div className="max-w-6xl mx-auto px-6 py-12 grid sm:grid-cols-[1.5fr_1fr_1fr] gap-8">
+      <div className="max-w-6xl mx-auto px-6 py-12 grid sm:grid-cols-2 lg:grid-cols-[1.5fr_1fr_1fr_1fr] gap-8">
         <div>
           <Link href="/" className="flex items-center gap-2.5 mb-3">
             <div className="grid place-items-center w-8 h-8 rounded-md" style={{ background: "var(--pine)" }}><Leaf size={17} color="#f4f2ec" /></div>
@@ -448,6 +448,13 @@ function Footer() {
             <a href="#how" className="block">How it works</a>
             <a href="#pricing" className="block">Pricing</a>
             <Link href="/store" className="block">Live storefront</Link>
+          </div>
+        </div>
+        <div>
+          <div className="text-[12px] font-semibold uppercase tracking-wide mb-3" style={{ color: "var(--muted)" }}>Free tools</div>
+          <div className="space-y-2 text-[13.5px]" style={{ color: "var(--ink-soft)" }}>
+            <Link href="/audit" className="block">Profit Leak Audit</Link>
+            <Link href="/calculator" className="block">Recipe Profit Calculator</Link>
           </div>
         </div>
         <div>
