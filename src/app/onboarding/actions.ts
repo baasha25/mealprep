@@ -66,6 +66,16 @@ export async function createKitchen(
   const tier = parsed.data.tier;
   // First-touch acquisition (captured client-side into a cookie on landing).
   const attrib = parseAttributionCookie((await cookies()).get(ATTRIB_COOKIE)?.value);
+  // Partner Program: if this kitchen arrived via a ?ref=<code> link, attribute
+  // it to that partner (only if the code matches an active partner).
+  let referredByPartnerId: string | null = null;
+  if (attrib?.ref) {
+    const partner = await db.partner.findUnique({
+      where: { code: attrib.ref },
+      select: { id: true, status: true },
+    });
+    if (partner && partner.status === "active") referredByPartnerId = partner.id;
+  }
   await db.business.create({
     data: {
       name: parsed.data.name,
@@ -78,6 +88,7 @@ export async function createKitchen(
       acqMedium: attrib?.medium ?? null,
       acqCampaign: attrib?.campaign || null,
       acqReferrer: attrib?.referrer || null,
+      referredByPartnerId,
       // Chosen plan drives the platform fee; other pricing/fulfillment
       // fields fall back to the schema defaults.
       settings: { create: { platformFeeBps: TIERS[tier].platformFeeBps } },

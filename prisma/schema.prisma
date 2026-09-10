@@ -133,6 +133,9 @@ model Business {
   acqMedium   String? // e.g. referral, cpc, social, direct
   acqCampaign String? // utm_campaign
   acqReferrer String? // raw referring URL
+  // Partner Program: which partner referred this kitchen (if any). Attribution
+  // is first-touch, captured from a ?ref=<code> link at signup.
+  referredByPartnerId String?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
@@ -146,6 +149,76 @@ model Business {
   giftCards   GiftCard[]
   coupons     Coupon[]
   operatingCosts OperatingCost[]
+  referredByPartner   Partner? @relation("PartnerReferrals", fields: [referredByPartnerId], references: [id])
+  partnerCommissions  PartnerCommission[]
+}
+
+// ─── Partner Program ────────────────────────────────────────────────────────
+// Referral partners (consultants, marketing agencies, kitchen-space operators)
+// who send kitchens to PrepFlow via a ?ref=<code> link and earn a recurring
+// commission on the software subscription revenue those kitchens pay. Payouts
+// go to the partner's own Stripe (Connect Express) account.
+
+model Partner {
+  id              String   @id @default(cuid())
+  name            String
+  email           String
+  company         String?
+  code            String   @unique // ref link slug, e.g. "cam" → /?ref=cam
+  commissionBps   Int      @default(2000) // 20% of the kitchen's subscription payment
+  status          String   @default("active") // active | paused
+  stripeAccountId String?  @unique // Connect Express account that receives transfers
+  payoutsEnabled  Boolean  @default(false) // true once Stripe onboarding is complete
+  statsToken      String   @unique @default(cuid()) // unguessable token for the partner's read-only stats page
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  referredBusinesses Business[]          @relation("PartnerReferrals")
+  commissions        PartnerCommission[]
+  payouts            PartnerPayout[]
+}
+
+// One accrued commission, created when a referred kitchen's software invoice is
+// actually PAID (never on signup or during the free trial). Keyed by the Stripe
+// invoice id so a webhook retry can't double-accrue.
+model PartnerCommission {
+  id              String   @id @default(cuid())
+  partnerId       String
+  businessId      String
+  amountCents     Int // commission owed to the partner
+  baseAmountCents Int // the invoice amount it was computed from
+  currency        String   @default("cad")
+  commissionBps   Int // rate snapshot at accrual time
+  sourceInvoiceId String   @unique // Stripe invoice id — idempotency guard
+  periodMonth     String // accrual month, e.g. "2026-09"
+  status          String   @default("pending") // pending | paid | void
+  createdAt       DateTime @default(now())
+  paidAt          DateTime?
+  payoutId        String?
+
+  partner  Partner        @relation(fields: [partnerId], references: [id])
+  business Business       @relation(fields: [businessId], references: [id])
+  payout   PartnerPayout? @relation(fields: [payoutId], references: [id])
+
+  @@index([partnerId, status])
+  @@index([businessId])
+}
+
+// One payout batch = one Stripe transfer to a partner, grouping the commissions
+// it settled. Created when a super-admin approves & pays a partner's pending
+// balance.
+model PartnerPayout {
+  id               String   @id @default(cuid())
+  partnerId        String
+  amountCents      Int
+  currency         String   @default("cad")
+  stripeTransferId String?
+  periodLabel      String // human label for the batch, e.g. "2026-09"
+  createdAt        DateTime @default(now())
+
+  partner     Partner             @relation(fields: [partnerId], references: [id])
+  commissions PartnerCommission[]
 }
 
 model BusinessSettings {

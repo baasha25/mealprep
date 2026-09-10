@@ -29,8 +29,9 @@ export function AttributionCapture() {
       const attrib = deriveAttribution(params, externalReferrer);
 
       // Skip writing a pure direct/no-signal hit — leave the cookie unset so a
-      // later, more meaningful touch (e.g. a UTM link) can be captured instead.
-      if (attrib.source === "direct" && !attrib.campaign) return;
+      // later, more meaningful touch (e.g. a UTM or partner ?ref link) can be
+      // captured instead. A partner ref is always a meaningful touch.
+      if (attrib.source === "direct" && !attrib.campaign && !attrib.ref) return;
 
       const value = encodeURIComponent(JSON.stringify(attrib));
       const maxAge = 60 * 60 * 24 * 90;

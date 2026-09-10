@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Leaf } from "lucide-react";
 import { requireSuperAdmin } from "@/lib/admin";
 
@@ -20,6 +21,10 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           >
             Admin
           </span>
+          <nav className="ml-6 flex items-center gap-4 text-[13px]">
+            <Link href="/admin" style={{ color: "#f4f2eccc" }}>Kitchens</Link>
+            <Link href="/admin/partners" style={{ color: "#f4f2eccc" }}>Partners</Link>
+          </nav>
         </div>
       </header>
       <main className="max-w-6xl mx-auto px-6 py-8">{children}</main>

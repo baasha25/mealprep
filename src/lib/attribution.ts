@@ -9,7 +9,17 @@ export type Attribution = {
   medium: string; // referral, social, cpc, direct, ...
   campaign: string;
   referrer: string;
+  ref: string; // Partner Program referral code from ?ref=<code> (empty if none)
 };
+
+/** Normalize a partner ref code: lowercase, safe slug chars only, capped. */
+export function normalizeRef(raw: string | null | undefined): string {
+  return (raw || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]/g, "")
+    .slice(0, 40);
+}
 
 const HOST_SOURCE: [test: RegExp, source: string][] = [
   [/(^|\.)google\./, "google"],
@@ -55,9 +65,18 @@ export function deriveAttribution(params: URLSearchParams, referrer: string): At
   const utmSource = (params.get("utm_source") || "").trim().toLowerCase();
   const utmMedium = (params.get("utm_medium") || "").trim().toLowerCase();
   const utmCampaign = (params.get("utm_campaign") || "").trim();
-  const source = utmSource || sourceFromReferrer(referrer);
-  const medium = utmMedium || mediumForSource(source, Boolean(referrer));
-  return { source: source || "direct", medium: medium || "direct", campaign: utmCampaign, referrer: referrer || "" };
+  const ref = normalizeRef(params.get("ref"));
+  // A partner ref link is itself an acquisition signal: default source/medium
+  // to the partner channel when no explicit UTM overrides it.
+  const source = utmSource || (ref ? "partner" : sourceFromReferrer(referrer));
+  const medium = utmMedium || (ref ? "referral" : mediumForSource(source, Boolean(referrer)));
+  return {
+    source: source || "direct",
+    medium: medium || "direct",
+    campaign: utmCampaign || (ref ? ref : ""),
+    referrer: referrer || "",
+    ref,
+  };
 }
 
 /** Safe parse of the attribution cookie value (JSON). */
@@ -71,6 +90,7 @@ export function parseAttributionCookie(value: string | undefined | null): Attrib
       medium: String(o.medium || "direct"),
       campaign: String(o.campaign || ""),
       referrer: String(o.referrer || ""),
+      ref: normalizeRef(o.ref),
     };
   } catch {
     return null;

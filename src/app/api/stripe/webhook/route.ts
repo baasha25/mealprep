@@ -8,13 +8,14 @@ import { sendSubscriptionReceipt, sendPaymentFailed, sendKitchenBillingPaymentFa
 import { isTierKey } from "@/lib/tiers";
 import { tierFromPriceId, type BillingStatus } from "@/lib/kitchen-billing";
 import { activateKitchenSubscription, setKitchenBillingStatus } from "@/lib/kitchen-billing-sync";
+import { accrueCommissionForInvoice } from "@/lib/partner-commission";
 
 /** Find the kitchen whose SOFTWARE subscription this Stripe sub id belongs to. */
 async function kitchenForSub(stripeSubId: string | undefined) {
   if (!stripeSubId) return null;
   return db.business.findFirst({
     where: { billingSubscriptionId: stripeSubId },
-    select: { id: true, name: true, brandColor: true, slug: true },
+    select: { id: true, name: true, brandColor: true, slug: true, referredByPartnerId: true },
   });
 }
 
@@ -78,6 +79,16 @@ export async function POST(req: NextRequest) {
         const kbiz = await kitchenForSub(stripeSubIdAny);
         if (kbiz) {
           await setKitchenBillingStatus(stripeSubIdAny!, "active");
+          // Partner Program: accrue a commission on this paid software invoice
+          // (covers both the first charge and every renewal). Idempotent on the
+          // invoice id; a no-op unless the kitchen was referred by a partner.
+          await accrueCommissionForInvoice({
+            businessId: kbiz.id,
+            referredByPartnerId: kbiz.referredByPartnerId,
+            invoiceId: invoice.id,
+            amountPaidCents: invoice.amount_paid ?? 0,
+            currency: invoice.currency,
+          });
           break;
         }
         // Only act on recurring cycles — the first charge is covered at signup.

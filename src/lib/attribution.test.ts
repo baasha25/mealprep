@@ -29,7 +29,7 @@ describe("deriveAttribution", () => {
       new URLSearchParams("utm_source=newsletter&utm_medium=email&utm_campaign=launch"),
       "https://www.google.com/",
     );
-    expect(a).toEqual({ source: "newsletter", medium: "email", campaign: "launch", referrer: "https://www.google.com/" });
+    expect(a).toEqual({ source: "newsletter", medium: "email", campaign: "launch", referrer: "https://www.google.com/", ref: "" });
   });
   it("derives source + medium from the referrer when no UTM", () => {
     const a = deriveAttribution(new URLSearchParams(""), "https://www.instagram.com/");
@@ -41,14 +41,24 @@ describe("deriveAttribution", () => {
   });
   it("no referrer, no UTM → direct/direct", () => {
     const a = deriveAttribution(new URLSearchParams(""), "");
-    expect(a).toEqual({ source: "direct", medium: "direct", campaign: "", referrer: "" });
+    expect(a).toEqual({ source: "direct", medium: "direct", campaign: "", referrer: "", ref: "" });
+  });
+  it("a ?ref link is attributed to the partner channel", () => {
+    const a = deriveAttribution(new URLSearchParams("ref=Cam"), "");
+    expect(a).toEqual({ source: "partner", medium: "referral", campaign: "cam", referrer: "", ref: "cam" });
+  });
+  it("explicit UTM still wins over a ?ref link, but ref is retained", () => {
+    const a = deriveAttribution(new URLSearchParams("ref=cam&utm_source=instagram&utm_medium=social"), "");
+    expect(a.source).toBe("instagram");
+    expect(a.medium).toBe("social");
+    expect(a.ref).toBe("cam");
   });
 });
 
 describe("parseAttributionCookie", () => {
   it("round-trips a JSON cookie value", () => {
-    const v = encodeURIComponent(JSON.stringify({ source: "instagram", medium: "social", campaign: "reel1", referrer: "https://ig" }));
-    expect(parseAttributionCookie(v)).toEqual({ source: "instagram", medium: "social", campaign: "reel1", referrer: "https://ig" });
+    const v = encodeURIComponent(JSON.stringify({ source: "instagram", medium: "social", campaign: "reel1", referrer: "https://ig", ref: "cam" }));
+    expect(parseAttributionCookie(v)).toEqual({ source: "instagram", medium: "social", campaign: "reel1", referrer: "https://ig", ref: "cam" });
   });
   it("null / garbage → null", () => {
     expect(parseAttributionCookie(null)).toBeNull();
