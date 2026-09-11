@@ -97,7 +97,7 @@ function Hero() {
           <div className="mt-6 flex items-center gap-5 text-[12.5px] flex-wrap" style={{ color: "var(--muted)" }}>
             <span className="flex items-center gap-1.5"><Check size={14} style={{ color: "var(--pine)" }} /> 30-day free trial</span>
             <span className="flex items-center gap-1.5"><Check size={14} style={{ color: "var(--pine)" }} /> No card required</span>
-            <span className="flex items-center gap-1.5"><Check size={14} style={{ color: "var(--pine)" }} /> Migrate in an afternoon</span>
+            <span className="flex items-center gap-1.5"><Check size={14} style={{ color: "var(--pine)" }} /> Import in an afternoon</span>
           </div>
         </div>
         <HeroMock />
@@ -115,10 +115,10 @@ function HeroMock() {
           <span className="w-2.5 h-2.5 rounded-full" style={{ background: "#e3b7a8" }} />
           <span className="w-2.5 h-2.5 rounded-full" style={{ background: "#e8dcb0" }} />
           <span className="w-2.5 h-2.5 rounded-full" style={{ background: "#bcd0bd" }} />
-          <span className="ml-2 text-[12px] font-medium" style={{ color: "var(--muted)" }}>Purchasing & waste</span>
+          <span className="ml-2 text-[12px] font-medium" style={{ color: "var(--muted)" }}>Purchasing · true cost</span>
         </div>
         <div className="grid grid-cols-3 gap-2.5 mb-4">
-          {[["To purchase", "$154.28", "var(--ink)"], ["Over-bought", "$18.96", "var(--clay)"], ["Waste share", "12.3%", "var(--ink)"]].map(([l, v, c]) => (
+          {[["AP purchase", "$154.28", "var(--ink)"], ["Trim & yield", "$18.96", "var(--clay)"], ["Usable yield", "87.7%", "var(--ink)"]].map(([l, v, c]) => (
             <div key={l} className="rounded-lg p-3" style={{ background: "var(--paper)", border: "1px solid var(--line)" }}>
               <div className="text-[10px]" style={{ color: "var(--muted)" }}>{l}</div>
               <div className="disp text-[18px] font-medium mt-1" style={{ color: c as string }}>{v}</div>
@@ -126,7 +126,7 @@ function HeroMock() {
           ))}
         </div>
         <div className="space-y-2.5">
-          {[["Sirloin steak", 0.92, "$5.81"], ["Asparagus", 0.64, "$3.42"], ["Shrimp", 0.48, "$2.55"], ["Broccoli", 0.33, "$1.71"]].map(([name, w, amt]) => (
+          {[["Sirloin steak", 1.0, "$7.10"], ["Asparagus", 0.68, "$4.85"], ["Shrimp", 0.61, "$4.30"], ["Broccoli", 0.38, "$2.71"]].map(([name, w, amt]) => (
             <div key={name as string}>
               <div className="flex justify-between text-[11.5px] mb-1">
                 <span style={{ color: "var(--ink)" }}>{name}</span>
@@ -145,8 +145,8 @@ function HeroMock() {
             <TrendingDown size={17} style={{ color: "var(--pine)" }} />
           </div>
           <div>
-            <div className="text-[12.5px] font-semibold" style={{ color: "var(--ink)" }}>$18.96 to cut</div>
-            <div className="text-[11px]" style={{ color: "var(--muted)" }}>this production run</div>
+            <div className="text-[12.5px] font-semibold" style={{ color: "var(--ink)" }}>+14.0% true cost</div>
+            <div className="text-[11px]" style={{ color: "var(--muted)" }}>vs. invoice price</div>
           </div>
         </div>
       </div>
@@ -158,8 +158,8 @@ function Logos() {
   return (
     <section className="border-y" style={{ borderColor: "var(--line)", background: "var(--surface)" }}>
       <div className="max-w-6xl mx-auto px-6 py-8 flex flex-wrap items-center justify-center gap-x-10 gap-y-3">
-        <span className="text-[12px]" style={{ color: "var(--muted)" }}>Trusted by independent kitchens like</span>
-        {["Greenleaf Kitchen", "FuelHouse", "Cedar & Sage", "Prep Collective", "Nourish Co."].map((n) => (
+        <span className="text-[12px]" style={{ color: "var(--muted)" }}>Built for independent meal-prep kitchens</span>
+        {["Solo meal-prep", "Fitness & macro", "Family meal plans", "Corporate catering", "Multi-day delivery"].map((n) => (
           <span key={n} className="disp text-[16px] font-medium" style={{ color: "var(--ink-soft)", opacity: 0.75 }}>{n}</span>
         ))}
       </div>
@@ -171,7 +171,7 @@ function Logos() {
 
 function HowItWorks() {
   const steps = [
-    ["Import your kitchen", "Bring your menu, customers, and active subscriptions across from a spreadsheet — live in an afternoon.", Upload],
+    ["Import your kitchen", "Bring your menu, customers, and active subscriptions across from a spreadsheet — import in an afternoon, live in days.", Upload],
     ["Sell & subscribe", "Open your branded storefront. Diners order, subscribe, and manage their own plans.", Store],
     ["Run the line", "Production, trim-aware purchasing, labels, packing, and routes — the whole kitchen on one screen.", ChefHat],
   ] as const;
@@ -199,8 +199,8 @@ function HowItWorks() {
 
 function Features() {
   const hero = [
-    ["Margin & waste protection", "A trim-aware purchasing engine that shows the real dollars you're over-buying every run — so you cut cost you couldn't even see before.", TrendingDown],
-    ["Frictionless migration", "Import your menu, customers, and subscriptions from a CSV. Switch without the dread — most kitchens move in an afternoon.", Upload],
+    ["Know your true food cost", "A trim-aware engine that turns purchase prices into the true usable cost of every ingredient — so your quantities, recipe costs, and margins reflect what actually happens in the kitchen.", TrendingDown],
+    ["Frictionless migration", "We move your menu, customers, and subscriptions from a spreadsheet with you. Most kitchens finish the import in an afternoon and go live within days — without the dread.", Upload],
     ["Loyalty & referrals", "Turn first-time diners into regulars with built-in points and referral rewards that run themselves.", Star],
   ] as const;
   const rest = [

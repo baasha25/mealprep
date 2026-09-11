@@ -94,16 +94,16 @@ const STEPS: Step[] = [
   {
     icon: Sprout,
     kicker: "Money feature — the big one",
-    title: "Stop over-buying, down to the dollar",
+    title: "Know the true cost of every ingredient",
     blurb:
-      "The shopping list is built from the week's real orders and is trim-aware — so it shows the exact dollars you're buying just to throw away in prep.",
+      "The shopping list is built from the week's real orders and is trim-aware — it converts purchase prices into true usable-yield cost, so quantities and margins reflect what actually happens in prep.",
     points: [
-      "Buy quantities calculated from what's actually ordered",
-      "Biggest waste offenders float to the top of the list",
-      "This is the number most kitchens have never seen before",
+      "Buy the right quantity, calculated from what's actually ordered",
+      "See the true usable cost hiding behind the invoice price",
+      "The margin number most kitchens have never seen before",
     ],
     img: "/demo/purchasing.png",
-    imgAlt: "Trim-aware purchasing list showing dollars over-bought per ingredient",
+    imgAlt: "Trim-aware purchasing list showing true usable-yield cost per ingredient",
   },
   {
     icon: ChefHat,
@@ -150,9 +150,9 @@ const STEPS: Step[] = [
   {
     icon: Upload,
     kicker: "Getting started",
-    title: "Switch in an afternoon",
+    title: "Import in an afternoon, live in days",
     blurb:
-      "Bring your menu, customers, subscriptions, and current inventory over from a spreadsheet. Import, review, done — you're not rebuilding from scratch.",
+      "Bring your menu, customers, subscriptions, and current inventory over from a spreadsheet. Most kitchens finish the import in an afternoon and run their first guided production cycle within the week — you're not rebuilding from scratch.",
     points: [
       "CSV import for menu, customers, subscriptions, and stock",
       "Keep your recipes, prices, and active subscribers",

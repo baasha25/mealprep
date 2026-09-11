@@ -554,7 +554,7 @@ export const GUIDE: GuideArea[] = [
         title: "Import Data",
         where: "Admin → Import data",
         img: "23-import.png",
-        does: "Bring your existing menu, customers, subscriptions, and inventory into PrepFlow from a spreadsheet (CSV) — so switching from another system takes an afternoon, not weeks.",
+        does: "Bring your existing menu, customers, subscriptions, and inventory into PrepFlow from a spreadsheet (CSV) — most kitchens finish the data import in an afternoon and run their first guided production cycle within the first week.",
         use: [
           "Pick a tab: Menu, Customers, Subscriptions, or Inventory.",
           "Download the Template to see the exact columns.",
