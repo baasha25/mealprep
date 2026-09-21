@@ -6,6 +6,7 @@ import { AttributionCapture } from "@/components/attribution-capture";
 import { Analytics } from "@/components/analytics";
 import { ConsentBanner } from "@/components/consent-banner";
 import { EnvRibbon } from "@/components/env-ribbon";
+import { CrispChat } from "@/components/crisp-chat";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -40,6 +41,7 @@ export default function RootLayout({
         <Analytics />
         {children}
         <ConsentBanner />
+        <CrispChat />
         <EnvRibbon />
       </body>
     </html>
