@@ -429,12 +429,16 @@ export const GUIDE: GuideArea[] = [
         title: "Delivery Routes",
         where: "Kitchen → Delivery Routes",
         img: "17-routes.png",
-        does: "Groups the day's deliveries by area/zone so you (or a driver) can run an efficient route. Uses each order's delivery address and zone.",
+        does: "Groups the day's deliveries by area/zone so you (or a driver) can run an efficient route, and gives you a Dispatch checklist to tick every bag out the door so nothing is missed. Uses each order's delivery address and zone.",
         numbers: [
           ["Zone / area", "Deliveries grouped by the area you assigned (North, East, West, etc.)."],
           ["Stops", "Each delivery address on the route, with the customer and order."],
+          ["Dispatch checklist", "The last check before bags leave: each zone shows 'X of Y stops' with a progress bar. Expand a zone and tap each stop as it goes out (big targets, works on a tablet at the pass), or 'Mark zone done' in one go. Ticks are kept for the day so a refresh doesn't lose your place; a new day starts clean."],
         ],
-        tips: ["Set delivery zones in Settings; assign customers to zones so routes group cleanly. This is basic routing — enough to plan a delivery day without a separate app."],
+        tips: [
+          "Set delivery zones in Settings; assign customers to zones so routes group cleanly. This is basic routing — enough to plan a delivery day without a separate app.",
+          "Print the page to get a paper checklist with empty boxes per stop — handy for a driver hand-off or a kitchen without a tablet.",
+        ],
       },
     ],
   },

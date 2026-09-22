@@ -2,6 +2,7 @@ import { Truck, MapPin, Navigation, Printer } from "lucide-react";
 import { requireBusiness } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { Page, Head, Kpi, Card } from "@/components/ui";
+import { DispatchCheck, type DispatchRoute } from "./dispatch-check";
 
 // Orders that are headed out for delivery (paid through packed/out-for-delivery).
 const ROUTABLE = ["paid", "in_production", "packed", "out_for_delivery"] as const;
@@ -27,6 +28,12 @@ export default async function RoutesPage() {
   }
   const routes = [...byZone.entries()].sort((a, b) => b[1].length - a[1].length);
   const totalStops = orders.length;
+  // Dispatch checklist data — the same stops, shaped for the tick-off view.
+  const checkRoutes: DispatchRoute[] = routes.map(([zone, stops]) => ({
+    zone,
+    stops: stops.map((o) => ({ id: o.id, name: o.customer?.name ?? "Guest", address: o.address ?? null, items: o._count.items })),
+  }));
+  const dateKey = new Date().toISOString().slice(0, 10);
 
   return (
     <Page>
@@ -55,6 +62,7 @@ export default async function RoutesPage() {
         </div>
       ) : (
         <div className="space-y-4 print-full">
+          <DispatchCheck routes={checkRoutes} dateKey={dateKey} />
           {routes.map(([zone, stops]) => (
             <Card key={zone}>
               <div className="flex items-center justify-between mb-4">
