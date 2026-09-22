@@ -448,6 +448,28 @@ export const GUIDE: GuideArea[] = [
     blurb: "Growing sales.",
     sections: [
       {
+        id: "reviews",
+        title: "Reviews",
+        where: "Sales → Reviews",
+        does: "Customers who've ordered a meal can rate it and leave a comment from their account page. Reviews are shown on your storefront under each meal — but only after you approve them, so nothing goes public without your say-so. Every review is tagged 'Verified order'.",
+        use: [
+          "Open Sales → Reviews. New reviews land in 'Awaiting approval' (you also get an email).",
+          "Approve to publish it under that meal on your storefront, or Hide to keep it off.",
+          "Reply publicly to thank a customer or address a concern — your reply shows under their review.",
+          "Prefer zero moderation? Turn on 'Publish reviews automatically' in Settings → Customer reviews. You can still hide or reply.",
+        ],
+        numbers: [
+          ["Awaiting approval", "Reviews waiting for your decision. Not visible to customers yet."],
+          ["Live on storefront", "Approved reviews currently shown under meals. The star average customers see counts ONLY these."],
+          ["Average rating", "Mean of your approved reviews' stars."],
+          ["Verified order", "Every review comes from a customer who actually ordered that meal — a trust signal generic review widgets can't offer."],
+        ],
+        tips: [
+          "If a customer edits their review, it goes back to 'Awaiting approval' so you always see the latest version before it's public.",
+          "A quick, warm public reply to a lukewarm review often does more for trust than a dozen five-stars.",
+        ],
+      },
+      {
         id: "promotions",
         title: "Promotions (Marketing)",
         where: "Marketing → Marketing",

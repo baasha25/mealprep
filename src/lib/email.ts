@@ -327,6 +327,30 @@ export async function sendKitchenBillingPaymentFailed(opts: {
   });
 }
 
+/** Owner nudge: a customer left a review that's waiting for approval. */
+export async function sendNewReviewNotice(opts: {
+  to: string;
+  kitchenName: string;
+  mealName: string;
+  rating: number;
+  comment: string | null;
+  reviewsUrl: string;
+}): Promise<void> {
+  const stars = "★".repeat(Math.max(1, Math.min(5, opts.rating))) + "☆".repeat(5 - Math.max(1, Math.min(5, opts.rating)));
+  await send({
+    to: opts.to,
+    subject: `New review to approve — ${opts.mealName}`,
+    businessName: "PrepFlow",
+    heading: "A customer left a review",
+    subheading: `${escapeHtml(opts.kitchenName)} · ${escapeHtml(opts.mealName)}`,
+    bodyHtml: `
+      <p style="margin:0 0 6px;color:#c98a2b;font-size:16px;letter-spacing:2px;">${stars}</p>
+      ${opts.comment ? `<p style="margin:0 0 14px;color:${INK};font-size:14px;font-style:italic;">“${escapeHtml(opts.comment)}”</p>` : `<p style="margin:0 0 14px;color:${INK};font-size:14px;">(Rating only, no written comment.)</p>`}
+      <p style="margin:0 0 14px;color:${INK};font-size:13px;">It won't show on your storefront until you approve it. You can also hide it, or post a public reply.</p>
+      <a href="${opts.reviewsUrl}" style="display:inline-block;background:#2f4536;color:#f4f2ec;text-decoration:none;font-size:14px;font-weight:500;padding:10px 18px;border-radius:8px;">Review &amp; approve</a>`,
+  });
+}
+
 /** Recurring-charge receipt — sent when a subscription invoice is paid. */
 export async function sendSubscriptionReceipt(opts: {
   to: string;

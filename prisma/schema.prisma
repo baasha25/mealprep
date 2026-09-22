@@ -237,6 +237,7 @@ model BusinessSettings {
 
   // Loyalty & referrals
   loyaltyEnabled             Boolean @default(true)
+  autoApproveReviews         Boolean @default(false) // publish customer reviews without manual approval
   loyaltyPointsPerDollar     Int     @default(1) // points earned per $1 of subtotal
   loyaltyRedeemCentsPerPoint Int     @default(5) // redemption value: 1 point = 5¢
   referralBonusPoints        Int     @default(100) // points to referrer per successful referral
@@ -379,10 +380,16 @@ model MealReview {
   customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
   rating     Int // 1–5
   comment    String?
+  // Moderation: reviews are PUBLIC only once approved. New reviews start
+  // pending unless the kitchen turns on auto-approve; edits re-enter moderation.
+  status     String   @default("pending") // pending | approved | hidden
+  reply      String? // the kitchen's public response, shown under the review
+  repliedAt  DateTime?
   createdAt  DateTime @default(now())
 
   @@unique([mealId, customerId])
   @@index([businessId])
+  @@index([businessId, status])
   @@index([mealId])
 }
 

@@ -16,7 +16,7 @@ export default async function MenuPage() {
 
   const ratingAgg = await db.mealReview.groupBy({
     by: ["mealId"],
-    where: { businessId: business.id },
+    where: { businessId: business.id, status: "approved" },
     _avg: { rating: true },
   });
   const ratingByMeal = new Map(ratingAgg.map((r) => [r.mealId, r._avg.rating ?? 0]));

@@ -36,6 +36,8 @@ const ALLERGEN_ICON: Record<string, LucideIcon> = {
   fish: Fish,
 };
 
+export type StoreReview = { name: string; rating: number; comment: string; reply: string | null; date: string };
+
 export type StoreMeal = {
   id: string;
   name: string;
@@ -49,6 +51,7 @@ export type StoreMeal = {
   proteinG: number;
   ratingAvg: number;
   ratingCount: number;
+  reviews: StoreReview[];
 };
 
 export type StoreSettings = PricingSettings & {
@@ -338,6 +341,30 @@ export function Storefront({
                     )}
                     <span>{m.calories} cal · {m.proteinG}g protein</span>
                   </div>
+                  {m.reviews.length > 0 && (
+                    <details className="mb-3 -mt-1">
+                      <summary className="cursor-pointer text-[11.5px] font-medium select-none" style={{ color: "var(--pine)" }}>
+                        What customers say ({m.reviews.length})
+                      </summary>
+                      <div className="mt-2 space-y-2">
+                        {m.reviews.map((r, i) => (
+                          <div key={i} className="rounded-lg px-2.5 py-2" style={{ background: "var(--paper)", border: "1px solid var(--line)" }}>
+                            <div className="flex items-center gap-1.5 text-[11px]">
+                              <span style={{ color: "#c98a2b", letterSpacing: 1 }}>{"★".repeat(r.rating)}{"☆".repeat(5 - r.rating)}</span>
+                              <span className="font-medium" style={{ color: "var(--ink)" }}>{r.name}</span>
+                              <span className="px-1.5 py-px rounded" style={{ background: "color-mix(in srgb, var(--pine) 10%, transparent)", color: "var(--pine)", fontSize: 9.5 }}>Verified order</span>
+                            </div>
+                            <p className="text-[12px] mt-1 leading-snug" style={{ color: "var(--ink-soft)" }}>{r.comment}</p>
+                            {r.reply && (
+                              <p className="text-[11.5px] mt-1.5 pl-2 leading-snug" style={{ color: "var(--muted)", borderLeft: "2px solid var(--line)" }}>
+                                <span className="font-medium" style={{ color: "var(--ink)" }}>Kitchen reply:</span> {r.reply}
+                              </p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </details>
+                  )}
                   <div className="flex items-center justify-between mt-auto">
                     <span className="disp text-[17px] font-medium" style={{ color: "var(--ink)" }}>
                       {formatCents(m.priceCents)}

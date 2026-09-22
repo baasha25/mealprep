@@ -27,6 +27,7 @@ export type SettingsInitial = {
   deliveryDays: Record<string, boolean>;
   pickupLocations: string[];
   loyaltyEnabled: boolean;
+  autoApproveReviews: boolean;
   notifyCutoff: boolean;
   notifyDeliveryDay: boolean;
   loyaltyPointsPerDollar: number;
@@ -387,7 +388,20 @@ export function SettingsForm({ initial }: { initial: SettingsInitial }) {
 
       {/* Loyalty & referrals */}
       <Card>
-        <CardTitle icon={<Star size={15} />} title="Loyalty & referrals" />
+        <Card>
+        <CardTitle icon={<Star size={15} />} title="Customer reviews" />
+        <label className="flex items-center gap-2 cursor-pointer select-none">
+          <input type="checkbox" name="autoApproveReviews" defaultChecked={initial.autoApproveReviews} />
+          <span className="text-[13px]" style={{ color: "var(--ink)" }}>
+            Publish reviews automatically (skip manual approval)
+          </span>
+        </label>
+        <p className="text-[12px] mt-2" style={{ color: "var(--muted)" }}>
+          Off (recommended): every review waits in Sales → Reviews until you approve it. On: reviews go live instantly; you can still hide any review or reply.
+        </p>
+      </Card>
+
+      <CardTitle icon={<Star size={15} />} title="Loyalty & referrals" />
         <label className="flex items-center gap-2 mb-4 cursor-pointer select-none">
           <input type="checkbox" name="loyaltyEnabled" defaultChecked={initial.loyaltyEnabled} />
           <span className="text-[13px]" style={{ color: "var(--ink)" }}>

@@ -14,7 +14,7 @@ import {
 import { enabledDeliveryDays, describeDeliveryDays } from "@/lib/delivery-days";
 import { CutoffBanner } from "./cutoff-banner";
 import { PlanCards } from "./plan-cards";
-import { Storefront, type StoreMeal, type StoreSettings } from "./storefront";
+import { Storefront, type StoreMeal, type StoreReview, type StoreSettings } from "./storefront";
 
 export const dynamic = "force-dynamic";
 
@@ -38,13 +38,35 @@ export default async function StorePage({
     orderBy: { mealsPerWeek: "asc" },
   });
 
+  // Public stars + comments count APPROVED reviews only — what a diner sees is
+  // always something the kitchen has vetted.
   const ratingAgg = await db.mealReview.groupBy({
     by: ["mealId"],
-    where: { businessId: business.id },
+    where: { businessId: business.id, status: "approved" },
     _avg: { rating: true },
     _count: { rating: true },
   });
   const ratingByMeal = new Map(ratingAgg.map((r) => [r.mealId, { avg: r._avg.rating ?? 0, count: r._count.rating }]));
+
+  // Most recent approved written reviews, up to 3 per meal, with any kitchen reply.
+  const recent = await db.mealReview.findMany({
+    where: { businessId: business.id, status: "approved", comment: { not: null } },
+    orderBy: { createdAt: "desc" },
+    select: { mealId: true, rating: true, comment: true, reply: true, createdAt: true, customer: { select: { name: true } } },
+  });
+  const reviewsByMeal = new Map<string, StoreReview[]>();
+  for (const r of recent) {
+    const list = reviewsByMeal.get(r.mealId) ?? [];
+    if (list.length >= 3) continue;
+    list.push({
+      name: (r.customer?.name ?? "Customer").split(" ")[0],
+      rating: r.rating,
+      comment: r.comment ?? "",
+      reply: r.reply,
+      date: r.createdAt.toISOString().slice(0, 10),
+    });
+    reviewsByMeal.set(r.mealId, list);
+  }
 
   const storeMeals: StoreMeal[] = meals.map((m) => ({
     id: m.id,
@@ -59,6 +81,7 @@ export default async function StorePage({
     proteinG: m.proteinG,
     ratingAvg: ratingByMeal.get(m.id)?.avg ?? 0,
     ratingCount: ratingByMeal.get(m.id)?.count ?? 0,
+    reviews: reviewsByMeal.get(m.id) ?? [],
   }));
 
   // Live order-cut-off countdown, computed in the kitchen's own timezone.

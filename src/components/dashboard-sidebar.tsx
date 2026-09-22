@@ -37,6 +37,7 @@ import {
   PanelLeftOpen,
   LifeBuoy,
   type LucideIcon,
+  Star,
 } from "lucide-react";
 
 // Dashboard navigation, grouped into labeled sections. Hrefs are real routes.
@@ -61,6 +62,7 @@ const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
       ["/dashboard/subscriptions", "Subscriptions", CalendarClock],
       ["/dashboard/orders", "Orders", Receipt],
       ["/dashboard/customers", "Customers", User],
+      ["/dashboard/reviews", "Reviews", Star],
       ["/dashboard/pos", "POS Terminal", Wallet],
     ],
   },
