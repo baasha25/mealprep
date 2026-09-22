@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Leaf, ArrowRight, ArrowLeft, Lock } from "lucide-react";
 import { enterDemo, type EnterDemoState } from "./actions";
 
-export function EnterDemoForm({ rep, repName }: { rep: string; repName: string | null }) {
+export function EnterDemoForm({ rep, repName, brand }: { rep: string; repName: string | null; brand?: { brand: string; color: string; logo: string; keep: string } }) {
   const [state, action, pending] = useActionState<EnterDemoState | null, FormData>(enterDemo, null);
 
   return (
@@ -34,8 +34,19 @@ export function EnterDemoForm({ rep, repName }: { rep: string; repName: string |
             Enter your team&apos;s access code to open a ready-to-explore sample kitchen — real menu, orders, and live numbers you can change on the spot.
             {repName ? ` Guided by ${repName}.` : ""}
           </p>
+          {brand?.brand && (
+            <p className="mt-2 text-[12.5px] px-2.5 py-1.5 rounded-lg inline-flex items-center gap-2" style={{ background: "color-mix(in srgb, var(--pine) 8%, transparent)", color: "var(--pine)" }}>
+              <span className="w-2.5 h-2.5 rounded-full" style={{ background: /^#[0-9a-fA-F]{6}$/.test(brand.color) ? brand.color : "var(--pine)" }} />
+              Prepared for <strong>{brand.brand}</strong>
+            </p>
+          )}
 
           <form action={action} className="mt-5">
+            <input type="hidden" name="rep" value={rep} />
+            <input type="hidden" name="brand" value={brand?.brand ?? ""} />
+            <input type="hidden" name="color" value={brand?.color ?? ""} />
+            <input type="hidden" name="logo" value={brand?.logo ?? ""} />
+            <input type="hidden" name="keep" value={brand?.keep ?? ""} />
             <label className="text-[12.5px] font-medium" style={{ color: "var(--ink)" }}>
               Demo access code
             </label>

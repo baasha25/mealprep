@@ -1,6 +1,7 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { NextResponse, type NextRequest } from "next/server";
 import type { NextFetchEvent } from "next/server";
+import { parseDomainMap, rewritePathForHost } from "@/lib/custom-domains";
 
 /**
  * Route protection. Clerk activates only when CLERK_SECRET_KEY is set; until
@@ -39,7 +40,19 @@ const clerkHandler = process.env.CLERK_SECRET_KEY
     })
   : null;
 
+// White-label: a kitchen's own domain serves its storefront at the root. The map
+// comes from env (edge-safe, no DB); see src/lib/custom-domains.ts.
+const DOMAIN_MAP = parseDomainMap(process.env.CUSTOM_DOMAINS);
+
 export default function middleware(req: NextRequest, event: NextFetchEvent) {
+  if (DOMAIN_MAP.size > 0) {
+    const target = rewritePathForHost(req.headers.get("host"), req.nextUrl.pathname, DOMAIN_MAP);
+    if (target) {
+      const url = req.nextUrl.clone();
+      url.pathname = target;
+      return NextResponse.rewrite(url);
+    }
+  }
   if (clerkHandler) return clerkHandler(req, event);
   return NextResponse.next();
 }

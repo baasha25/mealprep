@@ -24,6 +24,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           <nav className="ml-6 flex items-center gap-4 text-[13px]">
             <Link href="/admin" style={{ color: "#f4f2eccc" }}>Kitchens</Link>
             <Link href="/admin/partners" style={{ color: "#f4f2eccc" }}>Partners</Link>
+            <Link href="/admin/demo-links" style={{ color: "#f4f2eccc" }}>Demo links</Link>
           </nav>
         </div>
       </header>

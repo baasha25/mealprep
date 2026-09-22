@@ -163,7 +163,7 @@ const STEPS: Step[] = [
   },
 ];
 
-export function DemoTour({ rep, repName }: { rep: string | null; repName: string | null }) {
+export function DemoTour({ rep, repName, enterQuery }: { rep: string | null; repName: string | null; enterQuery?: string }) {
   const [i, setI] = useState(0);
   const last = STEPS.length - 1;
   const onFinal = i === last;
@@ -206,7 +206,7 @@ export function DemoTour({ rep, repName }: { rep: string | null; repName: string
 
   const signupHref = `/sign-up?utm_source=demo&utm_medium=sales&utm_campaign=${encodeURIComponent(rep || "demo")}`;
   // Hand off from the walkthrough into a real, empty demo kitchen.
-  const enterHref = `/demo/${encodeURIComponent(rep || "demo")}/enter`;
+  const enterHref = `/demo/${encodeURIComponent(rep || "demo")}/enter${enterQuery ? `?${enterQuery}` : ""}`;
   const step = STEPS[i];
   const StepIcon = step.icon;
 

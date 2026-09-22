@@ -637,6 +637,7 @@ export const GUIDE: GuideArea[] = [
           ["Brand color", "Your storefront's accent color."],
         ],
         tips: [
+          "Your own domain (Pro, Settings → Brand → Custom domain): serve your storefront at e.g. order.yourkitchen.com. Enter the domain, add a CNAME record pointing it to prepflow.ca at your domain provider, then tell support — we switch it on (SSL + routing) as a concierge step, usually within a business day. Your existing marketing site stays exactly where it is; only ordering moves to your domain.",
           "Retention emails (Customer notifications): the abandoned-checkout nudge goes once, 2–48h after someone starts checkout without paying; the win-back email goes to customers with no active plan after your quiet period (default 45 days), at most once per 90 days, optionally with a coupon code. Both need the daily/hourly cron (/api/cron/retention) running.","The order cut-off is important: it's the deadline that turns 'customers can still change their order' into 'the kitchen's production list is locked.' Set it to give yourself enough prep lead time."],
       },
     ],

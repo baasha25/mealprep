@@ -20,7 +20,7 @@ async function resolveDemoContext(): Promise<AuthContext | null> {
   if (!businessId) return null;
   const business = await db.business.findFirst({ where: { id: businessId, isDemo: true } });
   if (!business) return null;
-  return { business, userId: null, role: "owner", userName: "Demo" };
+  return { business, userId: null, role: "owner", userName: null };
 }
 
 /**

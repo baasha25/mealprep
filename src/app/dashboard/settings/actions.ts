@@ -1,6 +1,7 @@
 "use server";
 
 import { z } from "zod";
+import { isValidHostname } from "@/lib/custom-domains";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { requireBusiness, assertWritable } from "@/lib/auth";
@@ -28,6 +29,11 @@ const SettingsInput = z.object({
     const s = String(v ?? "").trim();
     return s && isCloudinaryUrl(s) ? s : null;
   }, z.string().nullable()),
+  // White-label: the kitchen's own hostname (activation is a concierge step).
+  customDomain: z.preprocess(
+    (v) => String(v ?? "").trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/.*$/, "").replace(/^www\./, ""),
+    z.string().max(253).refine((h) => h === "" || isValidHostname(h), "Enter a hostname like order.yourkitchen.com (no https:// or path)"),
+  ),
   subDiscount: z.coerce.number().min(0).max(100),
   taxRate: z.coerce.number().min(0).max(100),
   tier: z.enum(["starter", "growth", "pro"]),
@@ -85,6 +91,7 @@ export async function updateSettings(
     name: formData.get("name"),
     brandColor: formData.get("brandColor"),
     logoUrl: formData.get("logoUrl"),
+    customDomain: formData.get("customDomain") ?? "",
     subDiscount: formData.get("subDiscount"),
     taxRate: formData.get("taxRate"),
     tier: formData.get("tier"),
@@ -126,11 +133,17 @@ export async function updateSettings(
   // tier change must go through the billing portal, not this form (else desync).
   const effectiveTier = business.billingStatus === "active" ? (business.tier as typeof d.tier) : d.tier;
 
+  // A domain can only point at one kitchen.
+  if (d.customDomain) {
+    const taken = await db.business.findFirst({ where: { customDomain: d.customDomain, id: { not: business.id } }, select: { id: true } });
+    if (taken) return { ok: false, message: "That domain is already connected to another kitchen.", errors: { customDomain: "Already in use" } };
+  }
+
   // Business identity + settings updated atomically, scoped to this tenant.
   await db.$transaction([
     db.business.update({
       where: { id: business.id },
-      data: { name: d.name, brandColor: d.brandColor, logoUrl: d.logoUrl, tier: effectiveTier },
+      data: { name: d.name, brandColor: d.brandColor, logoUrl: d.logoUrl, customDomain: d.customDomain || null, tier: effectiveTier },
     }),
     db.businessSettings.upsert({
       where: { businessId: business.id },

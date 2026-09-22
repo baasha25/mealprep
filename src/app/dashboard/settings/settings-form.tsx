@@ -13,6 +13,8 @@ export type SettingsInitial = {
   name: string;
   brandColor: string;
   logoUrl: string;
+  customDomain: string;
+  isPro: boolean;
   tier: TierKey;
   subDiscount: number;
   taxRate: number;
@@ -218,6 +220,19 @@ export function SettingsForm({ initial }: { initial: SettingsInitial }) {
               />
             </div>
             <ErrorText msg={errors.brandColor} />
+          </Field>
+        </div>
+        <div className="grid sm:grid-cols-2 gap-4 mt-4">
+          <Field
+            label="Custom domain (your own URL)"
+            hint={
+              initial.isPro
+                ? "e.g. order.yourkitchen.com — at your domain provider add a CNAME pointing it to prepflow.ca, save here, then tell support and we switch it on (usually within a business day). Your existing website stays where it is; only ordering moves."
+                : "Serve your storefront on your own domain, e.g. order.yourkitchen.com. Available on the Pro plan — you can save it now and it activates when you upgrade."
+            }
+          >
+            <input name="customDomain" defaultValue={initial.customDomain} placeholder="order.yourkitchen.com" className={INP} style={inputStyle} />
+            <ErrorText msg={errors.customDomain} />
           </Field>
         </div>
         <LogoUploadField initial={initial.logoUrl} />

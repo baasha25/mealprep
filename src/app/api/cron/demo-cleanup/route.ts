@@ -24,7 +24,14 @@ async function handle(req: NextRequest) {
   try {
     const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
     const stale = await db.business.findMany({
-      where: { isDemo: true, createdAt: { lt: cutoff } },
+      // Default demos expire 24h after creation; kept (branded) demos expire at demoExpiresAt.
+      where: {
+        isDemo: true,
+        OR: [
+          { demoExpiresAt: null, createdAt: { lt: cutoff } },
+          { demoExpiresAt: { lt: new Date() } },
+        ],
+      },
       select: { id: true },
     });
     const ids = stale.map((b) => b.id);

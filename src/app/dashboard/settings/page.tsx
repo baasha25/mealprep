@@ -2,7 +2,7 @@ import { requireOwner } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { Page, Head } from "@/components/ui";
 import { bpsToPercent, centsToDollars } from "@/lib/money";
-import type { TierKey } from "@/lib/tiers";
+import { effectiveTier, type TierKey } from "@/lib/tiers";
 import { SettingsForm, type SettingsInitial } from "./settings-form";
 
 export default async function SettingsPage() {
@@ -21,6 +21,8 @@ export default async function SettingsPage() {
     name: business.name,
     brandColor: business.brandColor,
     logoUrl: business.logoUrl ?? "",
+    customDomain: business.customDomain ?? "",
+    isPro: effectiveTier({ tier: business.tier as TierKey, trialEndsAt: business.trialEndsAt }) === "pro",
     tier: business.tier as TierKey,
     subDiscount: bpsToPercent(settings.subDiscountBps),
     taxRate: bpsToPercent(settings.taxRateBps),

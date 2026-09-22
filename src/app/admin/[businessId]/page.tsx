@@ -98,6 +98,12 @@ export default async function AdminKitchenPage({ params }: { params: Promise<{ b
         </div>
       </div>
 
+      {biz.customDomain && (
+        <div className="rounded-xl border px-4 py-3 mb-6 text-[12.5px] leading-relaxed" style={{ borderColor: "color-mix(in srgb, var(--pine) 30%, transparent)", background: "color-mix(in srgb, var(--pine) 6%, transparent)", color: "var(--ink)" }}>
+          <strong>Custom domain requested:</strong> <code>{biz.customDomain}</code> → storefront <code>/store/{biz.slug}</code>. To activate: (1) Netlify → Domain management → add <code>{biz.customDomain}</code> as a domain alias (SSL provisions once their CNAME points at prepflow.ca); (2) add <code>{biz.customDomain}={biz.slug}</code> to the <code>CUSTOM_DOMAINS</code> env (comma-separated) and redeploy.
+        </div>
+      )}
+
       <div className="grid sm:grid-cols-4 gap-3.5 mb-6">
         <Kpi icon={<DollarSign size={16} />} label="Revenue (all-time)" value={formatCents(revAgg._sum.totalCents ?? 0)} />
         <Kpi icon={<Receipt size={16} />} label="Orders this month" value={ordersMonth} />

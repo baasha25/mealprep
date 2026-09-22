@@ -19,10 +19,14 @@ function repDisplayName(rep: string): string | null {
 
 export default async function EnterDemoPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ rep: string }>;
+  searchParams: Promise<{ brand?: string; color?: string; logo?: string; keep?: string }>;
 }) {
   const { rep } = await params;
+  const sp = await searchParams;
+  const brandParams = { brand: sp.brand ?? "", color: sp.color ?? "", logo: sp.logo ?? "", keep: sp.keep ?? "" };
   const slug = decodeURIComponent(rep).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40);
 
   // Door not configured → don't tease a code prompt that can't work.
@@ -49,5 +53,5 @@ export default async function EnterDemoPage({
     );
   }
 
-  return <EnterDemoForm rep={slug} repName={repDisplayName(slug)} />;
+  return <EnterDemoForm rep={slug} repName={repDisplayName(slug)} brand={brandParams} />;
 }
