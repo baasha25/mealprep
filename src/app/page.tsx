@@ -321,9 +321,9 @@ function Pricing() {
       features: [
         "Everything in Growth",
         "Invoice scanning — photo to inventory",
-        "Courier integration & live tracking",
-        "SMS marketing & win-back flows",
-        "White-label custom domain",
+        "Lowest platform fee (1.0%)",
+        "Priority onboarding & concierge migration",
+        "First access to new features as they ship",
       ],
     },
   ] as const;
