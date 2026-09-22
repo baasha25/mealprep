@@ -1,4 +1,5 @@
-import { FileSpreadsheet, Download, TrendingUp, Receipt, Percent, CreditCard } from "lucide-react";
+import Link from "next/link";
+import { FileSpreadsheet, Download, TrendingUp, Receipt, Percent, CreditCard, Sparkles } from "lucide-react";
 import { requireOwner } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { Page, Head, Kpi, Card, CardTitle, Row } from "@/components/ui";
@@ -100,6 +101,17 @@ export default async function ReportsPage({
           </div>
         </Card>
       </div>
+
+      {/* Monthly value report — the printable "what PrepFlow did for you this month" */}
+      <Link href="/dashboard/reports/monthly" className="block mt-4 no-print">
+        <div className="flex items-center gap-3 px-4 py-3.5 rounded-xl border" style={{ borderColor: "color-mix(in srgb, var(--pine) 30%, transparent)", background: "color-mix(in srgb, var(--pine) 6%, transparent)" }}>
+          <Sparkles size={18} style={{ color: "var(--pine)" }} />
+          <div className="flex-1 text-[13px]" style={{ color: "var(--ink)" }}>
+            <strong>Monthly value report</strong> <span style={{ color: "var(--ink-soft)" }}>— revenue, meals, new customers, food cost &amp; waste, and the admin hours PrepFlow handled. Printable.</span>
+          </div>
+          <span className="text-[12.5px] font-medium" style={{ color: "var(--pine)" }}>Open →</span>
+        </div>
+      </Link>
 
       {/* Exports */}
       <Card className="mt-4 no-print">

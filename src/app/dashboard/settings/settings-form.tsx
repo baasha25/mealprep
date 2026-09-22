@@ -30,6 +30,11 @@ export type SettingsInitial = {
   autoApproveReviews: boolean;
   notifyCutoff: boolean;
   notifyDeliveryDay: boolean;
+  notifyAbandoned: boolean;
+  notifyWinBack: boolean;
+  winBackDays: number;
+  winBackCouponCode: string;
+  adminMinutesPerOrder: number;
   loyaltyPointsPerDollar: number;
   loyaltyRedeemCentsPerPoint: number;
   referralBonusPoints: number;
@@ -468,6 +473,36 @@ export function SettingsForm({ initial }: { initial: SettingsInitial }) {
             <span className="text-[12px]" style={{ color: "var(--muted)" }}>“Your meals arrive today” — sent the morning of delivery.</span>
           </span>
         </label>
+        <div className="mt-4 pt-4" style={{ borderTop: "1px solid var(--line)" }}>
+          <p className="text-[12.5px] mb-2.5" style={{ color: "var(--muted)" }}>Retention — automatic emails that bring customers back.</p>
+          <label className="flex items-start gap-2 mb-2.5 cursor-pointer select-none">
+            <input type="checkbox" name="notifyAbandoned" defaultChecked={initial.notifyAbandoned} className="mt-0.5" />
+            <span>
+              <span className="text-[13px] block" style={{ color: "var(--ink)" }}>Abandoned-checkout nudge</span>
+              <span className="text-[12px]" style={{ color: "var(--muted)" }}>“Your order is still waiting” — sent once, 2–48 hours after someone starts checkout but doesn't pay.</span>
+            </span>
+          </label>
+          <label className="flex items-start gap-2 cursor-pointer select-none">
+            <input type="checkbox" name="notifyWinBack" defaultChecked={initial.notifyWinBack} className="mt-0.5" />
+            <span>
+              <span className="text-[13px] block" style={{ color: "var(--ink)" }}>Win-back email</span>
+              <span className="text-[12px]" style={{ color: "var(--muted)" }}>“We've missed you” — to customers with no active plan after the quiet period below. At most once per 90 days per customer.</span>
+            </span>
+          </label>
+          <div className="grid sm:grid-cols-2 gap-4 mt-3">
+            <Field label="Quiet days before win-back" hint="Days since a customer's last paid order before we reach out (7–365).">
+              <input name="winBackDays" type="number" min="7" max="365" defaultValue={initial.winBackDays} className={INP} style={inputStyle} />
+            </Field>
+            <Field label="Win-back coupon code (optional)" hint="A coupon from Marketing to include in the email, e.g. COMEBACK10.">
+              <input name="winBackCouponCode" defaultValue={initial.winBackCouponCode} placeholder="COMEBACK10" className={INP} style={inputStyle} />
+            </Field>
+          </div>
+        </div>
+        <div className="mt-4 pt-4" style={{ borderTop: "1px solid var(--line)" }}>
+          <Field label="Minutes a manual order used to take you" hint="Used only for the 'admin time saved' estimate in Reports → Monthly value report. Tallying, keying in, labelling — be honest, it's your number.">
+            <input name="adminMinutesPerOrder" type="number" min="0" max="60" defaultValue={initial.adminMinutesPerOrder} className={`${INP} w-28`} style={inputStyle} />
+          </Field>
+        </div>
       </Card>
 
       <div className="flex items-center gap-3">

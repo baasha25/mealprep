@@ -68,6 +68,7 @@ export const GUIDE: GuideArea[] = [
           ["Plan usage", "How many orders you've taken this month vs. how many your PrepFlow plan includes. The bar fills as you approach the limit."],
         ],
         tips: [
+          "Needs attention (owner view): a short list of the things worth a look today — meals losing money or under 50% margin, ingredients whose cost just rose, subscribers showing churn signals, and reviews awaiting approval. Each row opens the page that fixes it. 'All clear' means exactly that.",
           "Everything here is calculated automatically from real orders — nothing is typed in by hand. If a number looks off, it's a reflection of the orders, not a bug.",
           "See a small ⓘ icon next to a number (here, on Purchasing, Profitability, and more)? Hover it for a plain-English definition — no need to leave the screen.",
         ],
@@ -96,6 +97,8 @@ export const GUIDE: GuideArea[] = [
         img: "03-profitability.png",
         does: "The most important money screen. It costs every meal from its recipe, shows the profit on each one, and gives you a true bottom line after waste. This is where you find out which meals actually make money.",
         numbers: [
+          ["What-if price simulator", "Pick a meal, move the price, and optionally assume sales change by ±%. Shows new margin, projected contribution over this period's real volume, and the break-even units — how much volume you could lose at a higher price and still come out even. Nothing is saved."],
+          ["Menu engineering board", "Every costed meal placed on a 2×2 by margin (up) and popularity (across); the crosshair is the menu's medians and dot size is contribution. Each quadrant lists its meals with the action it calls for: protect Stars, reprice/re-cost Plowhorses, promote Puzzles, fix or retire Dogs."],
           ["Food revenue (menu sales)", "Total money your meals brought in for the period."],
           ["Food cost (COGS)", "What those meals cost you to make (the ingredients). COGS = 'cost of goods sold'."],
           ["Gross margin", "Food revenue minus food cost — your profit on the food before waste and before overheads (labour, rent, packaging)."],
@@ -173,6 +176,7 @@ export const GUIDE: GuideArea[] = [
           ["Inventory", "On-hand quantities, cost per unit, and total stock value (live snapshot)."],
         ],
         tips: [
+          "Monthly value report (Reports → Monthly value report): a printable one-pager per month — revenue, meals delivered, new customers, active subscriptions, what PrepFlow handled (orders, labels, renewals, reviews), food cost & waste, and an estimated 'admin hours saved' built from a minutes-per-order number YOU set in Settings. Great for a board update or a before/after story.",
           "Orders and meal sales follow the date range you pick; customers, subscriptions, shopping list and inventory are a live snapshot of right now.",
           "To pull a CSV into Google Sheets: File → Import → Upload, or just open it — every export is standard CSV.",
         ],
@@ -632,7 +636,8 @@ export const GUIDE: GuideArea[] = [
           ["Points per $1", "How many loyalty points customers earn per dollar spent."],
           ["Brand color", "Your storefront's accent color."],
         ],
-        tips: ["The order cut-off is important: it's the deadline that turns 'customers can still change their order' into 'the kitchen's production list is locked.' Set it to give yourself enough prep lead time."],
+        tips: [
+          "Retention emails (Customer notifications): the abandoned-checkout nudge goes once, 2–48h after someone starts checkout without paying; the win-back email goes to customers with no active plan after your quiet period (default 45 days), at most once per 90 days, optionally with a coupon code. Both need the daily/hourly cron (/api/cron/retention) running.","The order cut-off is important: it's the deadline that turns 'customers can still change their order' into 'the kitchen's production list is locked.' Set it to give yourself enough prep lead time."],
       },
     ],
   },

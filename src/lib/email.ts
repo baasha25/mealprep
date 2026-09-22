@@ -351,6 +351,55 @@ export async function sendNewReviewNotice(opts: {
   });
 }
 
+/** Nudge: a customer started checkout but never paid. One per order. */
+export async function sendAbandonedCheckout(opts: {
+  to: string;
+  customerName: string;
+  businessName: string;
+  brandColor?: string;
+  storeUrl: string;
+  itemsSummary: string;
+}): Promise<void> {
+  await send({
+    to: opts.to,
+    subject: `Your ${opts.businessName} order is still waiting`,
+    businessName: opts.businessName,
+    brandColor: opts.brandColor,
+    heading: "Still hungry? 🍽️",
+    subheading: "Your cart is saved — finish in a minute.",
+    bodyHtml: `
+      <p style="margin:0 0 10px;color:${INK};font-size:14px;">Hi ${escapeHtml(opts.customerName)}, you were putting together an order with ${escapeHtml(opts.businessName)} and didn't quite finish.</p>
+      ${opts.itemsSummary ? `<p style="margin:0 0 14px;color:${INK};font-size:13px;background:#f4f2ec;padding:10px 12px;border-radius:8px;">${escapeHtml(opts.itemsSummary)}</p>` : ""}
+      <p style="margin:0 0 14px;color:${INK};font-size:14px;">Spots on this week's delivery fill up — grab yours before ordering closes.</p>
+      <a href="${opts.storeUrl}" style="display:inline-block;background:${opts.brandColor || "#2f4536"};color:#f4f2ec;text-decoration:none;font-size:14px;font-weight:500;padding:10px 18px;border-radius:8px;">Finish my order</a>`,
+  });
+}
+
+/** Win-back: a lapsed customer with no active plan, after N quiet days. */
+export async function sendWinBack(opts: {
+  to: string;
+  customerName: string;
+  businessName: string;
+  brandColor?: string;
+  storeUrl: string;
+  couponCode?: string | null;
+  days: number;
+}): Promise<void> {
+  const first = opts.customerName.split(" ")[0] || "there";
+  await send({
+    to: opts.to,
+    subject: `We've missed you, ${first} — this week's menu is up`,
+    businessName: opts.businessName,
+    brandColor: opts.brandColor,
+    heading: `It's been a while, ${escapeHtml(first)} 👋`,
+    subheading: `New meals on the ${escapeHtml(opts.businessName)} menu this week.`,
+    bodyHtml: `
+      <p style="margin:0 0 14px;color:${INK};font-size:14px;">It's been about ${opts.days} days since your last order. We'd love to cook for you again — the menu's been refreshed and delivery spots are open this week.</p>
+      ${opts.couponCode ? `<p style="margin:0 0 14px;color:${INK};font-size:14px;">Use code <strong style="letter-spacing:1px;">${escapeHtml(opts.couponCode)}</strong> at checkout for a welcome-back treat on us.</p>` : ""}
+      <a href="${opts.storeUrl}" style="display:inline-block;background:${opts.brandColor || "#2f4536"};color:#f4f2ec;text-decoration:none;font-size:14px;font-weight:500;padding:10px 18px;border-radius:8px;">See this week's menu</a>`,
+  });
+}
+
 /** Recurring-charge receipt — sent when a subscription invoice is paid. */
 export async function sendSubscriptionReceipt(opts: {
   to: string;

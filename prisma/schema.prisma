@@ -245,6 +245,13 @@ model BusinessSettings {
   // Customer notifications (scheduled reminders)
   notifyCutoff      Boolean @default(true) // "edit your box before cutoff" reminder
   notifyDeliveryDay Boolean @default(true) // "your meals arrive today" email
+  // Retention emails (cron: /api/cron/retention)
+  notifyAbandoned   Boolean @default(true)  // "finish your order" nudge 2–48h after an unpaid checkout
+  notifyWinBack     Boolean @default(false) // "we miss you" after winBackDays without a paid order (no active sub)
+  winBackDays       Int     @default(45)
+  winBackCouponCode String? // optional code to include in the win-back email
+  // Monthly value report: estimated minutes a manual order tally takes (kitchen-adjustable).
+  adminMinutesPerOrder Int  @default(4)
 
   // Fulfillment
   cutoff          String   @default("Sat 8:00 PM")

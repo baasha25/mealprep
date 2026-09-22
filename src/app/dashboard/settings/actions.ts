@@ -52,6 +52,12 @@ const SettingsInput = z.object({
   // Customer notifications
   notifyCutoff: z.boolean(),
   notifyDeliveryDay: z.boolean(),
+  // Retention emails + report assumptions
+  notifyAbandoned: z.boolean(),
+  notifyWinBack: z.boolean(),
+  winBackDays: z.coerce.number().int().min(7).max(365),
+  winBackCouponCode: z.string().trim().toUpperCase().max(24).optional().default(""),
+  adminMinutesPerOrder: z.coerce.number().int().min(0).max(60),
 });
 
 export type SettingsActionState = {
@@ -98,6 +104,11 @@ export async function updateSettings(
     referralBonusPoints: formData.get("referralBonusPoints"),
     notifyCutoff: formData.get("notifyCutoff") === "on",
     notifyDeliveryDay: formData.get("notifyDeliveryDay") === "on",
+    notifyAbandoned: formData.get("notifyAbandoned") === "on",
+    notifyWinBack: formData.get("notifyWinBack") === "on",
+    winBackDays: formData.get("winBackDays") ?? 45,
+    winBackCouponCode: formData.get("winBackCouponCode") ?? "",
+    adminMinutesPerOrder: formData.get("adminMinutesPerOrder") ?? 4,
   });
 
   if (!parsed.success) {
@@ -144,6 +155,11 @@ export async function updateSettings(
         referralBonusPoints: d.referralBonusPoints,
         notifyCutoff: d.notifyCutoff,
         notifyDeliveryDay: d.notifyDeliveryDay,
+        notifyAbandoned: d.notifyAbandoned,
+        notifyWinBack: d.notifyWinBack,
+        winBackDays: d.winBackDays,
+        winBackCouponCode: d.winBackCouponCode || null,
+        adminMinutesPerOrder: d.adminMinutesPerOrder,
       },
       update: {
         subDiscountBps: percentToBps(d.subDiscount),
@@ -165,6 +181,11 @@ export async function updateSettings(
         referralBonusPoints: d.referralBonusPoints,
         notifyCutoff: d.notifyCutoff,
         notifyDeliveryDay: d.notifyDeliveryDay,
+        notifyAbandoned: d.notifyAbandoned,
+        notifyWinBack: d.notifyWinBack,
+        winBackDays: d.winBackDays,
+        winBackCouponCode: d.winBackCouponCode || null,
+        adminMinutesPerOrder: d.adminMinutesPerOrder,
       },
     }),
   ]);
