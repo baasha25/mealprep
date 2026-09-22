@@ -11,27 +11,20 @@ import {
   sumMonthlyByCategory,
   primeCostHealth,
 } from "@/lib/operating-costs";
-import { costPerUnitFromReceipt } from "@/lib/inventory";
 import { revenueStatusWhere } from "@/lib/order-status";
 import { RangeFilter } from "@/components/range-filter";
 import { toRangeKey, rangeWhere, rangeLabel } from "@/lib/date-range";
 import { summarizeLosses, LOSS_REASON_META, type LossReason } from "@/lib/loss";
 import { PriceCoach } from "./price-coach";
+import { ingredientPriceRises } from "@/lib/alerts-data";
+import { PriceSimulator } from "./price-simulator";
+import { MenuBoard, CLASS_STYLE } from "./menu-board";
 import {
   plateCostFromRecipe,
   mealEconomics,
   classifyMenu,
-  priceChangeBps,
   MENU_CLASS_LABEL,
-  type MenuClass,
 } from "@/lib/profitability";
-
-const CLASS_STYLE: Record<MenuClass, { fg: string; bg: string; blurb: string }> = {
-  star: { fg: "#2f5e3f", bg: "#d9ead9", blurb: "High margin, popular — promote & protect" },
-  plowhorse: { fg: "#8a6d1f", bg: "#f3e9c9", blurb: "Popular but thin margin — reprice or re-cost" },
-  puzzle: { fg: "#3f5c5a", bg: "#d6e4e3", blurb: "High margin, low sales — feature it" },
-  dog: { fg: "#7a7268", bg: "#e7e3d8", blurb: "Low margin, low sales — fix or cut" },
-};
 
 // Prime Cost health pill + headline color, keyed to the ≤55% benchmark.
 const TONE: Record<"good" | "warn" | "bad", { fg: string; bg: string; ink: string }> = {
@@ -170,29 +163,8 @@ export default async function ProfitabilityPage({
     ...uncosted.map((r) => ({ ...r, costed: false as const })),
   ];
 
-  // Ingredient price-rise alerts from receipts (latest vs previous cost/unit).
-  const priced = await db.ingredient.findMany({
-    where: { businessId: business.id },
-    select: {
-      id: true,
-      name: true,
-      receipts: { orderBy: { receivedAt: "desc" }, take: 2, select: { qtyReceived: true, totalCostCents: true } },
-      mealIngredients: { select: { meal: { select: { name: true, active: true } } } },
-    },
-  });
-  const alerts = priced
-    .map((ing) => {
-      if (ing.receipts.length < 2) return null;
-      const [newer, older] = ing.receipts;
-      const newCost = costPerUnitFromReceipt(newer.totalCostCents, newer.qtyReceived);
-      const oldCost = costPerUnitFromReceipt(older.totalCostCents, older.qtyReceived);
-      const changeBps = priceChangeBps(oldCost, newCost);
-      if (changeBps < 300) return null; // only meaningful rises (≥3%)
-      const affected = [...new Set(ing.mealIngredients.filter((mi) => mi.meal.active).map((mi) => mi.meal.name))];
-      return { name: ing.name, changeBps, affected };
-    })
-    .filter(Boolean)
-    .sort((a, b) => b!.changeBps - a!.changeBps) as { name: string; changeBps: number; affected: string[] }[];
+  // Ingredient price-rise alerts from receipts (shared with the Dashboard panel).
+  const alerts = await ingredientPriceRises(business.id);
 
   return (
     <Page>
@@ -370,6 +342,13 @@ export default async function ProfitabilityPage({
         />
       </div>
 
+      <div className="mb-5">
+        <PriceSimulator
+          meals={base.map((b) => ({ id: b.id, name: b.name, priceCents: b.priceCents, costCents: b.costCents, units: b.units, hasRecipe: b.hasRecipe }))}
+          rangeLabel={rangeLabel(range)}
+        />
+      </div>
+
       {alerts.length > 0 && (
         <div className="flex items-start gap-2.5 px-4 py-3 rounded-lg mb-5" style={{ background: "color-mix(in srgb, var(--clay) 8%, transparent)", border: "1px solid color-mix(in srgb, var(--clay) 22%, transparent)" }}>
           <ArrowUpRight size={16} style={{ color: "var(--clay)", marginTop: 1 }} />
@@ -519,23 +498,10 @@ export default async function ProfitabilityPage({
         </Card>
       )}
 
-      {/* Menu engineering legend */}
-      <Card>
-        <CardTitle title="Menu engineering" note="Profitability × popularity" />
-        <div className="grid sm:grid-cols-2 gap-3">
-          {(Object.keys(CLASS_STYLE) as MenuClass[]).map((k) => {
-            const count = rows.filter((r) => r.menuClass === k).length;
-            const cs = CLASS_STYLE[k];
-            return (
-              <div key={k} className="flex items-center gap-3 px-3 py-2.5 rounded-lg" style={{ background: "var(--paper)", border: "1px solid var(--line)" }}>
-                <span className="text-[11px] px-2 py-0.5 rounded font-medium shrink-0" style={{ background: cs.bg, color: cs.fg }}>{MENU_CLASS_LABEL[k]}</span>
-                <span className="text-[12.5px]" style={{ color: "var(--ink-soft)" }}>{cs.blurb}</span>
-                <span className="ml-auto text-[13px] font-semibold" style={{ color: "var(--ink)" }}>{count}</span>
-              </div>
-            );
-          })}
-        </div>
-      </Card>
+      <MenuBoard
+        rows={rows.map((r) => ({ id: r.id, name: r.name, marginBps: r.marginBps, units: r.units, menuClass: r.menuClass, contributionCents: r.contributionCents }))}
+        rangeLabel={rangeLabel(range)}
+      />
     </Page>
   );
 }

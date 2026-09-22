@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { TrendingUp, ChefHat, Repeat, Receipt, Gauge, ArrowUpCircle, Monitor, Tag, Wallet } from "lucide-react";
+import { TrendingUp, ChefHat, Repeat, Receipt, Gauge, ArrowUpCircle, Monitor, Tag, Wallet, BellRing, CheckCircle2 } from "lucide-react";
 import { requireBusiness } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { Page, Head, Kpi, Card, CardTitle, Hint } from "@/components/ui";
@@ -19,6 +19,8 @@ import { RangeFilter } from "@/components/range-filter";
 import { Greeting } from "@/components/greeting";
 import { toRangeKey, rangeWhere, rangeLabel } from "@/lib/date-range";
 import { revenueStatusWhere } from "@/lib/order-status";
+import { ingredientPriceRises, menuMarginSnapshot, atRiskSubscribers } from "@/lib/alerts-data";
+import { bpsToPercent } from "@/lib/money";
 
 const STAFF_LINKS: [string, string, typeof ChefHat][] = [
   ["/dashboard/kitchen", "Kitchen OS", ChefHat],
@@ -58,7 +60,22 @@ export default async function DashboardPage({
     pct: number;
   } | null = null;
 
+  // "Needs attention" — the handful of things worth a look today (owner only).
+  let attention: { key: string; text: string; href: string; tone: "clay" | "amber" }[] = [];
+
   if (isOwner) {
+    const [rises, margins, risk, pendingReviews] = await Promise.all([
+      ingredientPriceRises(business.id),
+      menuMarginSnapshot(business.id),
+      atRiskSubscribers(business.id),
+      db.mealReview.count({ where: { businessId: business.id, status: "pending" } }),
+    ]);
+    if (margins.losing.length) attention.push({ key: "losing", tone: "clay", href: "/dashboard/profitability", text: `${margins.losing.length} meal${margins.losing.length === 1 ? "" : "s"} losing money: ${margins.losing.slice(0, 3).map((m) => m.name).join(", ")}${margins.losing.length > 3 ? "…" : ""}` });
+    if (margins.thin.length) attention.push({ key: "thin", tone: "amber", href: "/dashboard/profitability", text: `${margins.thin.length} meal${margins.thin.length === 1 ? "" : "s"} under 50% margin` });
+    if (rises.length) attention.push({ key: "rises", tone: "amber", href: "/dashboard/profitability", text: `Ingredient costs rising: ${rises.slice(0, 2).map((r) => `${r.name} +${bpsToPercent(r.changeBps).toFixed(0)}%`).join(", ")}${rises.length > 2 ? ` +${rises.length - 2} more` : ""}` });
+    if (risk.length) attention.push({ key: "risk", tone: risk.some((r) => r.reasons.includes("payment_failed")) ? "clay" : "amber", href: "/dashboard/subscriptions", text: `${risk.length} subscriber${risk.length === 1 ? "" : "s"} at risk of churning` });
+    if (pendingReviews) attention.push({ key: "reviews", tone: "amber", href: "/dashboard/reviews", text: `${pendingReviews} review${pendingReviews === 1 ? "" : "s"} awaiting approval` });
+
     // Revenue KPIs exclude canceled/refunded orders — those were never earned.
     const where = { businessId: business.id, ...rangeWhere(range), ...revenueStatusWhere };
     const usage = await orderLimitStatus({ id: business.id, tier: effectiveTier({ tier: business.tier as TierKey, trialEndsAt: business.trialEndsAt }) });
@@ -150,6 +167,34 @@ export default async function DashboardPage({
                     </Link>
                   </div>
                 )}
+              </div>
+            )}
+          </Card>
+
+          <Card className="mt-4">
+            <CardTitle icon={<BellRing size={15} />} title="Needs attention" note={attention.length ? `${attention.length} item${attention.length === 1 ? "" : "s"}` : "All clear"} />
+            {attention.length === 0 ? (
+              <p className="flex items-center gap-2 text-[13.5px]" style={{ color: "var(--ink-soft)" }}>
+                <CheckCircle2 size={16} style={{ color: "var(--pine)" }} /> Nothing needs you right now — margins, ingredient costs, subscribers and reviews all look fine.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {attention.map((a) => (
+                  <Link
+                    key={a.key}
+                    href={a.href}
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px]"
+                    style={{
+                      background: a.tone === "clay" ? "color-mix(in srgb, var(--clay) 8%, transparent)" : "color-mix(in srgb, #c9a227 10%, transparent)",
+                      border: `1px solid ${a.tone === "clay" ? "color-mix(in srgb, var(--clay) 25%, transparent)" : "color-mix(in srgb, #c9a227 30%, transparent)"}`,
+                      color: "var(--ink)",
+                    }}
+                  >
+                    <span className="w-2 h-2 rounded-full shrink-0" style={{ background: a.tone === "clay" ? "var(--clay)" : "#c9a227" }} />
+                    <span className="flex-1">{a.text}</span>
+                    <span className="text-[12px]" style={{ color: "var(--muted)" }}>Open →</span>
+                  </Link>
+                ))}
               </div>
             )}
           </Card>

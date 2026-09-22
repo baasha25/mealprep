@@ -1,4 +1,6 @@
-import { CalendarClock, Repeat, TrendingUp, XCircle } from "lucide-react";
+import { CalendarClock, Repeat, TrendingUp, XCircle, AlertTriangle } from "lucide-react";
+import { atRiskSubscribers } from "@/lib/alerts-data";
+import { RISK_LABEL } from "@/lib/insights";
 import { requireOwner } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { Page, Head, Kpi, Card, CardTitle } from "@/components/ui";
@@ -48,6 +50,9 @@ export default async function SubscriptionsPage() {
   ).length;
 
   const dateFmt = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" });
+  // Churn signals: failed payment, stuck delivery date, paused, or no recent order.
+  const risk = await atRiskSubscribers(business.id);
+  const riskTone = (r: string) => (r === "payment_failed" || r === "stale_delivery" ? { bg: "color-mix(in srgb, var(--clay) 10%, transparent)", fg: "var(--clay)" } : { bg: "color-mix(in srgb, #c9a227 12%, transparent)", fg: "#8a6d1f" });
 
   return (
     <Page>
@@ -57,12 +62,42 @@ export default async function SubscriptionsPage() {
         sub="Your recurring revenue base — active plans, renewals, and churn."
       />
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-5">
         <Kpi icon={<TrendingUp size={17} />} label="Monthly recurring revenue" value={formatCents(mrrCents)} />
         <Kpi icon={<Repeat size={17} />} label="Active subscriptions" value={active.length} />
         <Kpi icon={<CalendarClock size={17} />} label="Deliveries next 7 days" value={upcoming7} />
+        <Kpi icon={<AlertTriangle size={17} />} label="At risk" value={risk.length} />
         <Kpi icon={<XCircle size={17} />} label="Canceled (30 days)" value={canceled30} />
       </div>
+
+      <Card className="mb-4">
+        <CardTitle icon={<AlertTriangle size={15} />} title={`At risk of churning (${risk.length})`} note="Reach out before they cancel" />
+        {risk.length === 0 ? (
+          <p className="text-[13.5px]" style={{ color: "var(--ink-soft)" }}>No churn signals right now — no failed payments, stuck deliveries, pauses, or silent subscribers.</p>
+        ) : (
+          <div className="space-y-2">
+            {risk.map((r) => (
+              <div key={r.id} className="flex items-center gap-3 px-3 py-2.5 rounded-lg flex-wrap" style={{ background: "var(--paper)", border: "1px solid var(--line)" }}>
+                <div className="min-w-0 flex-1">
+                  <div className="text-[13.5px] font-medium" style={{ color: "var(--ink)" }}>{r.customerName}</div>
+                  <div className="text-[11.5px]" style={{ color: "var(--muted)" }}>{r.planName} · {r.frequency === "weekly" ? "weekly" : "every 2 weeks"}{r.nextDeliveryDate ? ` · next ${dateFmt.format(r.nextDeliveryDate)}` : ""}</div>
+                </div>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {r.reasons.map((reason) => {
+                    const t = riskTone(reason);
+                    return <span key={reason} className="text-[11px] px-2 py-0.5 rounded-full font-medium" style={{ background: t.bg, color: t.fg }}>{RISK_LABEL[reason]}</span>;
+                  })}
+                </div>
+                {r.email && (
+                  <a href={`mailto:${r.email}?subject=${encodeURIComponent(`Checking in from ${business.name}`)}`} className="text-[12px] font-medium px-2.5 py-1.5 rounded-lg border" style={{ borderColor: "var(--line)", color: "var(--pine)" }}>
+                    Email
+                  </a>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
 
       <Card>
         <CardTitle icon={<Repeat size={15} />} title={`All subscriptions (${subs.length})`} />

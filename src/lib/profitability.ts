@@ -75,6 +75,11 @@ function median(nums: number[]): number {
   return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
 }
 
+/** The menu's median margin and median popularity — the board's crosshair. */
+export function menuMedians(items: readonly { marginBps: number; units: number }[]): { marginBps: number; units: number } {
+  return { marginBps: median(items.map((i) => i.marginBps)), units: median(items.map((i) => i.units)) };
+}
+
 /** Classify each meal vs the menu's median margin and median popularity. */
 export function classifyMenu<T extends { marginBps: number; units: number }>(
   items: T[],
