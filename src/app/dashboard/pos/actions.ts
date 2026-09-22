@@ -1,6 +1,7 @@
 "use server";
 
 import { z } from "zod";
+import { resolveSelections, nameWithOptions } from "@/lib/meal-options";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { requireBusiness } from "@/lib/auth";
@@ -10,7 +11,7 @@ import { effectiveTier, type TierKey } from "@/lib/tiers";
 
 const PosInput = z.object({
   items: z
-    .array(z.object({ mealId: z.string().min(1), qty: z.number().int().min(1).max(99) }))
+    .array(z.object({ mealId: z.string().min(1), qty: z.number().int().min(1).max(99), optionIds: z.array(z.string().min(1)).max(20).optional() }))
     .min(1, "Add at least one item."),
   customerName: z.string().trim().max(120).optional().default(""),
   discountType: z.enum(["percent", "flat"]).optional(),
@@ -41,13 +42,25 @@ export async function placePosOrder(input: z.infer<typeof PosInput>): Promise<Po
   // Authoritative prices from the DB (never trust the client).
   const meals = await db.meal.findMany({
     where: { id: { in: parsed.data.items.map((i) => i.mealId) }, businessId: business.id, active: true },
+    include: { optionGroups: { orderBy: { sortOrder: "asc" }, include: { options: { where: { active: true }, orderBy: { sortOrder: "asc" } } } } },
   });
   const byId = new Map(meals.map((m) => [m.id, m]));
 
   const lineItems = parsed.data.items.map((i) => {
     const meal = byId.get(i.mealId);
     if (!meal) throw new Error("MEAL_UNAVAILABLE");
-    return { mealId: meal.id, qty: i.qty, unitPriceCentsSnapshot: meal.priceCents, nameSnapshot: meal.name };
+    // POS: options default automatically unless the till sends explicit ids.
+    const r = resolveSelections(meal.optionGroups, i.optionIds);
+    const picks = r.ok ? r.picks : [];
+    const delta = r.ok ? r.priceDeltaCents : 0;
+    return {
+      mealId: meal.id,
+      qty: i.qty,
+      unitPriceCentsSnapshot: meal.priceCents + delta,
+      nameSnapshot: nameWithOptions(meal.name, picks),
+      optionsSnapshot: picks.length ? picks : undefined,
+      optionsKey: r.ok && r.optionsKey ? r.optionsKey : null,
+    };
   });
 
   // Optional cashier discount (percent or flat dollars), applied authoritatively.

@@ -1,6 +1,7 @@
 "use server";
 
 import { z } from "zod";
+import { resolveSelections } from "@/lib/meal-options";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { stripe, STRIPE_ENABLED } from "@/lib/stripe";
@@ -120,7 +121,7 @@ const UpdateSelectionInput = z.object({
   // soonest (single-day subscribers). Multi-day subscribers split their plan by
   // sending one call per delivery date.
   deliveryDate: z.string().datetime().optional(),
-  items: z.array(z.object({ mealId: z.string().min(1), qty: z.number().int().min(1).max(99) })).max(50),
+  items: z.array(z.object({ mealId: z.string().min(1), qty: z.number().int().min(1).max(99), optionIds: z.array(z.string().min(1)).max(20).optional() })).max(50),
 });
 
 // The delivery dates a subscriber can currently edit (this cycle), computed from
@@ -164,10 +165,21 @@ export async function updateSelection(input: {
   const mealIds = parsed.data.items.map((i) => i.mealId);
   const validMeals = await db.meal.findMany({
     where: { id: { in: mealIds }, businessId: customer.businessId, active: true },
-    select: { id: true },
+    select: {
+      id: true,
+      optionGroups: { orderBy: { sortOrder: "asc" }, select: { id: true, name: true, minSelect: true, maxSelect: true, options: { where: { active: true }, orderBy: { sortOrder: "asc" }, select: { id: true, name: true, priceDeltaCents: true, isDefault: true } } } },
+    },
   });
-  const validIds = new Set(validMeals.map((m) => m.id));
-  const items = parsed.data.items.filter((i) => validIds.has(i.mealId));
+  const mealMap = new Map(validMeals.map((m) => [m.id, m]));
+  // Build-your-own: resolve options (defaults when the box editor doesn't send any).
+  const items: { mealId: string; qty: number; optionsSnapshot?: object[]; optionsKey: string | null }[] = [];
+  for (const i of parsed.data.items) {
+    const meal = mealMap.get(i.mealId);
+    if (!meal) continue;
+    const r = resolveSelections(meal.optionGroups, i.optionIds);
+    if (!r.ok) return { ok: false, message: r.message };
+    items.push({ mealId: i.mealId, qty: i.qty, optionsSnapshot: r.picks.length ? r.picks : undefined, optionsKey: r.optionsKey || null });
+  }
   if (items.length === 0) return { ok: false, message: "Pick at least one meal." };
 
   // Resolve which delivery date this selection targets, guarding it to a date the
@@ -190,7 +202,7 @@ export async function updateSelection(input: {
     });
     await tx.subscriptionSelectionItem.deleteMany({ where: { selectionId: selection.id } });
     await tx.subscriptionSelectionItem.createMany({
-      data: items.map((i) => ({ selectionId: selection.id, mealId: i.mealId, qty: i.qty })),
+      data: items.map((i) => ({ selectionId: selection.id, mealId: i.mealId, qty: i.qty, optionsSnapshot: i.optionsSnapshot, optionsKey: i.optionsKey })),
     });
   });
 

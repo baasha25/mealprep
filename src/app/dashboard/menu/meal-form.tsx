@@ -23,6 +23,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { Card, CardTitle, Field, INP, btnPrimary } from "@/components/ui";
+import { OptionGroupsEditor, type OptionGroupRow } from "./option-groups-editor";
 import { DIET_OPTS, ALLERGENS, UNITS } from "@/lib/menu-constants";
 import { canConvert } from "@/lib/units";
 import { mealMacrosFromRecipe, recipeHasNutrition } from "@/lib/nutrition";
@@ -61,6 +62,7 @@ export type MealFormInitial = {
   prepNotes: string;
   methodSteps: string[];
   ingredients: IngredientRow[];
+  optionGroups?: OptionGroupRow[];
 };
 
 const inputStyle = {
@@ -222,6 +224,8 @@ export function MealForm({
       ? initial.ingredients
       : [{ name: "", qty: "", unit: "oz", trimPercent: "" }],
   );
+  // Build-your-own option groups (serialized to a hidden JSON field on submit).
+  const [optionGroups, setOptionGroups] = useState<OptionGroupRow[]>(initial.optionGroups ?? []);
   // Macro inputs are controlled so "Use these" (auto-sum from recipe) can fill them.
   const [macros, setMacros] = useState({
     calories: initial.calories,
@@ -750,6 +754,16 @@ export function MealForm({
             )}
           </div>
         </div>
+      </Card>
+
+      <Card>
+        <CardTitle
+          icon={<Plus size={15} />}
+          title="Options (build-your-own)"
+          note="Optional. Let customers choose a base, protein, or paid extras."
+        />
+        <input type="hidden" name="optionGroups" value={JSON.stringify(optionGroups)} />
+        <OptionGroupsEditor value={optionGroups} onChange={setOptionGroups} />
       </Card>
 
       <Card>

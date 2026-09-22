@@ -18,6 +18,10 @@ export default async function EditMealPage({
     where: { id, businessId: business.id },
     include: {
       ingredients: { include: { ingredient: true } },
+      optionGroups: {
+        orderBy: { sortOrder: "asc" },
+        include: { options: { orderBy: { sortOrder: "asc" }, include: { ingredients: { include: { ingredient: true } } } } },
+      },
     },
   });
   if (!meal) notFound();
@@ -45,6 +49,25 @@ export default async function EditMealPage({
       qty: String(mi.qty),
       unit: mi.unit,
       trimPercent: String(bpsToPercent(mi.trimBps)),
+    })),
+    optionGroups: meal.optionGroups.map((g) => ({
+      id: g.id,
+      name: g.name,
+      minSelect: String(g.minSelect),
+      maxSelect: String(g.maxSelect),
+      options: g.options.map((o) => ({
+        id: o.id,
+        name: o.name,
+        priceDelta: String(o.priceDeltaCents / 100),
+        isDefault: o.isDefault,
+        allergens: o.allergens,
+        ingredients: o.ingredients.map((r) => ({
+          name: r.ingredient.name,
+          qty: String(r.qty),
+          unit: r.unit,
+          trimPercent: String(bpsToPercent(r.trimBps)),
+        })),
+      })),
     })),
   };
 

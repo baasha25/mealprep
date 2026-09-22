@@ -31,6 +31,12 @@ export default async function StorePage({
   const meals = await db.meal.findMany({
     where: { businessId: business.id, active: true },
     orderBy: { createdAt: "asc" },
+    include: {
+      optionGroups: {
+        orderBy: { sortOrder: "asc" },
+        include: { options: { where: { active: true }, orderBy: { sortOrder: "asc" } } },
+      },
+    },
   });
 
   const plans = await db.plan.findMany({
@@ -82,6 +88,15 @@ export default async function StorePage({
     ratingAvg: ratingByMeal.get(m.id)?.avg ?? 0,
     ratingCount: ratingByMeal.get(m.id)?.count ?? 0,
     reviews: reviewsByMeal.get(m.id) ?? [],
+    optionGroups: m.optionGroups
+      .filter((g) => g.options.length > 0)
+      .map((g) => ({
+        id: g.id,
+        name: g.name,
+        minSelect: g.minSelect,
+        maxSelect: g.maxSelect,
+        options: g.options.map((o) => ({ id: o.id, name: o.name, priceDeltaCents: o.priceDeltaCents, isDefault: o.isDefault })),
+      })),
   }));
 
   // Live order-cut-off countdown, computed in the kitchen's own timezone.

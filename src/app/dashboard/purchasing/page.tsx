@@ -12,6 +12,7 @@ function L({ children, hint }: { children: React.ReactNode; hint: string }) {
 }
 import { formatCents, bpsToPercent } from "@/lib/money";
 import { buildShoppingList, type PurchaseLine } from "@/lib/purchasing";
+import { picksFromSnapshot } from "@/lib/meal-options";
 import { toPurchaseQty } from "@/lib/units";
 import { CostCell } from "./cost-cell";
 
@@ -29,6 +30,7 @@ export default async function PurchasingPage() {
     },
     select: {
       qty: true,
+      optionsSnapshot: true,
       meal: {
         select: {
           ingredients: {
@@ -62,6 +64,28 @@ export default async function PurchasingPage() {
         netQty: net,
         trimBps: mi.trimBps,
       });
+    }
+  }
+
+  // Build-your-own: the chosen options' ingredients are bought too (per unit ordered).
+  const optQty = new Map<string, number>(); // optionId → meals ordered with it
+  for (const oi of orderItems) for (const p of picksFromSnapshot(oi.optionsSnapshot)) optQty.set(p.optionId, (optQty.get(p.optionId) ?? 0) + oi.qty);
+  if (optQty.size) {
+    const opts = await db.mealOption.findMany({
+      where: { id: { in: [...optQty.keys()] } },
+      select: {
+        id: true,
+        ingredients: {
+          select: { qty: true, unit: true, trimBps: true, ingredient: { select: { id: true, name: true, unit: true, costPerUnitCents: true, densityGPerMl: true } } },
+        },
+      },
+    });
+    for (const o of opts) {
+      const n = optQty.get(o.id) ?? 0;
+      for (const oi of o.ingredients) {
+        const net = toPurchaseQty(oi.qty * n, oi.unit, oi.ingredient.unit, oi.ingredient.densityGPerMl).qty;
+        lines.push({ ingredientId: oi.ingredient.id, name: oi.ingredient.name, unit: oi.ingredient.unit, costPerUnitCents: oi.ingredient.costPerUnitCents, netQty: net, trimBps: oi.trimBps });
+      }
     }
   }
 

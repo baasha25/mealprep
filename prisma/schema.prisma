@@ -363,11 +363,63 @@ model Meal {
   updatedAt DateTime @updatedAt
 
   ingredients          MealIngredient[]
+  optionGroups         MealOptionGroup[]
   orderItems           OrderItem[]
   subscriptionSelItems SubscriptionSelectionItem[]
   reviews              MealReview[]
 
   @@index([businessId])
+}
+
+// ─── Build-your-own: modifier groups ─────────────────────────────────────────
+// A meal can offer option groups ("Base": quinoa | brown rice; "Protein":
+// chicken | tofu; "Extras": +avocado, +egg). Each option carries ITS OWN
+// ingredient rows and price delta, so a customer's choice flows into plate
+// cost, trim-aware purchasing, label macros, and production — no SKU matrix.
+
+model MealOptionGroup {
+  id        String @id @default(cuid())
+  mealId    String
+  meal      Meal   @relation(fields: [mealId], references: [id], onDelete: Cascade)
+  name      String // "Base", "Protein", "Extras"
+  minSelect Int    @default(1) // 0 = optional group
+  maxSelect Int    @default(1) // 1 = pick one; >1 = multi-select (add-ons)
+  sortOrder Int    @default(0)
+
+  options MealOption[]
+
+  @@index([mealId])
+}
+
+model MealOption {
+  id              String   @id @default(cuid())
+  groupId         String
+  group           MealOptionGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  name            String // "Quinoa"
+  priceDeltaCents Int      @default(0) // added to the meal price (can be 0 or negative)
+  isDefault       Boolean  @default(false) // pre-selected; used when no choice is made (POS, subscriptions)
+  allergens       String[] @default([])
+  active          Boolean  @default(true)
+  sortOrder       Int      @default(0)
+
+  ingredients MealOptionIngredient[]
+
+  @@index([groupId])
+}
+
+model MealOptionIngredient {
+  id           String     @id @default(cuid())
+  optionId     String
+  option       MealOption @relation(fields: [optionId], references: [id], onDelete: Cascade)
+  ingredientId String
+  ingredient   Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
+  qty          Float
+  unit         String
+  trimBps      Int        @default(0)
+
+  @@unique([optionId, ingredientId])
+  @@index([optionId])
+  @@index([ingredientId])
 }
 
 // A customer's rating + optional review of a meal (one per customer per meal).
@@ -412,6 +464,7 @@ model Ingredient {
   fatPerUnit     Float @default(0)
 
   mealIngredients MealIngredient[]
+  optionIngredients MealOptionIngredient[]
   receipts        IngredientReceipt[]
   stockCounts     StockCount[]
 
@@ -575,6 +628,8 @@ model SubscriptionSelectionItem {
   mealId      String
   meal        Meal                  @relation(fields: [mealId], references: [id])
   qty         Int
+  optionsSnapshot Json?
+  optionsKey      String?
 
   @@index([selectionId])
 }
@@ -624,6 +679,11 @@ model OrderItem {
   // Per-item delivery date — set when a one-time order is split across two
   // delivery days (each meal assigned to a day). Null = the order's single date.
   deliveryDate           DateTime?
+  // Build-your-own: the options chosen, frozen at order time ([{groupId, groupName,
+  // optionId, optionName, priceDeltaCents}]) + a stable key for grouping identical
+  // configurations in production/labels. Null/"" = no options.
+  optionsSnapshot        Json?
+  optionsKey             String?
 
   @@index([orderId])
 }

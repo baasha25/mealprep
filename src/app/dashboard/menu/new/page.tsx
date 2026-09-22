@@ -33,6 +33,7 @@ export default async function NewMealPage() {
     prepNotes: "",
     methodSteps: [],
     ingredients: [],
+    optionGroups: [],
   };
 
   return (

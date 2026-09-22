@@ -18,6 +18,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { formatCents } from "@/lib/money";
+import { resolveSelections, optionsKeyOf, nameWithOptions } from "@/lib/meal-options";
 import { computeOrder, type PricingSettings } from "@/lib/pricing";
 import {
   lookupCoupon,
@@ -37,6 +38,8 @@ const ALLERGEN_ICON: Record<string, LucideIcon> = {
 };
 
 export type StoreReview = { name: string; rating: number; comment: string; reply: string | null; date: string };
+export type StoreOption = { id: string; name: string; priceDeltaCents: number; isDefault: boolean };
+export type StoreOptionGroup = { id: string; name: string; minSelect: number; maxSelect: number; options: StoreOption[] };
 
 export type StoreMeal = {
   id: string;
@@ -52,6 +55,7 @@ export type StoreMeal = {
   ratingAvg: number;
   ratingCount: number;
   reviews: StoreReview[];
+  optionGroups: StoreOptionGroup[];
 };
 
 export type StoreSettings = PricingSettings & {
@@ -92,6 +96,43 @@ export function Storefront({
   );
   const [diet, setDiet] = useState("All");
   const [cart, setCart] = useState<Record<string, number>>({});
+  // Build-your-own: cart keys for configured meals are "<mealId>|<optionsKey>";
+  // plain meals keep their mealId as the key. cartOpts remembers each key's option ids.
+  const [cartOpts, setCartOpts] = useState<Record<string, string[]>>({});
+  const [chooser, setChooser] = useState<{ mealId: string; picks: Record<string, string[]>; error: string | null } | null>(null);
+  const mealOfKey = (key: string) => mealById.get(key.split("|")[0]);
+  const optionPicksOfKey = (key: string) => {
+    const m = mealOfKey(key);
+    if (!m || !m.optionGroups.length) return [];
+    const r = resolveSelections(m.optionGroups, cartOpts[key] ?? []);
+    return r.ok ? r.picks : [];
+  };
+  const unitPriceOfKey = (key: string) => {
+    const m = mealOfKey(key);
+    if (!m) return 0;
+    return m.priceCents + optionPicksOfKey(key).reduce((s, p) => s + p.priceDeltaCents, 0);
+  };
+  const labelOfKey = (key: string) => {
+    const m = mealOfKey(key);
+    return m ? nameWithOptions(m.name, optionPicksOfKey(key)) : "";
+  };
+  const openChooser = (m: StoreMeal) => {
+    const picks: Record<string, string[]> = {};
+    for (const g of m.optionGroups) picks[g.id] = g.options.filter((o) => o.isDefault).slice(0, g.maxSelect).map((o) => o.id);
+    setChooser({ mealId: m.id, picks, error: null });
+  };
+  const confirmChooser = () => {
+    if (!chooser) return;
+    const m = mealById.get(chooser.mealId);
+    if (!m) return;
+    const ids = Object.values(chooser.picks).flat();
+    const r = resolveSelections(m.optionGroups, ids);
+    if (!r.ok) return setChooser({ ...chooser, error: r.message });
+    const key = r.optionsKey ? `${m.id}|${r.optionsKey}` : m.id;
+    setCartOpts((o) => ({ ...o, [key]: r.picks.map((p) => p.optionId) }));
+    setCart((c) => ({ ...c, [key]: (c[key] || 0) + 1 }));
+    setChooser(null);
+  };
   const [subscribe, setSubscribe] = useState(false);
   const [couponInput, setCouponInput] = useState("");
   const [coupon, setCoupon] = useState<CouponResult | null>(null);
@@ -135,7 +176,7 @@ export function Storefront({
     });
 
   const lines = Object.entries(cart).map(([id, qty]) => ({
-    priceCents: mealById.get(id)?.priceCents ?? 0,
+    priceCents: unitPriceOfKey(id),
     qty,
   }));
   const appliedCoupon =
@@ -175,12 +216,13 @@ export function Storefront({
     startTransition(async () => {
       const result = await placeOrder({
         slug,
-        items: Object.entries(cart).map(([mealId, qty]) => ({
-          mealId,
+        items: Object.entries(cart).map(([key, qty]) => ({
+          mealId: key.split("|")[0],
+          optionIds: cartOpts[key] ?? [],
           qty,
           // Per-item delivery date only when splitting; else the order's single date.
           deliveryDate:
-            fulfillment === "delivery" && splitDelivery && deliveryDate ? dateOf(mealId) : undefined,
+            fulfillment === "delivery" && splitDelivery && deliveryDate ? dateOf(key) : undefined,
         })),
         subscribe,
         couponCode: coupon?.valid ? coupon.code : undefined,
@@ -272,9 +314,82 @@ export function Storefront({
           ))}
         </div>
 
+        {chooser && (() => {
+          const cm = mealById.get(chooser.mealId);
+          if (!cm) return null;
+          const ids = Object.values(chooser.picks).flat();
+          const r = resolveSelections(cm.optionGroups, ids);
+          const price = cm.priceCents + (r.ok ? r.priceDeltaCents : 0);
+          const togglePick = (g: StoreOptionGroup, optId: string) =>
+            setChooser((c) => {
+              if (!c) return c;
+              const cur = c.picks[g.id] ?? [];
+              let next: string[];
+              if (g.maxSelect <= 1) next = cur[0] === optId && g.minSelect === 0 ? [] : [optId];
+              else next = cur.includes(optId) ? cur.filter((x) => x !== optId) : cur.length < g.maxSelect ? [...cur, optId] : cur;
+              return { ...c, picks: { ...c.picks, [g.id]: next }, error: null };
+            });
+          return (
+            <div className="fixed inset-0 z-50 grid place-items-center p-4" style={{ background: "rgba(31,30,26,.45)" }} onClick={() => setChooser(null)}>
+              <div className="w-full max-w-md rounded-2xl border p-5 max-h-[90vh] overflow-auto" style={{ ...cardStyle, background: "var(--surface)" }} onClick={(e) => e.stopPropagation()}>
+                <div className="flex items-start justify-between gap-3 mb-3">
+                  <div>
+                    <h3 className="text-[16px] font-semibold" style={{ color: "var(--ink)" }}>{cm.name}</h3>
+                    <p className="text-[12px]" style={{ color: "var(--muted)" }}>Make it yours</p>
+                  </div>
+                  <button onClick={() => setChooser(null)} aria-label="Close" className="text-[18px] leading-none px-1" style={{ color: "var(--muted)" }}>×</button>
+                </div>
+                <div className="space-y-4">
+                  {cm.optionGroups.map((g) => (
+                    <div key={g.id}>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="text-[12.5px] font-semibold" style={{ color: "var(--ink)" }}>{g.name}</span>
+                        <span className="text-[11px]" style={{ color: "var(--muted)" }}>
+                          {g.maxSelect <= 1 ? (g.minSelect >= 1 ? "Pick one" : "Optional") : `Pick up to ${g.maxSelect}`}
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        {g.options.map((o) => {
+                          const on = (chooser.picks[g.id] ?? []).includes(o.id);
+                          return (
+                            <button
+                              key={o.id}
+                              type="button"
+                              onClick={() => togglePick(g, o.id)}
+                              aria-pressed={on}
+                              className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-[13px] text-left"
+                              style={{ border: `1px solid ${on ? "var(--pine)" : "var(--line)"}`, background: on ? "color-mix(in srgb, var(--pine) 8%, transparent)" : "var(--paper)", color: "var(--ink)" }}
+                            >
+                              <span className="truncate">{o.name}</span>
+                              <span className="text-[11.5px] shrink-0" style={{ color: "var(--muted)" }}>
+                                {o.priceDeltaCents === 0 ? "" : (o.priceDeltaCents > 0 ? "+" : "−") + formatCents(Math.abs(o.priceDeltaCents))}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {chooser.error && <p className="text-[12.5px] mt-3" style={{ color: "var(--clay)" }}>{chooser.error}</p>}
+                <button
+                  onClick={confirmChooser}
+                  className="w-full mt-4 py-2.5 rounded-lg text-[14px] font-medium flex items-center justify-center gap-2"
+                  style={{ background: "var(--pine)", color: "#f4f2ec" }}
+                >
+                  <Plus size={15} /> Add to cart · {formatCents(price)}
+                </button>
+              </div>
+            </div>
+          );
+        })()}
+
         <div className="grid sm:grid-cols-2 gap-4">
           {list.map((m) => {
-            const qty = cart[m.id] || 0;
+            const hasOptions = m.optionGroups.length > 0;
+            const qty = hasOptions
+              ? Object.entries(cart).filter(([k]) => k.split("|")[0] === m.id).reduce((s, [, q]) => s + q, 0)
+              : cart[m.id] || 0;
             return (
               <div key={m.id} className="rounded-xl border overflow-hidden flex flex-col" style={cardStyle}>
                 <div
@@ -369,7 +484,15 @@ export function Storefront({
                     <span className="disp text-[17px] font-medium" style={{ color: "var(--ink)" }}>
                       {formatCents(m.priceCents)}
                     </span>
-                    {qty === 0 ? (
+                    {hasOptions ? (
+                      <button
+                        onClick={() => openChooser(m)}
+                        className="flex items-center gap-1 px-3 py-1.5 rounded-md text-[13px] font-medium"
+                        style={{ background: "var(--pine)", color: "#f4f2ec" }}
+                      >
+                        <Plus size={14} /> {qty > 0 ? `Add another (${qty} in cart)` : "Customize"}
+                      </button>
+                    ) : qty === 0 ? (
                       <button
                         onClick={() => add(m.id)}
                         className="flex items-center gap-1 px-3 py-1.5 rounded-md text-[13px] font-medium"
@@ -424,13 +547,14 @@ export function Storefront({
             <>
               <div className="space-y-2 mb-4 max-h-40 overflow-auto">
                 {Object.entries(cart).map(([id, q]) => {
-                  const m = mealById.get(id);
+                  const m = mealOfKey(id);
                   return m ? (
-                    <div key={id} className="flex justify-between text-[13px]">
-                      <span className="truncate pr-2" style={{ color: "var(--ink)" }}>
-                        {q}× {m.name}
+                    <div key={id} className="flex items-center justify-between text-[13px] gap-2">
+                      <span className="truncate pr-1 flex-1" style={{ color: "var(--ink)" }}>
+                        {q}× {labelOfKey(id)}
                       </span>
-                      <span style={{ color: "var(--muted)" }}>{formatCents(m.priceCents * q)}</span>
+                      <span style={{ color: "var(--muted)" }}>{formatCents(unitPriceOfKey(id) * q)}</span>
+                      <button onClick={() => sub(id)} aria-label="Remove one" className="text-[12px] px-1.5 rounded" style={{ color: "var(--muted)", border: "1px solid var(--line)" }}>−</button>
                     </div>
                   ) : null;
                 })}
@@ -682,13 +806,13 @@ export function Storefront({
                           </div>
                           <div className="space-y-1.5">
                             {Object.entries(cart).map(([id, q]) => {
-                              const m = mealById.get(id);
+                              const m = mealOfKey(id);
                               if (!m) return null;
                               const onB = itemDay[id] === "B";
                               return (
                                 <div key={id} className="flex items-center justify-between gap-2 text-[12.5px]">
                                   <span className="truncate" style={{ color: "var(--ink)" }}>
-                                    {q}× {m.name}
+                                    {q}× {labelOfKey(id)}
                                   </span>
                                   <div className="inline-flex rounded-md border p-0.5 shrink-0" style={{ borderColor: "var(--line)" }}>
                                     {(["A", "B"] as const).map((slot) => {

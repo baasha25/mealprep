@@ -3,6 +3,7 @@ import { ChefHat, ClipboardList, Flame, Salad, Soup, Boxes, Repeat, PackageCheck
 import { requireBusiness } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { Page, Head, Kpi, Card } from "@/components/ui";
+import { picksFromSnapshot, nameWithOptions } from "@/lib/meal-options";
 
 // Diet -> kitchen station (ported from the demo's STATION map).
 const STATION: Record<string, string> = {
@@ -58,7 +59,8 @@ export default async function KitchenPage() {
     else byMeal.set(key, { ...roll });
   };
   for (const it of items) {
-    add(it.mealId ?? it.nameSnapshot, {
+    // Group by configuration, so "Bowl (Quinoa · Tofu)" and "Bowl (Rice · Chicken)" are separate lines.
+    add(`${it.mealId ?? it.nameSnapshot}|${it.optionsKey ?? ""}`, {
       name: it.nameSnapshot,
       qty: it.qty,
       diet: it.meal?.diet ?? null,
@@ -75,8 +77,8 @@ export default async function KitchenPage() {
     if (!sel || sel.items.length === 0) continue;
     const rows: { name: string; qty: number }[] = [];
     for (const it of sel.items) {
-      const name = it.meal?.name ?? "Meal";
-      add(it.mealId, { name, qty: it.qty, diet: it.meal?.diet ?? null, swatch: it.meal?.swatch ?? "#8a857a" });
+      const name = nameWithOptions(it.meal?.name ?? "Meal", picksFromSnapshot(it.optionsSnapshot));
+      add(`${it.mealId}|${it.optionsKey ?? ""}`, { name, qty: it.qty, diet: it.meal?.diet ?? null, swatch: it.meal?.swatch ?? "#8a857a" });
       rows.push({ name, qty: it.qty });
       subMealCount += it.qty;
     }

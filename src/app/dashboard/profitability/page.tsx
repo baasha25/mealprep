@@ -1,4 +1,5 @@
 import { TrendingUp, DollarSign, AlertTriangle, ChefHat, ArrowUpRight, Trash2, Scale, Calculator } from "lucide-react";
+import { defaultOptionIds } from "@/lib/meal-options";
 import Link from "next/link";
 import { requireOwner } from "@/lib/auth";
 import { db } from "@/lib/db";
@@ -59,6 +60,17 @@ export default async function ProfitabilityPage({
       expectedServings: true,
       actualServings: true,
       ingredients: { select: { qty: true, unit: true, trimBps: true, ingredient: { select: { unit: true, costPerUnitCents: true, densityGPerMl: true } } } },
+      // Build-your-own: plate cost is quoted for the DEFAULT configuration.
+      optionGroups: {
+        orderBy: { sortOrder: "asc" },
+        select: {
+          id: true, name: true, minSelect: true, maxSelect: true,
+          options: {
+            where: { active: true }, orderBy: { sortOrder: "asc" },
+            select: { id: true, name: true, priceDeltaCents: true, isDefault: true, ingredients: { select: { qty: true, unit: true, trimBps: true, ingredient: { select: { unit: true, costPerUnitCents: true, densityGPerMl: true } } } } },
+          },
+        },
+      },
     },
   });
 
@@ -88,7 +100,9 @@ export default async function ProfitabilityPage({
   }
 
   const base = meals.map((m) => {
-    const cost = plateCostFromRecipe(m.ingredients);
+    const defaults = new Set(defaultOptionIds(m.optionGroups));
+    const optionLines = m.optionGroups.flatMap((g) => g.options.filter((o) => defaults.has(o.id)).flatMap((o) => o.ingredients));
+    const cost = plateCostFromRecipe([...m.ingredients, ...optionLines]);
     const econ = mealEconomics(m.priceCents, cost);
     const units = unitsByMeal.get(m.id) ?? 0;
     // A meal with no recipe has no known cost — showing "$0 cost / 100% margin"

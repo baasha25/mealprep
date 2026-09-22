@@ -209,6 +209,28 @@ export const GUIDE: GuideArea[] = [
         tips: ["Prices can be changed any time — Menu → click the meal → edit → Save. The change is live immediately.", "No photo yet? The card falls back to a clean color tile, so your storefront still looks tidy — but a real photo converts far better.", "Retiring is also the safe way to 'remove' a meal that appears in past orders — its history and recipe stay intact."],
       },
       {
+        id: "options",
+        title: "Build-your-own options",
+        where: "Sales → Menu → edit a meal → Options",
+        does: "Let customers customize a meal — pick a base (quinoa | brown rice), a protein (chicken | tofu), or paid extras (+avocado) — without you creating a separate meal for every combination. Each option carries its own ingredients, so plate cost, the trim-aware shopping list, labels, and production all stay correct for whatever the customer picks.",
+        use: [
+          "Open a meal → Options → Add option group. Name it (e.g. 'Protein'), set min/max picks (1/1 = choose one; 0/2 = up to two optional extras).",
+          "Add options. Give each a price change (±$), tick one as default, flag any allergens it introduces, and add ITS ingredients (e.g. Tofu → 6 oz tofu).",
+          "Keep the base recipe (the meal's Ingredients) to what's in EVERY version; put the swappable parts on the options.",
+          "Save. On your storefront the meal shows a Customize button; the cart and receipt name the exact configuration.",
+        ],
+        numbers: [
+          ["Price change (±$)", "Added to (or subtracted from) the meal price when that option is chosen. The customer sees the final price before adding to cart."],
+          ["Default", "Pre-selected in the customizer, and used automatically when no choice is made — POS sales and subscription box picks use the defaults."],
+          ["Min / max", "How many options a customer must/can pick in the group. 1/1 = pick one. 0/N = optional add-ons."],
+          ["Where it flows", "Purchasing buys each chosen option's ingredients per meal ordered; Labels add the option's macros and allergens; Kitchen OS groups production by configuration ('Bowl (Brown rice · Tofu)'); Profitability quotes plate cost for the default configuration."],
+        ],
+        tips: [
+          "Editing options keeps their identity — existing carts and saved subscription picks still point at the same option. Removing an option retires it; past orders keep their snapshot.",
+          "Use a small negative price for a cheaper protein (e.g. Tofu −$1.00) — it's honest and it sells.",
+        ],
+      },
+      {
         id: "adding-a-meal",
         title: "Adding a meal (the recipe)",
         where: "Sales → Menu → New menu item",

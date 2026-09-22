@@ -1,6 +1,7 @@
 "use server";
 
 import { z } from "zod";
+import { resolveSelections, nameWithOptions } from "@/lib/meal-options";
 import { headers } from "next/headers";
 import { db } from "@/lib/db";
 import { stripe, STRIPE_ENABLED, PLATFORM_CURRENCY } from "@/lib/stripe";
@@ -97,6 +98,8 @@ const PlaceOrderInput = z.object({
       z.object({
         mealId: z.string().min(1),
         qty: z.number().int().min(1).max(99),
+        // Build-your-own: chosen option ids (validated + priced server-side).
+        optionIds: z.array(z.string().min(1)).max(20).optional(),
         // Per-item delivery date when a one-time order is split across two days.
         deliveryDate: z.string().datetime().optional(),
       }),
@@ -155,8 +158,25 @@ export async function placeOrder(input: PlaceOrderInputT): Promise<PlaceOrderRes
   const mealIds = data.items.map((i) => i.mealId);
   const meals = await db.meal.findMany({
     where: { id: { in: mealIds }, businessId: business.id, active: true },
+    include: {
+      optionGroups: {
+        orderBy: { sortOrder: "asc" },
+        include: { options: { where: { active: true }, orderBy: { sortOrder: "asc" } } },
+      },
+    },
   });
   const mealById = new Map(meals.map((m) => [m.id, m]));
+
+  // Resolve + validate each line's options against the meal's groups (defaults
+  // fill any required group left unchosen). Price and name are frozen from this.
+  const resolved = data.items.map((i) => {
+    const meal = mealById.get(i.mealId);
+    if (!meal) return null;
+    return resolveSelections(meal.optionGroups, i.optionIds);
+  });
+  for (const r of resolved) {
+    if (r && !r.ok) return { ok: false, message: r.message };
+  }
 
   // Resolve delivery dates: the order's headline date, plus a per-item date when
   // a one-time order is split across two days. Client dates must match one of the
@@ -186,13 +206,16 @@ export async function placeOrder(input: PlaceOrderInputT): Promise<PlaceOrderRes
 
   const lineItems = data.items.map((i, idx) => {
     const meal = mealById.get(i.mealId);
-    if (!meal) throw new Error("MEAL_UNAVAILABLE");
+    const r = resolved[idx];
+    if (!meal || !r || !r.ok) throw new Error("MEAL_UNAVAILABLE");
     return {
       mealId: meal.id,
       qty: i.qty,
-      unitPriceCentsSnapshot: meal.priceCents,
-      nameSnapshot: meal.name,
+      unitPriceCentsSnapshot: meal.priceCents + r.priceDeltaCents,
+      nameSnapshot: nameWithOptions(meal.name, r.picks),
       deliveryDate: itemDates[idx],
+      optionsSnapshot: r.picks.length ? r.picks : undefined,
+      optionsKey: r.optionsKey || null,
     };
   });
 
