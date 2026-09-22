@@ -410,12 +410,13 @@ export const GUIDE: GuideArea[] = [
           "Open Labels & packing, then the 'Meal labels' tab.",
           "Tick which meals to print, and set a quantity for each — type any number to run a big batch (e.g. 500), not just what's in today's orders.",
           "(Optional) Open 'Label design' to choose which fields print and add a footer line — the labels below preview live.",
-          "Paper printer: pick a sheet size (3-up / 2-up / 1-up) and hit Print.",
+          "Paper printer: pick a sheet size (3-up / 2-up / 1-up), or an Avery layout (5163 = 2×4\" shipping, 5160 = 1×2⅝\" address) for peel-and-stick sheets, and hit Print.",
           "Zebra printer: pick the label size (4×2 or 2×1) and 'Download .zpl', then send that file to your Zebra (via Zebra Browser Print, Zebra Setup Utilities, or your print queue).",
         ],
         numbers: [
           ["Download .zpl (N)", "Exports N labels as a ZPL file — the language Zebra printers read directly. The quantity you set per meal becomes the printer's copy count, so one file can print 100–10,000 labels."],
-          ["Sheet size (paper)", "How many labels per row when printing to a regular/office printer."],
+          ["Sheet size (paper)", "How many labels per row when printing to a regular/office printer. The two Avery options size each label exactly to the sheet — print at 100% scale with no extra margins, and test on plain paper first."],
+          ["Recommended", "Quick links to the printers and label stock kitchens actually use — Zebra ZD421 (best value 4\" thermal), ZD220 (budget), 4×2\" thermal rolls, and Avery 5163/5160 sheets. Some are affiliate links; they don't change your price."],
           ["Label design", "Choose which fields print on every label — kitchen name, macros, best-by date, allergens — plus an optional footer line (e.g. 'Keep refrigerated'). Your choices are saved and apply to BOTH the paper labels and the Zebra .zpl export. The labels on screen update live as a preview."],
         ],
         tips: [

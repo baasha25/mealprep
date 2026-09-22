@@ -43,7 +43,7 @@ export function Fulfillment({
   labelConfig: LabelConfig;
 }) {
   const [tab, setTab] = useState<"packing" | "labels">("packing");
-  const [size, setSize] = useState<"small" | "medium" | "large">("small");
+  const [size, setSize] = useState<"small" | "medium" | "large" | "avery5163" | "avery5160">("small");
   const [excluded, setExcluded] = useState<Record<string, boolean>>({});
 
   // Label design (which fields print + footer), persisted per kitchen.
@@ -73,7 +73,15 @@ export function Fulfillment({
   const shownLabels = labels.filter((l) => !excluded[l.name]);
   const totalLabels = shownLabels.reduce((s, l) => s + qtyOf(l), 0);
   const gridCols =
-    size === "large" ? "grid-cols-1" : size === "medium" ? "sm:grid-cols-2" : "sm:grid-cols-2 lg:grid-cols-3";
+    size === "large" ? "grid-cols-1"
+    : size === "medium" ? "sm:grid-cols-2"
+    : size === "avery5163" ? "sm:grid-cols-2 avery-sheet avery-5163"
+    : size === "avery5160" ? "sm:grid-cols-3 avery-sheet avery-5160"
+    : "sm:grid-cols-2 lg:grid-cols-3";
+  const isAvery = size === "avery5163" || size === "avery5160";
+  // Amazon Associates tag (optional, set NEXT_PUBLIC_AMAZON_ASSOCIATE_TAG) — links work without it.
+  const amzTag = process.env.NEXT_PUBLIC_AMAZON_ASSOCIATE_TAG;
+  const amz = (q: string) => `https://www.amazon.ca/s?k=${encodeURIComponent(q)}${amzTag ? `&tag=${encodeURIComponent(amzTag)}` : ""}`;
   const toggleMeal = (name: string) => setExcluded((e) => ({ ...e, [name]: !e[name] }));
   const setQty = (name: string, v: string) =>
     setQtyOverride((q) => {
@@ -248,7 +256,7 @@ export function Fulfillment({
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-[12px]" style={{ color: "var(--muted)" }}>Sheet size (paper)</span>
               <div className="inline-flex rounded-lg border p-0.5" style={{ borderColor: "var(--line)" }}>
-                {([["small", "3-up"], ["medium", "2-up"], ["large", "1-up"]] as const).map(([k, lab]) => (
+                {([["small", "3-up"], ["medium", "2-up"], ["large", "1-up"], ["avery5163", 'Avery 5163 (2×4")'], ["avery5160", 'Avery 5160 (1×2⅝")']] as const).map(([k, lab]) => (
                   <button
                     key={k}
                     onClick={() => setSize(k)}
@@ -289,6 +297,34 @@ export function Fulfillment({
               </button>
               <span className="text-[11px]" style={{ color: "var(--muted)" }}>
                 Send the file to your Zebra — via Zebra Browser Print, Zebra Setup Utilities, or your print queue.
+              </span>
+            </div>
+
+            {/* Recommended hardware — quick links so a kitchen can get set up without guessing. */}
+            <div className="pt-3 flex items-start gap-2 flex-wrap" style={{ borderTop: "1px solid var(--line)" }}>
+              <span className="text-[12px] pt-1" style={{ color: "var(--muted)" }}>Recommended</span>
+              {(
+                [
+                  ["Zebra ZD421 (4in thermal — best value)", "Zebra ZD421 direct thermal label printer"],
+                  ["Zebra ZD220 (budget)", "Zebra ZD220 direct thermal label printer"],
+                  ['4×2" thermal labels', "4x2 direct thermal labels roll"],
+                  ["Avery 5163 sheets", "Avery 5163 shipping labels 2x4"],
+                  ["Avery 5160 sheets", "Avery 5160 address labels"],
+                ] as const
+              ).map(([label, q]) => (
+                <a
+                  key={label}
+                  href={amz(q)}
+                  target="_blank"
+                  rel="noopener noreferrer sponsored"
+                  className="px-2.5 py-1 rounded-lg text-[12px] border"
+                  style={{ borderColor: "var(--line)", color: "var(--ink)", background: "var(--surface)" }}
+                >
+                  {label} ↗
+                </a>
+              ))}
+              <span className="basis-full text-[10.5px]" style={{ color: "var(--muted)" }}>
+                Some links are affiliate links — they cost you nothing and help keep PrepFlow&apos;s guides free.
               </span>
             </div>
 
@@ -385,6 +421,27 @@ export function Fulfillment({
               <p className="text-[12px] no-print mb-2 px-3 py-2 rounded-md" style={{ background: "var(--sand)", color: "var(--muted)" }}>
                 Showing the first {rendered.length} of {totalLabels} labels on screen. For the full run, use <strong>Download .zpl</strong> (Zebra) — it prints all {totalLabels}.
               </p>
+            )}
+            {isAvery && (
+              <>
+                <p className="no-print text-[11.5px] mb-2" style={{ color: "var(--muted)" }}>
+                  Avery layout: print at <strong>100% scale</strong> with margins set to <strong>None/Default</strong> (Letter). Do a test page on plain paper first and hold it against a label sheet.
+                </p>
+                <style>{`
+@media print {
+  @page { size: letter; margin: 0.5in 0.15625in; }
+  .avery-sheet { display: grid !important; gap: 0 !important; margin: 0 !important; }
+  .avery-sheet > div { border: none !important; border-radius: 0 !important; box-sizing: border-box; overflow: hidden; page-break-inside: avoid; break-inside: avoid; }
+  /* Avery 5163 — 2" × 4" shipping, 2 across × 5 down */
+  .avery-5163 { grid-template-columns: repeat(2, 4in) !important; grid-auto-rows: 2in !important; column-gap: 0.1875in !important; }
+  .avery-5163 > div { width: 4in; height: 2in; padding: 0.15in !important; }
+  /* Avery 5160 — 1" × 2⅝" address, 3 across × 10 down */
+  .avery-5160 { grid-template-columns: repeat(3, 2.625in) !important; grid-auto-rows: 1in !important; column-gap: 0.125in !important; }
+  .avery-5160 > div { width: 2.625in; height: 1in; padding: 0.06in 0.1in !important; font-size: 85%; }
+  .avery-5160 > div .grid { margin-bottom: 0.02in !important; }
+}
+                `}</style>
+              </>
             )}
             <div className={`grid ${gridCols} gap-3 print-full`}>
               {rendered.map(({ l, i }) => (
