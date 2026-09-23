@@ -44,3 +44,24 @@ export function isValidHostname(h: string): boolean {
   if (!h || h.length > 253) return false;
   return /^(?!-)[a-z0-9-]{1,63}(?<!-)(\.(?!-)[a-z0-9-]{1,63}(?<!-))+$/.test(h.toLowerCase());
 }
+
+/**
+ * If the kitchen's requested customDomain is live in the env map for this slug,
+ * return its origin (https://order.theirbrand.com); otherwise null.
+ * Used by Share links so buttons on the merchant's own site point at their domain.
+ */
+export function activeStorefrontOrigin(
+  customDomain: string | null | undefined,
+  slug: string,
+  map: DomainMap,
+): string | null {
+  const host = normalizeHost(customDomain);
+  if (!host || !slug) return null;
+  return map.get(host) === slug ? `https://${host}` : null;
+}
+
+/** Storefront URLs for a kitchen — on its custom domain when active, else under /store/<slug>. */
+export function storefrontUrls(base: string, slug: string, customOrigin: string | null) {
+  const root = customOrigin ?? `${base}/store/${slug}`;
+  return { order: root, account: `${root}/account`, signup: `${root}/account?signup` };
+}

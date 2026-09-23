@@ -510,14 +510,6 @@ export const GUIDE: GuideArea[] = [
         tips: ["'Lapsed (45+ days)' is your win-back list — a discount email to people who've drifted is one of the cheapest ways to bring revenue back. Emails send from your verified domain."],
       },
       {
-        id: "share",
-        title: "Share Links",
-        where: "Marketing → Share links",
-        img: "19-share.png",
-        does: "Ready-made links to your storefront (and specific meals/plans) that you can post on Instagram, text to customers, or put in your bio — so people can order in one tap.",
-        tips: ["Grab a link here instead of typing your storefront URL by hand. Great for social posts and DMs."],
-      },
-      {
         id: "storefront",
         title: "Your Storefront (what customers see)",
         where: "Public — prepflow.ca/store/your-kitchen",
@@ -539,6 +531,7 @@ export const GUIDE: GuideArea[] = [
         id: "share",
         title: "Share links & order button",
         where: "Marketing → Share links",
+        img: "19-share.png",
         does: "Copy-and-paste ways to send customers to your ordering page — for your Instagram bio, Linktree, or your own website. No separate customer site to build.",
         use: [
           "Open Marketing → Share links.",
@@ -551,7 +544,11 @@ export const GUIDE: GuideArea[] = [
           ["Paste-ready button (HTML)", "A styled button in your brand color that links to your ordering page — paste the HTML into your website builder."],
           ["Pop-up button", "Same button, but it opens ordering in a pop-up window so customers don't fully leave your site (like the delivery apps). Falls back to a new tab if the browser blocks pop-ups."],
         ],
-        tips: ["An inline embed (your storefront showing right inside your own page) is coming — for now the pop-up button is the closest 'order without leaving my site' option."],
+        tips: [
+          "Already have a website you love? Keep it. Point your site's 'Order Now' button at these links and your kitchen runs on PrepFlow behind the scenes — customers never have to rebuild a habit.",
+          "On the Pro plan you can serve ordering on your own domain (e.g. order.yourkitchen.com — set it in Settings → Brand). Once it's live, every link and button on this page switches to your domain automatically, so the customer stays on your brand from your homepage through to checkout.",
+          "We deliberately don't offer an inline embed (your storefront inside an iframe on your page): Safari and Firefox block the cookies it needs for login and cart, and card checkout can't run inside one. The pop-up button gives the same 'stay on my site' feel without those failures.",
+        ],
       },
     ],
   },

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseDomainMap, rewritePathForHost, isValidHostname, normalizeHost } from "./custom-domains";
+import { parseDomainMap, rewritePathForHost, isValidHostname, normalizeHost, activeStorefrontOrigin, storefrontUrls } from "./custom-domains";
 
 const map = parseDomainMap("order.balancekitchen.ca=balance-kitchen, WWW.Acme.com:3000=acme\nbad-entry, =x, y=");
 
@@ -33,5 +33,24 @@ describe("isValidHostname / normalizeHost", () => {
     expect(isValidHostname("x.com/path")).toBe(false);
     expect(isValidHostname("localhost")).toBe(false);
     expect(normalizeHost("WWW.Foo.com:8443")).toBe("foo.com");
+  });
+});
+
+describe("activeStorefrontOrigin / storefrontUrls", () => {
+  const map = parseDomainMap("order.balancekitchen.ca=balance-kitchen");
+  it("returns the custom origin only when the map has it for this slug", () => {
+    expect(activeStorefrontOrigin("order.balancekitchen.ca", "balance-kitchen", map)).toBe("https://order.balancekitchen.ca");
+    expect(activeStorefrontOrigin("Order.BalanceKitchen.ca", "balance-kitchen", map)).toBe("https://order.balancekitchen.ca");
+    expect(activeStorefrontOrigin("order.balancekitchen.ca", "other-kitchen", map)).toBeNull(); // mapped to someone else
+    expect(activeStorefrontOrigin("shop.notlive.com", "balance-kitchen", map)).toBeNull(); // requested, not activated
+    expect(activeStorefrontOrigin(null, "balance-kitchen", map)).toBeNull();
+  });
+  it("builds storefront urls on the custom domain when active, else under /store", () => {
+    expect(storefrontUrls("https://prepflow.ca", "balance-kitchen", "https://order.balancekitchen.ca")).toEqual({
+      order: "https://order.balancekitchen.ca",
+      account: "https://order.balancekitchen.ca/account",
+      signup: "https://order.balancekitchen.ca/account?signup",
+    });
+    expect(storefrontUrls("https://prepflow.ca", "balance-kitchen", null).order).toBe("https://prepflow.ca/store/balance-kitchen");
   });
 });

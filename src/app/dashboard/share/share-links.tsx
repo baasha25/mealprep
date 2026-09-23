@@ -28,7 +28,17 @@ function popupSnippet(url: string, text: string, color: string): string {
   return `<a href="${url}" target="prepflow" onclick="window.open(this.href,'prepflow','width=460,height=780,menubar=no,toolbar=no');return false;" style="display:inline-block;background:${color};color:#ffffff;padding:11px 20px;border-radius:8px;font-family:sans-serif;font-size:15px;font-weight:600;text-decoration:none;">${text}</a>`;
 }
 
-export function ShareLinks({ links, brandColor }: { links: ShareLink[]; brandColor: string }) {
+export function ShareLinks({
+  links,
+  brandColor,
+  domainStatus = null,
+  customDomain = null,
+}: {
+  links: ShareLink[];
+  brandColor: string;
+  domainStatus?: "active" | "pending" | null;
+  customDomain?: string | null;
+}) {
   const [copied, setCopied] = useState<string | null>(null);
 
   const copy = (id: string, text: string) => {
@@ -54,6 +64,20 @@ export function ShareLinks({ links, brandColor }: { links: ShareLink[]; brandCol
         Paste these onto your own website, Instagram bio, or Linktree. Customers click through to
         your branded PrepFlow page — no website-building required.
       </p>
+
+      {domainStatus === "active" && (
+        <div className="rounded-xl border px-4 py-3 text-[13px]" style={{ ...card, color: "var(--ink)" }}>
+          <strong>Your own domain is live.</strong> Every link and button below points at{" "}
+          <span className="font-mono">{customDomain}</span>, so customers stay on your brand from your website
+          through to checkout.
+        </div>
+      )}
+      {domainStatus === "pending" && (
+        <div className="rounded-xl border px-4 py-3 text-[13px]" style={{ ...card, color: "var(--ink-soft)" }}>
+          Your custom domain <span className="font-mono">{customDomain}</span>{" "}isn&apos;t live yet — these links
+          use your PrepFlow address for now and switch over automatically once it&apos;s activated.
+        </div>
+      )}
 
       {links.map((l) => (
         <div key={l.key} className="rounded-xl border p-5" style={card}>
