@@ -39,10 +39,13 @@ const SEG = { food: "var(--clay)", labour: "#c9a227", overhead: "#9a9488", profi
 export default async function ProfitabilityPage({
   searchParams,
 }: {
-  searchParams: Promise<{ range?: string }>;
+  searchParams: Promise<{ range?: string; focus?: string }>;
 }) {
   const { business } = await requireOwner();
-  const range = toRangeKey((await searchParams).range);
+  const sp = await searchParams;
+  const range = toRangeKey(sp.range);
+  // Deep-link from the Dashboard "Needs attention" panel: which rows to spotlight.
+  const focus = sp.focus === "losing" || sp.focus === "thin" || sp.focus === "rises" ? sp.focus : null;
 
   const meals = await db.meal.findMany({
     where: { businessId: business.id, active: true },
@@ -166,6 +169,19 @@ export default async function ProfitabilityPage({
   // Ingredient price-rise alerts from receipts (shared with the Dashboard panel).
   const alerts = await ingredientPriceRises(business.id);
 
+  // Rows the Dashboard sent the owner here to look at (same thresholds as the panel).
+  const focusedRows =
+    focus === "losing" ? rows.filter((r) => r.losing)
+    : focus === "thin" ? rows.filter((r) => !r.losing && r.marginBps < 5000)
+    : [];
+  const focusedIds = new Set(focusedRows.map((r) => r.id));
+  const focusTone = focus === "losing" ? "var(--clay)" : "#c9a227";
+  const focusTitle =
+    focus === "losing" ? `${focusedRows.length} meal${focusedRows.length === 1 ? "" : "s"} losing money`
+    : focus === "thin" ? `${focusedRows.length} meal${focusedRows.length === 1 ? "" : "s"} under 50% margin`
+    : focus === "rises" ? `${alerts.length} ingredient${alerts.length === 1 ? "" : "s"} getting more expensive`
+    : null;
+
   return (
     <Page>
       <Head
@@ -174,6 +190,45 @@ export default async function ProfitabilityPage({
         sub={`What each plate costs, what it earns, and your true bottom line after losses — ${rangeLabel(range).toLowerCase()}.`}
         right={<RangeFilter basePath="/dashboard/profitability" current={range} />}
       />
+
+      {/* "From your dashboard" — the Needs-attention item that brought the owner here, with the next step. */}
+      {focus && focusTitle && (focusedRows.length > 0 || (focus === "rises" && alerts.length > 0)) && (
+        <div className="rounded-xl border p-4 mb-5" style={{ borderColor: focusTone, background: `color-mix(in srgb, ${focusTone} 8%, transparent)` }}>
+          <div className="flex items-center gap-2 mb-1">
+            <AlertTriangle size={15} style={{ color: focusTone }} />
+            <span className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: "var(--muted)" }}>From your dashboard · Needs attention</span>
+          </div>
+          <div className="text-[15px] font-semibold mb-2" style={{ color: "var(--ink)" }}>{focusTitle}</div>
+          {focus === "rises" ? (
+            <p className="text-[12.5px]" style={{ color: "var(--ink-soft)" }}>
+              The alert is highlighted below. Next step: for each ingredient, either re-source it, adjust the portion in the affected recipes, or nudge the price of the meals it goes into — the price coach and simulator further down do the math.
+            </p>
+          ) : (
+            <>
+              <div className="rounded-lg overflow-hidden mb-2.5" style={{ border: "1px solid var(--line)", background: "var(--surface)" }}>
+                {focusedRows.map((r) => (
+                  <div key={r.id} className="grid sm:grid-cols-[1.4fr_90px_90px_90px_auto] grid-cols-2 gap-3 items-center px-3 py-2" style={{ borderBottom: "1px solid var(--line)" }}>
+                    <div className="text-[13px] font-medium truncate" style={{ color: "var(--ink)" }}>{r.name}</div>
+                    <div className="text-[12px]" style={{ color: "var(--muted)" }}>Price <span style={{ color: "var(--ink)" }}>{formatCents(r.priceCents)}</span></div>
+                    <div className="text-[12px]" style={{ color: "var(--muted)" }}>Cost <span style={{ color: "var(--ink)" }}>{formatCents(r.costCents)}</span></div>
+                    <div className="text-[12px]" style={{ color: "var(--muted)" }}>Margin <span style={{ color: focusTone, fontWeight: 600 }}>{bpsToPercent(r.marginBps).toFixed(0)}%</span></div>
+                    <div className="flex items-center gap-2 justify-end">
+                      <Link href={`/dashboard/menu/${r.id}/edit`} className="text-[12px] px-2.5 py-1 rounded-md border" style={{ borderColor: "var(--line)", color: "var(--ink)" }}>Edit recipe</Link>
+                      <a href="#price-coach" className="text-[12px] px-2.5 py-1 rounded-md" style={{ background: "var(--pine)", color: "#f4f2ec" }}>Fix the price ↓</a>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <p className="text-[12.5px]" style={{ color: "var(--ink-soft)" }}>
+                {focus === "losing"
+                  ? "Every one of these sells for less than its ingredients cost. Raise the price, cut the plate cost (portion, trim, supplier), or retire the meal. "
+                  : "Under 50% food margin there's little left after labour and overhead. Raise the price a little, trim the plate cost, or accept it as a traffic-builder on purpose. "}
+                The price coach suggests a price for your target margin; the simulator shows what a change does to this period's contribution. The same rows are highlighted in the table below.
+              </p>
+            </>
+          )}
+        </div>
+      )}
 
       {/* Prime Cost hero — food + labour vs the 55% health line */}
       {hasOpCosts ? (
@@ -328,7 +383,7 @@ export default async function ProfitabilityPage({
         <Kpi icon={<AlertTriangle size={16} />} label={<span className="inline-flex items-center gap-1">Money-losing meals <Hint text="Meals priced below what they cost to make — every one you sell loses money. Reprice, re-cost the recipe, or retire them." /></span>} value={losers} />
       </div>
 
-      <div className="mb-5">
+      <div className="mb-5 scroll-mt-6" id="price-coach">
         <PriceCoach
           meals={base.map((b) => ({
             id: b.id,
@@ -342,7 +397,7 @@ export default async function ProfitabilityPage({
         />
       </div>
 
-      <div className="mb-5">
+      <div className="mb-5 scroll-mt-6" id="simulator">
         <PriceSimulator
           meals={base.map((b) => ({ id: b.id, name: b.name, priceCents: b.priceCents, costCents: b.costCents, units: b.units, hasRecipe: b.hasRecipe }))}
           rangeLabel={rangeLabel(range)}
@@ -350,7 +405,7 @@ export default async function ProfitabilityPage({
       </div>
 
       {alerts.length > 0 && (
-        <div className="flex items-start gap-2.5 px-4 py-3 rounded-lg mb-5" style={{ background: "color-mix(in srgb, var(--clay) 8%, transparent)", border: "1px solid color-mix(in srgb, var(--clay) 22%, transparent)" }}>
+        <div id="cost-rises" className="flex items-start gap-2.5 px-4 py-3 rounded-lg mb-5 scroll-mt-6" style={{ background: "color-mix(in srgb, var(--clay) 8%, transparent)", border: `1px solid color-mix(in srgb, var(--clay) 22%, transparent)`, boxShadow: focus === "rises" ? "0 0 0 3px color-mix(in srgb, var(--clay) 35%, transparent)" : undefined }}>
           <ArrowUpRight size={16} style={{ color: "var(--clay)", marginTop: 1 }} />
           <div className="text-[13px]" style={{ color: "var(--ink)" }}>
             <strong>Ingredient costs are rising.</strong>{" "}
@@ -421,8 +476,9 @@ export default async function ProfitabilityPage({
             );
           }
           const cs = CLASS_STYLE[r.menuClass];
+          const spot = focusedIds.has(r.id);
           return (
-            <div key={r.id} className="grid sm:grid-cols-[1.5fr_80px_80px_90px_70px_70px_110px] grid-cols-2 gap-3 px-4 py-3 items-center" style={{ borderBottom: "1px solid var(--line)" }}>
+            <div key={r.id} id={`meal-${r.id}`} className="grid sm:grid-cols-[1.5fr_80px_80px_90px_70px_70px_110px] grid-cols-2 gap-3 px-4 py-3 items-center" style={{ borderBottom: "1px solid var(--line)", background: spot ? `color-mix(in srgb, ${focusTone} 10%, transparent)` : undefined, boxShadow: spot ? `inset 3px 0 0 ${focusTone}` : undefined }}>
               <div className="min-w-0">
                 <div className="text-[13.5px] font-medium truncate" style={{ color: "var(--ink)" }}>{r.name}</div>
                 <span title={cs.blurb} className="inline-block mt-0.5 text-[10.5px] px-1.5 py-0.5 rounded font-medium cursor-help" style={{ background: cs.bg, color: cs.fg }}>{MENU_CLASS_LABEL[r.menuClass]}</span>

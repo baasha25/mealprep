@@ -68,7 +68,7 @@ export const GUIDE: GuideArea[] = [
           ["Plan usage", "How many orders you've taken this month vs. how many your PrepFlow plan includes. The bar fills as you approach the limit."],
         ],
         tips: [
-          "Needs attention (owner view): a short list of the things worth a look today — meals losing money or under 50% margin, ingredients whose cost just rose, subscribers showing churn signals, and reviews awaiting approval. Each row opens the page that fixes it. 'All clear' means exactly that.",
+          "Needs attention (owner view): a short list of the things worth a look today — meals losing money or under 50% margin, ingredients whose cost just rose, subscribers showing churn signals, and reviews awaiting approval. Each row names the meals or ingredients involved and opens the page that fixes it with those rows highlighted and a 'what to do next' box at the top — you're never dropped on a page wondering what it was pointing at. 'All clear' means exactly that.",
           "Everything here is calculated automatically from real orders — nothing is typed in by hand. If a number looks off, it's a reflection of the orders, not a bug.",
           "See a small ⓘ icon next to a number (here, on Purchasing, Profitability, and more)? Hover it for a plain-English definition — no need to leave the screen.",
         ],
@@ -97,6 +97,7 @@ export const GUIDE: GuideArea[] = [
         img: "03-profitability.png",
         does: "The most important money screen. It costs every meal from its recipe, shows the profit on each one, and gives you a true bottom line after waste. This is where you find out which meals actually make money.",
         numbers: [
+          ["From your dashboard (box at the top)", "Appears when you arrive from a Needs-attention row. It repeats the alert (e.g. '1 meal under 50% margin'), lists exactly which meals with their price, cost and margin, gives Edit recipe / Fix the price buttons, and highlights the same rows in the table below."],
           ["What-if price simulator", "Pick a meal, move the price, and optionally assume sales change by ±%. Shows new margin, projected contribution over this period's real volume, and the break-even units — how much volume you could lose at a higher price and still come out even. Nothing is saved."],
           ["Menu engineering board", "Every costed meal placed on a 2×2 by margin (up) and popularity (across); the crosshair is the menu's medians and dot size is contribution. Each quadrant lists its meals with the action it calls for: protect Stars, reprice/re-cost Plowhorses, promote Puzzles, fix or retire Dogs."],
           ["Food revenue (menu sales)", "Total money your meals brought in for the period."],

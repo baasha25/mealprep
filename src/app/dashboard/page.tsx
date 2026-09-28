@@ -70,9 +70,9 @@ export default async function DashboardPage({
       atRiskSubscribers(business.id),
       db.mealReview.count({ where: { businessId: business.id, status: "pending" } }),
     ]);
-    if (margins.losing.length) attention.push({ key: "losing", tone: "clay", href: "/dashboard/profitability", text: `${margins.losing.length} meal${margins.losing.length === 1 ? "" : "s"} losing money: ${margins.losing.slice(0, 3).map((m) => m.name).join(", ")}${margins.losing.length > 3 ? "…" : ""}` });
-    if (margins.thin.length) attention.push({ key: "thin", tone: "amber", href: "/dashboard/profitability", text: `${margins.thin.length} meal${margins.thin.length === 1 ? "" : "s"} under 50% margin` });
-    if (rises.length) attention.push({ key: "rises", tone: "amber", href: "/dashboard/profitability", text: `Ingredient costs rising: ${rises.slice(0, 2).map((r) => `${r.name} +${bpsToPercent(r.changeBps).toFixed(0)}%`).join(", ")}${rises.length > 2 ? ` +${rises.length - 2} more` : ""}` });
+    if (margins.losing.length) attention.push({ key: "losing", tone: "clay", href: "/dashboard/profitability?focus=losing", text: `${margins.losing.length} meal${margins.losing.length === 1 ? "" : "s"} losing money: ${margins.losing.slice(0, 3).map((m) => m.name).join(", ")}${margins.losing.length > 3 ? "…" : ""}` });
+    if (margins.thin.length) attention.push({ key: "thin", tone: "amber", href: "/dashboard/profitability?focus=thin", text: `${margins.thin.length} meal${margins.thin.length === 1 ? "" : "s"} under 50% margin: ${margins.thin.slice(0, 3).map((m) => `${m.name} (${Math.round(m.marginBps / 100)}%)`).join(", ")}${margins.thin.length > 3 ? "…" : ""}` });
+    if (rises.length) attention.push({ key: "rises", tone: "amber", href: "/dashboard/profitability?focus=rises", text: `Ingredient costs rising: ${rises.slice(0, 2).map((r) => `${r.name} +${bpsToPercent(r.changeBps).toFixed(0)}%`).join(", ")}${rises.length > 2 ? ` +${rises.length - 2} more` : ""}` });
     if (risk.length) attention.push({ key: "risk", tone: risk.some((r) => r.reasons.includes("payment_failed")) ? "clay" : "amber", href: "/dashboard/subscriptions", text: `${risk.length} subscriber${risk.length === 1 ? "" : "s"} at risk of churning` });
     if (pendingReviews) attention.push({ key: "reviews", tone: "amber", href: "/dashboard/reviews", text: `${pendingReviews} review${pendingReviews === 1 ? "" : "s"} awaiting approval` });
 
