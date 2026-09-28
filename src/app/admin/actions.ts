@@ -5,7 +5,7 @@ import { db } from "@/lib/db";
 import { requireSuperAdmin } from "@/lib/admin";
 import { TIERS, type TierKey } from "@/lib/tiers";
 
-/** Change a kitchen's PrepFlow plan tier (and sync its platform fee). */
+/** Change a kitchen's PrepFlow plan tier (and sync its platform fee). Super-admin only. */
 export async function setBusinessTier(businessId: string, tier: TierKey): Promise<{ ok: boolean }> {
   await requireSuperAdmin();
   if (!TIERS[tier]) return { ok: false };
