@@ -311,6 +311,11 @@ export function DashboardSidebar({
             {stats}
           </p>
           {authEnabled && <SignOutButton />}
+          <p className="text-[10.5px] mt-2" style={{ color: "#ffffff5c" }}>
+            <a href="/terms" target="_blank" rel="noreferrer" className="hover:underline">Terms</a>
+            {" · "}
+            <a href="/privacy" target="_blank" rel="noreferrer" className="hover:underline">Privacy</a>
+          </p>
         </div>
       )}
     </aside>

@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { FlaskConical } from "lucide-react";
-import { mealEconomics } from "@/lib/profitability";
+import { mealEconomics, suggestedPriceCents } from "@/lib/profitability";
 import { formatCents, bpsToPercent } from "@/lib/money";
 import { Card, CardTitle } from "@/components/ui";
 
@@ -21,6 +21,20 @@ export function PriceSimulator({ meals, rangeLabel }: { meals: SimMeal[]; rangeL
   const meal = costed.find((m) => m.id === mealId) ?? first;
   const [price, setPrice] = useState<string>(meal ? (meal.priceCents / 100).toFixed(2) : "");
   const [unitsPct, setUnitsPct] = useState(0);
+
+  // The Price coach's "Try it" button hands a meal + suggested price down here.
+  useEffect(() => {
+    const onSim = (e: Event) => {
+      const d = (e as CustomEvent<{ mealId: string; priceCents: number }>).detail;
+      if (!d || !costed.some((m) => m.id === d.mealId)) return;
+      setMealId(d.mealId);
+      setPrice((d.priceCents / 100).toFixed(2));
+      setUnitsPct(0);
+    };
+    window.addEventListener("pf:simulate", onSim);
+    return () => window.removeEventListener("pf:simulate", onSim);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [meals]);
 
   const sim = useMemo(() => {
     if (!meal) return null;
@@ -44,7 +58,9 @@ export function PriceSimulator({ meals, rangeLabel }: { meals: SimMeal[]; rangeL
   };
   const pct = (bps: number) => `${bpsToPercent(bps).toFixed(1)}%`;
   const minP = Math.max(0.5, meal.priceCents * 0.7) / 100;
-  const maxP = (meal.priceCents * 1.4) / 100;
+  // Slider must reach the Price coach's highest suggestion (70% target) with room to spare,
+  // otherwise the two tools disagree about what's possible.
+  const maxP = Math.max(meal.priceCents * 1.5, suggestedPriceCents(meal.costCents, 7000) * 1.1, Math.round(Number(price || 0) * 100)) / 100;
 
   return (
     <Card>

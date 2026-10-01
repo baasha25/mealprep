@@ -931,7 +931,9 @@ export function Storefront({
           )}
         </div>
         <p className="text-[11px] mt-3 text-center" style={{ color: "var(--muted)" }}>
-          Ordering from {businessName}
+          Ordering from {businessName} ·{" "}
+          <a href="/terms" target="_blank" rel="noreferrer" className="underline">Terms</a> ·{" "}
+          <a href="/privacy" target="_blank" rel="noreferrer" className="underline">Privacy</a>
         </p>
       </aside>
     </div>

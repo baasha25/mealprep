@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Sparkles, ArrowRight, Check } from "lucide-react";
+import { Sparkles, ArrowRight, Check, FlaskConical } from "lucide-react";
 import { formatCents, bpsToPercent } from "@/lib/money";
 import { suggestedPriceCents } from "@/lib/profitability";
 
@@ -74,16 +74,17 @@ export function PriceCoach({ meals }: { meals: CoachMeal[] }) {
         </div>
       ) : (
         <div className="space-y-2">
-          <div className="grid grid-cols-[1fr_auto_auto_auto] gap-3 px-1 text-[10.5px] font-semibold uppercase tracking-wide" style={{ color: "var(--muted)" }}>
+          <div className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-3 px-1 text-[10.5px] font-semibold uppercase tracking-wide" style={{ color: "var(--muted)" }}>
             <span>Meal</span>
             <span className="text-right">Now</span>
             <span className="text-right">Suggested</span>
             <span className="text-right">Change</span>
+            <span />
           </div>
           {rows.map((r) => (
             <div
               key={r.id}
-              className="grid grid-cols-[1fr_auto_auto_auto] gap-3 items-center px-3 py-2 rounded-lg"
+              className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-3 items-center px-3 py-2 rounded-lg"
               style={{ background: "var(--paper)", border: `1px solid ${r.losing ? "color-mix(in srgb, var(--clay) 30%, transparent)" : "var(--line)"}` }}
             >
               <div className="min-w-0">
@@ -99,10 +100,23 @@ export function PriceCoach({ meals }: { meals: CoachMeal[] }) {
               <div className="text-[12.5px] text-right font-medium" style={{ color: "var(--ink)" }}>
                 +{formatCents(r.gap)}
               </div>
+              <button
+                type="button"
+                onClick={() => {
+                  // Hand this meal + price to the What-if simulator below and scroll to it.
+                  window.dispatchEvent(new CustomEvent("pf:simulate", { detail: { mealId: r.id, priceCents: r.suggested } }));
+                  document.getElementById("simulator")?.scrollIntoView({ behavior: "smooth", block: "start" });
+                }}
+                className="inline-flex items-center gap-1 text-[11.5px] font-medium px-2 py-1 rounded-md border whitespace-nowrap"
+                style={{ borderColor: "var(--line)", color: "var(--pine)", background: "var(--surface)" }}
+                title="Open this price in the What-if simulator"
+              >
+                <FlaskConical size={12} /> Try it
+              </button>
             </div>
           ))}
           <p className="text-[11px] mt-1" style={{ color: "var(--muted)" }}>
-            Suggestions are a starting point — check what your market will bear before raising a price. Edit prices in Menu.
+            Suggestions are a starting point — "Try it" opens the price in the What-if simulator below so you can see the effect on this period\u2019s contribution before you change anything. Edit prices in Menu.
           </p>
         </div>
       )}
