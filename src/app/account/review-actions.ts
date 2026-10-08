@@ -3,6 +3,7 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
+import { rateLimit } from "@/lib/ratelimit";
 import { getCustomerContext } from "@/lib/customer-auth";
 import { sendNewReviewNotice } from "@/lib/email";
 import { appUrl } from "@/lib/app-url";
@@ -19,6 +20,8 @@ const ReviewInput = z.object({
 export async function submitReview(input: { mealId: string; rating: number; comment?: string }): Promise<ReviewState> {
   const ctx = await getCustomerContext();
   if (!ctx) return { ok: false, message: "Please sign in to review." };
+  // Per-customer cap so a compromised account can't spam every meal.
+  if (!(await rateLimit("review-submit", ctx.customer.id, 10, "1 h")).ok) return { ok: false, message: "You've submitted a lot of reviews recently. Try again later." };
 
   const parsed = ReviewInput.safeParse(input);
   if (!parsed.success) return { ok: false, message: parsed.error.issues[0]?.message ?? "Invalid review." };

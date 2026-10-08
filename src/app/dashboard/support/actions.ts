@@ -1,5 +1,7 @@
 "use server";
 
+import { rateLimit } from "@/lib/ratelimit";
+
 import { z } from "zod";
 import { requireBusiness } from "@/lib/auth";
 import { sendSupportRequest } from "@/lib/email";
@@ -21,6 +23,8 @@ export async function submitSupportRequest(input: unknown): Promise<SupportResul
   }
   const { business, userName } = await requireBusiness();
   const d = parsed.data;
+  // Keeps the support inbox usable if an account goes rogue.
+  if (!(await rateLimit("support", business.id, 5, "1 h")).ok) return { ok: false, message: "You've sent several requests in the last hour. We'll reply to those first." };
 
   const ok = await sendSupportRequest({
     businessId: business.id,

@@ -4,6 +4,7 @@ import { z } from "zod";
 import { resolveSelections, nameWithOptions } from "@/lib/meal-options";
 import { headers } from "next/headers";
 import { db } from "@/lib/db";
+import { rateLimit, clientIp } from "@/lib/ratelimit";
 import { stripe, STRIPE_ENABLED, PLATFORM_CURRENCY } from "@/lib/stripe";
 import { getStorefrontBusiness } from "@/lib/storefront";
 import { orderLimitStatus } from "@/lib/usage";
@@ -29,6 +30,8 @@ export type LoyaltyLookup =
 export async function lookupLoyalty(slug: string, rawEmail: string): Promise<LoyaltyLookup> {
   const email = rawEmail.trim().toLowerCase();
   if (!email) return { found: false };
+  // Email enumeration guard: a stranger can't probe who is a customer here.
+  if (!(await rateLimit("store-lookup", await clientIp(), 30, "10 m")).ok) return { found: false };
   const business = await getStorefrontBusiness(slug);
   if (!business?.settings?.loyaltyEnabled) return { found: false };
   const customer = await db.customer.findFirst({
@@ -54,6 +57,8 @@ export type CouponResult =
 export async function lookupCoupon(slug: string, rawCode: string): Promise<CouponResult> {
   const code = rawCode.trim().toUpperCase();
   if (!code) return { valid: false, message: "Enter a code." };
+  // Code-guessing guard (coupon codes are short).
+  if (!(await rateLimit("store-lookup", await clientIp(), 30, "10 m")).ok) return { valid: false, message: "Too many attempts. Try again in a few minutes." };
 
   const business = await getStorefrontBusiness(slug);
   if (!business) return { valid: false, message: "Store unavailable." };
@@ -79,6 +84,8 @@ export type GiftCardResult =
 export async function lookupGiftCard(slug: string, rawCode: string): Promise<GiftCardResult> {
   const code = rawCode.trim().toUpperCase();
   if (!code) return { valid: false, message: "Enter a code." };
+  // Gift cards are stored value: brute-forcing codes must be impossible at scale.
+  if (!(await rateLimit("store-lookup", await clientIp(), 30, "10 m")).ok) return { valid: false, message: "Too many attempts. Try again in a few minutes." };
 
   const business = await getStorefrontBusiness(slug);
   if (!business) return { valid: false, message: "Store unavailable." };
@@ -131,6 +138,10 @@ export async function placeOrder(input: PlaceOrderInputT): Promise<PlaceOrderRes
   const parsed = PlaceOrderInput.safeParse(input);
   if (!parsed.success) {
     return { ok: false, message: parsed.error.issues[0]?.message ?? "Invalid order." };
+  }
+  // Checkout flood guard: generous for real customers, hostile to scripts.
+  if (!(await rateLimit("checkout", await clientIp(), 20, "10 m")).ok) {
+    return { ok: false, message: "Too many orders from this connection. Please wait a few minutes and try again." };
   }
   const data = parsed.data;
 

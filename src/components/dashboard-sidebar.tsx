@@ -38,7 +38,7 @@ import {
   LifeBuoy,
   type LucideIcon,
   Star,
-} from "lucide-react";
+ ShieldCheck } from "lucide-react";
 
 // Dashboard navigation, grouped into labeled sections. Hrefs are real routes.
 type NavItem = [href: string, label: string, icon: LucideIcon];
@@ -93,6 +93,7 @@ const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
       ["/dashboard/staff", "Staff", Users],
       ["/dashboard/import", "Import data", Upload],
       ["/dashboard/settings", "Settings", Cog],
+      ["/dashboard/account", "Account & security", ShieldCheck],
     ],
   },
   {
