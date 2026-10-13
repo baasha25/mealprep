@@ -13,8 +13,10 @@ import type { Customer } from "@/generated/prisma/client";
  * Dev stub (no keys): a stable subscriber so the account is clickable without
  * customer login.
  */
-const USE_DEV_AUTH =
-  !process.env.CLERK_SECRET_KEY || process.env.CLERK_SECRET_KEY === "";
+import { DEV_STUB, assertAuthConfigured } from "@/lib/auth-mode";
+
+// Opt-in dev stub only; a misconfigured production deploy fails closed.
+const USE_DEV_AUTH = DEV_STUB;
 
 /**
  * Kitchen-scoped customer resolver for /store/[slug]/account. Returns whether
@@ -26,6 +28,7 @@ const USE_DEV_AUTH =
 export async function getKitchenCustomer(
   businessId: string,
 ): Promise<{ signedIn: boolean; customer: Customer | null }> {
+  assertAuthConfigured();
   if (USE_DEV_AUTH) {
     const sub = await db.subscription.findFirst({
       where: { status: { not: "canceled" }, customer: { businessId } },

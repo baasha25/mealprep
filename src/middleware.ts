@@ -2,6 +2,7 @@ import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { NextResponse, type NextRequest } from "next/server";
 import type { NextFetchEvent } from "next/server";
 import { parseDomainMap, rewritePathForHost } from "@/lib/custom-domains";
+import { AUTH_MISCONFIGURED, AUTH_MISCONFIGURED_MESSAGE } from "@/lib/auth-mode";
 
 /**
  * Route protection. Clerk activates only when CLERK_SECRET_KEY is set; until
@@ -54,6 +55,11 @@ export default function middleware(req: NextRequest, event: NextFetchEvent) {
     }
   }
   if (clerkHandler) return clerkHandler(req, event);
+  // No Clerk and no explicit dev stub: refuse protected routes outright. Public
+  // pages (marketing, storefronts) keep working; nobody gets owner/admin access.
+  if (AUTH_MISCONFIGURED && isProtected(req)) {
+    return new NextResponse(AUTH_MISCONFIGURED_MESSAGE, { status: 503, headers: { "content-type": "text/plain" } });
+  }
   return NextResponse.next();
 }
 

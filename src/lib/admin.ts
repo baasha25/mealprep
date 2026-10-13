@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { CLERK_ON, DEV_STUB } from "@/lib/auth-mode";
 
 // Platform super-admins (the PrepFlow operator) — an email allowlist, separate
 // from any kitchen. They can see across all tenants; nobody else can reach /admin.
@@ -16,8 +17,12 @@ export function isSuperAdmin(email: string | null | undefined): boolean {
  * panel is invisible to normal users). Returns the admin's email.
  */
 export async function requireSuperAdmin(): Promise<string> {
-  // Dev stub (no Clerk configured): allow, for local development only.
-  if (!process.env.CLERK_SECRET_KEY) return "dev";
+  // Local dev stub only (explicit opt-in, never in a production build).
+  // A deploy with no Clerk key gets a 404 here, not a free admin panel.
+  if (!CLERK_ON) {
+    if (DEV_STUB) return "dev";
+    notFound();
+  }
 
   const { currentUser } = await import("@clerk/nextjs/server");
   const cu = await currentUser();

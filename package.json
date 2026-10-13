@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "dev:stub": "CLERK_SECRET_KEY= NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY= next dev",
+    "dev:stub": "AUTH_DEV_STUB=1 CLERK_SECRET_KEY= NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY= next dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",

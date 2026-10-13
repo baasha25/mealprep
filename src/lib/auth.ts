@@ -40,8 +40,11 @@ async function resolveDemoContext(): Promise<AuthContext | null> {
  * The call sites below do not change.
  */
 
-const USE_DEV_AUTH =
-  !process.env.CLERK_SECRET_KEY || process.env.CLERK_SECRET_KEY === "";
+import { DEV_STUB, assertAuthConfigured } from "@/lib/auth-mode";
+
+// Dev stub is opt-in (AUTH_DEV_STUB=1) and never active in a production build —
+// see src/lib/auth-mode.ts. Without Clerk and without the stub we fail closed.
+const USE_DEV_AUTH = DEV_STUB;
 
 export const ROLE_COOKIE = "pf_role";
 
@@ -58,6 +61,7 @@ export type AuthContext = {
 // server actions in the same render share ONE user+business lookup instead of
 // each firing their own. Big latency win on every dashboard navigation.
 export const getAuthContext = cache(async (): Promise<AuthContext | null> => {
+  assertAuthConfigured();
   if (USE_DEV_AUTH) {
     // A demo cookie takes precedence in dev too, so demo mode is testable.
     const demo = await resolveDemoContext();
