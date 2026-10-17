@@ -196,7 +196,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
               <div
                 key={r.id}
                 className="grid grid-cols-[1.5fr_1.2fr_190px_110px_60px_80px_100px_90px_90px_110px_80px] gap-3 px-4 py-3 items-center"
-                style={{ borderBottom: "1px solid var(--line)", opacity: r.quiet ? 0.72 : 1 }}
+                style={{ borderBottom: "1px solid var(--line)", boxShadow: r.quiet || r.badge.urgent ? "inset 4px 0 0 var(--clay)" : undefined }}
               >
                 <div className="min-w-0">
                   <Link href={`/admin/${r.id}`} className="text-[13.5px] font-medium truncate block hover:underline" style={{ color: "var(--ink)" }}>{r.name}</Link>
@@ -209,7 +209,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
                 <div className="text-[12.5px] truncate" style={{ color: "var(--ink-soft)" }}>{r.ownerEmail}</div>
                 <div className="flex flex-col gap-1.5 items-start">
                   <TierSelect businessId={r.id} tier={r.tier} />
-                  <Badge tone={r.badge.tone} title={r.badge.detail}>{r.badge.label}</Badge>
+                  <Badge tone={r.badge.tone} urgent={r.badge.urgent} title={r.badge.detail}>{r.badge.label}</Badge>
                 </div>
                 <div className="text-right">
                   <div className="text-[13px] tabular-nums" style={{ color: limit && r.ordersMo >= limit ? "var(--clay)" : "var(--ink)" }}>
@@ -229,7 +229,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
                   <div className="text-[12.5px] tabular-nums" style={{ color: "var(--pine)" }}>{formatCents(r.feeMo)}</div>
                   <div className="text-[10.5px]" style={{ color: "var(--muted)" }}>{r.feeBps / 100}%</div>
                 </div>
-                <div className="text-[12px] text-right" style={{ color: r.quiet ? "var(--clay)" : "var(--ink-soft)" }}>{agoLabel(r.lastOrder, now)}</div>
+                <div className="text-[12px] text-right" style={{ color: r.quiet ? "var(--clay)" : "var(--ink-soft)", fontWeight: r.quiet ? 700 : 400 }}>{agoLabel(r.lastOrder, now)}{r.quiet ? " · quiet" : ""}</div>
                 <div title={r.setup.items.filter((i) => !i.done).map((i) => `☐ ${i.label}`).join("\n") || "All set"}>
                   <div className="flex items-center gap-1.5">
                     <div className="h-1.5 w-14 rounded-full" style={{ background: "var(--sand)" }}>

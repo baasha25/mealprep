@@ -12,13 +12,15 @@ export const TRIAL_SOON_DAYS = 7; // trial ends within this window → this week
 
 /* ─────────────────────────── billing badge ─────────────────────────── */
 
-export type BadgeTone = "pine" | "clay" | "sand" | "muted";
+export type BadgeTone = "pine" | "clay" | "amber" | "sand" | "muted";
 
 export type BillingBadge = {
   state: AccessState | "canceled";
   label: string; // short, e.g. "Trial · 12d left"
   detail: string; // one line for a tooltip / detail page
   tone: BadgeTone;
+  /** Act-now: rendered solid + bold (past due, locked). */
+  urgent?: boolean;
   /** Counts toward real (collected) MRR. */
   paying: boolean;
 };
@@ -37,14 +39,14 @@ export function billingBadge(
     case "subscribed":
       return { state: "subscribed", label: "Paying", detail: `Active software subscription — ${TIERS[b.tier].name} at $${price / 100}/mo.`, tone: "pine", paying: true };
     case "past_due":
-      return { state: "past_due", label: "Past due", detail: "Card failed; Stripe is retrying. Access continues during the grace window.", tone: "clay", paying: true };
+      return { state: "past_due", label: "Past due", detail: "Card failed; Stripe is retrying. Access continues during the grace window.", tone: "clay", urgent: true, paying: true };
     case "trialing": {
       const t = trialStatus(b.trialEndsAt, now);
       return {
         state: "trialing",
         label: `Trial · ${t.daysLeft}d left`,
         detail: `Free trial ends ${t.endsAt ? fmtDate(t.endsAt) : "—"}. Will need to pick a plan to keep the dashboard.`,
-        tone: t.daysLeft <= TRIAL_SOON_DAYS ? "clay" : "muted",
+        tone: t.daysLeft <= TRIAL_SOON_DAYS ? "amber" : "muted",
         paying: false,
       };
     }
@@ -52,7 +54,7 @@ export function billingBadge(
       if (b.billingStatus === "canceled") {
         return { state: "canceled", label: "Canceled", detail: "Subscription canceled; dashboard is read-only.", tone: "muted", paying: false };
       }
-      return { state: "locked", label: "Locked", detail: "Trial ended and no subscription — dashboard is read-only until they pick a plan.", tone: "clay", paying: false };
+      return { state: "locked", label: "Locked", detail: "Trial ended and no subscription — dashboard is read-only until they pick a plan.", tone: "clay", urgent: true, paying: false };
     }
   }
 }

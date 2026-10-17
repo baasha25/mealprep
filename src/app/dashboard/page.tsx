@@ -20,6 +20,7 @@ import { Greeting } from "@/components/greeting";
 import { toRangeKey, rangeWhere, rangeLabel } from "@/lib/date-range";
 import { revenueStatusWhere } from "@/lib/order-status";
 import { ingredientPriceRises, menuMarginSnapshot, atRiskSubscribers } from "@/lib/alerts-data";
+import { ALERT_STYLE, alertSummary, sortAlerts, type AlertLevel } from "@/lib/alerts";
 import { bpsToPercent } from "@/lib/money";
 
 const STAFF_LINKS: [string, string, typeof ChefHat][] = [
@@ -61,7 +62,7 @@ export default async function DashboardPage({
   } | null = null;
 
   // "Needs attention" — the handful of things worth a look today (owner only).
-  let attention: { key: string; text: string; href: string; tone: "clay" | "amber" }[] = [];
+  let attention: { key: string; text: string; href: string; level: AlertLevel }[] = [];
 
   if (isOwner) {
     const [rises, margins, risk, pendingReviews] = await Promise.all([
@@ -70,11 +71,17 @@ export default async function DashboardPage({
       atRiskSubscribers(business.id),
       db.mealReview.count({ where: { businessId: business.id, status: "pending" } }),
     ]);
-    if (margins.losing.length) attention.push({ key: "losing", tone: "clay", href: "/dashboard/profitability?focus=losing", text: `${margins.losing.length} meal${margins.losing.length === 1 ? "" : "s"} losing money: ${margins.losing.slice(0, 3).map((m) => m.name).join(", ")}${margins.losing.length > 3 ? "…" : ""}` });
-    if (margins.thin.length) attention.push({ key: "thin", tone: "amber", href: "/dashboard/profitability?focus=thin", text: `${margins.thin.length} meal${margins.thin.length === 1 ? "" : "s"} under 50% margin: ${margins.thin.slice(0, 3).map((m) => `${m.name} (${Math.round(m.marginBps / 100)}%)`).join(", ")}${margins.thin.length > 3 ? "…" : ""}` });
-    if (rises.length) attention.push({ key: "rises", tone: "amber", href: "/dashboard/profitability?focus=rises", text: `Ingredient costs rising: ${rises.slice(0, 2).map((r) => `${r.name} +${bpsToPercent(r.changeBps).toFixed(0)}%`).join(", ")}${rises.length > 2 ? ` +${rises.length - 2} more` : ""}` });
-    if (risk.length) attention.push({ key: "risk", tone: risk.some((r) => r.reasons.includes("payment_failed")) ? "clay" : "amber", href: "/dashboard/subscriptions", text: `${risk.length} subscriber${risk.length === 1 ? "" : "s"} at risk of churning` });
-    if (pendingReviews) attention.push({ key: "reviews", tone: "amber", href: "/dashboard/reviews", text: `${pendingReviews} review${pendingReviews === 1 ? "" : "s"} awaiting approval` });
+    if (margins.losing.length) attention.push({ key: "losing", level: "urgent", href: "/dashboard/profitability?focus=losing", text: `Reprice: ${margins.losing.slice(0, 3).map((m) => m.name).join(", ")}${margins.losing.length > 3 ? ` +${margins.losing.length - 3} more` : ""} ${margins.losing.length === 1 ? "loses" : "lose"} money on every plate` });
+    if (margins.thin.length) attention.push({ key: "thin", level: "watch", href: "/dashboard/profitability?focus=thin", text: `Check margin: ${margins.thin.slice(0, 3).map((m) => `${m.name} (${Math.round(m.marginBps / 100)}%)`).join(", ")}${margins.thin.length > 3 ? ` +${margins.thin.length - 3} more` : ""} under 50%` });
+    if (rises.length) attention.push({ key: "rises", level: "watch", href: "/dashboard/profitability?focus=rises", text: `Re-source or reprice: ${rises.slice(0, 2).map((r) => `${r.name} +${bpsToPercent(r.changeBps).toFixed(0)}%`).join(", ")}${rises.length > 2 ? ` +${rises.length - 2} more` : ""} since last delivery` });
+    if (risk.length) {
+      const failed = risk.filter((r) => r.reasons.includes("payment_failed")).length;
+      attention.push(failed
+        ? { key: "risk", level: "urgent", href: "/dashboard/subscriptions", text: `Call: ${failed} subscriber${failed === 1 ? "'s card" : "s' cards"} failed${risk.length > failed ? `, ${risk.length - failed} more going quiet` : ""}` }
+        : { key: "risk", level: "watch", href: "/dashboard/subscriptions", text: `Reach out: ${risk.length} subscriber${risk.length === 1 ? "" : "s"} going quiet` });
+    }
+    if (pendingReviews) attention.push({ key: "reviews", level: "info", href: "/dashboard/reviews", text: `Approve: ${pendingReviews} review${pendingReviews === 1 ? "" : "s"} waiting` });
+    attention = sortAlerts(attention);
 
     // Revenue KPIs exclude canceled/refunded orders — those were never earned.
     const where = { businessId: business.id, ...rangeWhere(range), ...revenueStatusWhere };
@@ -172,29 +179,38 @@ export default async function DashboardPage({
           </Card>
 
           <Card className="mt-4">
-            <CardTitle icon={<BellRing size={15} />} title="Needs attention" note={attention.length ? `${attention.length} item${attention.length === 1 ? "" : "s"}` : "All clear"} />
+            <CardTitle
+              icon={<BellRing size={15} style={{ color: attention.some((a) => a.level === "urgent") ? "var(--clay)" : "var(--pine)" }} />}
+              title="Needs attention"
+              note={alertSummary(attention)}
+            />
             {attention.length === 0 ? (
-              <p className="flex items-center gap-2 text-[13.5px]" style={{ color: "var(--ink-soft)" }}>
-                <CheckCircle2 size={16} style={{ color: "var(--pine)" }} /> Nothing needs you right now — margins, ingredient costs, subscribers and reviews all look fine.
+              <p className="flex items-center gap-2 text-[13.5px] font-medium" style={{ color: "var(--pine)" }}>
+                <CheckCircle2 size={16} /> All clear.
               </p>
             ) : (
               <div className="space-y-2">
-                {attention.map((a) => (
-                  <Link
-                    key={a.key}
-                    href={a.href}
-                    className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px]"
-                    style={{
-                      background: a.tone === "clay" ? "color-mix(in srgb, var(--clay) 8%, transparent)" : "color-mix(in srgb, #c9a227 10%, transparent)",
-                      border: `1px solid ${a.tone === "clay" ? "color-mix(in srgb, var(--clay) 25%, transparent)" : "color-mix(in srgb, #c9a227 30%, transparent)"}`,
-                      color: "var(--ink)",
-                    }}
-                  >
-                    <span className="w-2 h-2 rounded-full shrink-0" style={{ background: a.tone === "clay" ? "var(--clay)" : "#c9a227" }} />
-                    <span className="flex-1">{a.text}</span>
-                    <span className="text-[12px]" style={{ color: "var(--muted)" }}>Open →</span>
-                  </Link>
-                ))}
+                {attention.map((a) => {
+                  const st = ALERT_STYLE[a.level];
+                  return (
+                    <Link
+                      key={a.key}
+                      href={a.href}
+                      className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px]"
+                      style={{
+                        background: st.bg,
+                        border: `1px solid ${st.border}`,
+                        boxShadow: st.bar ? `inset 4px 0 0 ${st.bar}` : undefined,
+                        color: st.ink,
+                        fontWeight: st.weight,
+                      }}
+                    >
+                      <span className="w-2 h-2 rounded-full shrink-0" style={{ background: st.dot }} />
+                      <span className="flex-1">{a.text}</span>
+                      <span className="text-[12px] font-normal" style={{ color: a.level === "urgent" ? "var(--clay)" : "var(--muted)" }}>{a.level === "urgent" ? "Fix now →" : "Open →"}</span>
+                    </Link>
+                  );
+                })}
               </div>
             )}
           </Card>

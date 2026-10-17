@@ -68,7 +68,7 @@ export const GUIDE: GuideArea[] = [
           ["Plan usage", "How many orders you've taken this month vs. how many your PrepFlow plan includes. The bar fills as you approach the limit."],
         ],
         tips: [
-          "Needs attention (owner view): a short list of the things worth a look today — meals losing money or under 50% margin, ingredients whose cost just rose, subscribers showing churn signals, and reviews awaiting approval. Each row names the meals or ingredients involved and opens the page that fixes it with those rows highlighted and a 'what to do next' box at the top — you're never dropped on a page wondering what it was pointing at. 'All clear' means exactly that.",
+          "Needs attention (owner view): the things worth a look today, in three levels. Red with a bold line = act now (a meal losing money on every plate, a subscriber whose card failed). Amber = watch (margins under 50%, ingredient costs rising, subscribers going quiet). Grey = to review (reviews awaiting approval). Red always sorts to the top and starts with the verb: Reprice, Call. A red dot on Overview in the sidebar means there is something urgent even when you are on another page. Each row opens the page that fixes it with the items highlighted. 'All clear' means exactly that.",
           "Everything here is calculated automatically from real orders — nothing is typed in by hand. If a number looks off, it's a reflection of the orders, not a bug.",
           "See a small ⓘ icon next to a number (here, on Purchasing, Profitability, and more)? Hover it for a plain-English definition — no need to leave the screen.",
         ],

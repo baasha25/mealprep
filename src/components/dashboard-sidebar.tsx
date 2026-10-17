@@ -111,12 +111,15 @@ export function DashboardSidebar({
   stats,
   role,
   authEnabled,
+  urgent = 0,
 }: {
   businessName: string;
   logoUrl?: string | null;
   stats: string;
   role: Role;
   authEnabled: boolean;
+  /** Count of urgent alerts (owner only) — shows a clay dot on Overview from any page. */
+  urgent?: number;
 }) {
   const pathname = usePathname();
 
@@ -213,6 +216,9 @@ export function DashboardSidebar({
                       }}
                     >
                       <Icon size={18} style={{ opacity: on ? 1 : 0.75 }} />
+                      {href === "/dashboard" && urgent > 0 && (
+                        <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full" style={{ background: "var(--clay)", boxShadow: "0 0 0 2px var(--sidebar, #1f2a22)" }} aria-label={`${urgent} urgent`} />
+                      )}
                       {on && (
                         <span
                           className="absolute -left-1 top-1/2 -translate-y-1/2 w-[3px] h-4 rounded-full"
@@ -273,6 +279,9 @@ export function DashboardSidebar({
                       >
                         <Icon size={17} style={{ opacity: on ? 1 : 0.7 }} />
                         {label}
+                        {href === "/dashboard" && urgent > 0 && (
+                          <span className="ml-1.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: "var(--clay)", color: "#f4f2ec" }}>{urgent}</span>
+                        )}
                         {on && (
                           <span
                             className="ml-auto w-1 h-1 rounded-full"

@@ -123,7 +123,7 @@ export default async function AdminKitchenPage({ params }: { params: Promise<{ b
         <div>
           <div className="flex items-center gap-2.5 flex-wrap">
             <h1 className="disp text-[26px] leading-none font-medium" style={{ color: "var(--ink)" }}>{biz.name}</h1>
-            <Badge tone={badge.tone} title={badge.detail}>{badge.label}</Badge>
+            <Badge tone={badge.tone} urgent={badge.urgent} title={badge.detail}>{badge.label}</Badge>
             {!biz.stripeChargesEnabled && <Badge tone="clay">Stripe not connected</Badge>}
           </div>
           <p className="text-[12.5px] mt-1.5" style={{ color: "var(--muted)" }}>
@@ -157,7 +157,7 @@ export default async function AdminKitchenPage({ params }: { params: Promise<{ b
         <div className="rounded-xl border p-4" style={card}>
           <div className={`${sectionTitle} mb-3 flex items-center gap-1.5`} style={{ color: "var(--muted)" }}><CreditCard size={13} /> Software billing</div>
           <dl className="text-[12.5px] space-y-1.5">
-            <Row l="Status" v={<Badge tone={badge.tone}>{badge.label}</Badge>} />
+            <Row l="Status" v={<Badge tone={badge.tone} urgent={badge.urgent}>{badge.label}</Badge>} />
             <Row l="Plan" v={`${TIERS[tier].name} · $${TIERS[tier].priceCents / 100}/mo · ${TIERS[tier].platformFeeBps / 100}% fee`} />
             <Row l="Trial ends" v={trial.endsAt ? `${fmtDate.format(trial.endsAt)}${trial.active ? ` (${trial.daysLeft}d left)` : " (ended)"}` : "—"} />
             <Row l="Stripe status" v={biz.billingStatus} />

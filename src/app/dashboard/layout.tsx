@@ -7,7 +7,9 @@ import { TIERS, effectiveTier, type TierKey } from "@/lib/tiers";
 import { trialStatus } from "@/lib/trial";
 import { kitchenAccess, KITCHEN_BILLING_ENABLED, type BillingStatus } from "@/lib/kitchen-billing";
 import { Lock } from "lucide-react";
+import { db } from "@/lib/db";
 import { DashboardSidebar } from "@/components/dashboard-sidebar";
+import { menuMarginSnapshot } from "@/lib/alerts-data";
 import { cldLogo } from "@/lib/cloudinary";
 import { exitStaffPreview } from "./staff/actions";
 
@@ -30,6 +32,19 @@ export default async function DashboardLayout({
   // extra DB round-trips on every dashboard page — dropped.
   const usage = await orderLimitStatus({ id: business.id, tier: effectiveTier({ tier: business.tier as TierKey, trialEndsAt: business.trialEndsAt }) });
   const showCap = role === "owner" && (usage.atLimit || usage.nearLimit) && !isDemo;
+  // Sidebar dot: is anything URGENT right now (meals losing money, failed
+  // subscriber cards)? One light query for owners only; the dashboard page
+  // computes the full list.
+  let urgent = 0;
+  if (role === "owner") {
+    try {
+      const [{ losing }, failedCards] = await Promise.all([
+        menuMarginSnapshot(business.id),
+        db.subscription.count({ where: { businessId: business.id, status: "active", customer: { orders: { some: { status: "pending", createdAt: { gte: new Date(Date.now() - 14 * 86_400_000) } } } } } }),
+      ]);
+      urgent = losing.length + (failedCards > 0 ? 1 : 0);
+    } catch { urgent = 0; }
+  }
   const planLabel = TIERS[usage.tier].name;
   // Free-trial countdown (owner-only, informational — no lockout until billing).
   const trial = trialStatus(business.trialEndsAt);
@@ -69,6 +84,7 @@ export default async function DashboardLayout({
         stats={sidebarStats}
         role={role}
         authEnabled={Boolean(process.env.CLERK_SECRET_KEY)}
+        urgent={urgent}
       />
       <main className="flex-1 min-w-0">
         {isDemo && (

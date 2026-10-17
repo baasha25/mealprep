@@ -193,7 +193,7 @@ export default async function ProfitabilityPage({
 
       {/* "From your dashboard" — the Needs-attention item that brought the owner here, with the next step. */}
       {focus && focusTitle && (focusedRows.length > 0 || (focus === "rises" && alerts.length > 0)) && (
-        <div className="rounded-xl border p-4 mb-5" style={{ borderColor: focusTone, background: `color-mix(in srgb, ${focusTone} 8%, transparent)` }}>
+        <div className="rounded-xl border p-4 mb-5" style={{ borderColor: focusTone, background: `color-mix(in srgb, ${focusTone} 8%, transparent)`, boxShadow: focus === "losing" ? `inset 5px 0 0 ${focusTone}` : undefined }}>
           <div className="flex items-center gap-2 mb-1">
             <AlertTriangle size={15} style={{ color: focusTone }} />
             <span className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: "var(--muted)" }}>From your dashboard · Needs attention</span>
@@ -247,8 +247,8 @@ export default async function ProfitabilityPage({
               </div>
               {hasSales ? (
                 <>
-                  <div className="disp text-[34px] font-medium leading-none" style={{ color: TONE[primeHealth.tone].ink }}>
-                    {bpsToPercent(primeBps).toFixed(1)}%
+                  <div className="disp text-[34px] leading-none" style={{ color: TONE[primeHealth.tone].ink, fontWeight: primeHealth.tone === "bad" ? 700 : 500 }}>
+                    {bpsToPercent(primeBps).toFixed(1)}%{primeHealth.tone === "bad" ? <span className="text-[14px] font-semibold ml-2 align-middle">over the 55% line</span> : null}
                   </div>
                   <div className="text-[12px] mt-2" style={{ color: "var(--muted)" }}>
                     Food {bpsToPercent(foodCostShareBps).toFixed(0)}% + Labour {bpsToPercent(laborShareBps).toFixed(0)}% · target under 55%
@@ -326,8 +326,8 @@ export default async function ProfitabilityPage({
                 <Row l="Overhead" v={`−${formatCents(overheadCents)}`} />
                 <div className="flex justify-between items-baseline pt-2 mt-1" style={{ borderTop: "1px solid var(--line)" }}>
                   <span className="text-[14px] font-semibold" style={{ color: "var(--ink)" }}>True operating profit</span>
-                  <span className="disp text-[18px] font-medium" style={{ color: trueProfitCents >= 0 ? "var(--pine)" : "var(--clay)" }}>
-                    {formatCents(trueProfitCents)}
+                  <span className="disp text-[18px]" style={{ color: trueProfitCents >= 0 ? "var(--pine)" : "var(--clay)", fontWeight: trueProfitCents >= 0 ? 500 : 700 }}>
+                    {formatCents(trueProfitCents)}{trueProfitCents < 0 ? " loss" : ""}
                     {hasSales && (
                       <span className="text-[12px] font-normal ml-1.5" style={{ color: "var(--muted)" }}>{bpsToPercent(trueProfitBps).toFixed(1)}%</span>
                     )}
@@ -380,7 +380,7 @@ export default async function ProfitabilityPage({
         <Kpi icon={<TrendingUp size={16} />} label={<span className="inline-flex items-center gap-1">Avg margin <Hint text="On average, what share of a meal's price is profit after its ingredient (food) cost." /></span>} value={`${bpsToPercent(avgMarginBps).toFixed(1)}%`} />
         <Kpi icon={<DollarSign size={16} />} label={<span className="inline-flex items-center gap-1">Avg food cost <Hint text="On average, what share of a meal's price goes to ingredients. The lower this is, the more each sale keeps." /></span>} value={`${bpsToPercent(avgFoodCostBps).toFixed(1)}%`} />
         <Kpi icon={<ChefHat size={16} />} label={<span className="inline-flex items-center gap-1">Menu contribution (pre-loss) <Hint text="Each meal's margin × how many sold, added up — BEFORE food losses. Your true bottom line is 'Net contribution' in the P&L above, which subtracts losses." /></span>} value={formatCents(totalContribution)} />
-        <Kpi icon={<AlertTriangle size={16} />} label={<span className="inline-flex items-center gap-1">Money-losing meals <Hint text="Meals priced below what they cost to make — every one you sell loses money. Reprice, re-cost the recipe, or retire them." /></span>} value={losers} />
+        <Kpi icon={<AlertTriangle size={16} />} label={<span className="inline-flex items-center gap-1">Money-losing meals <Hint text="Meals priced below what they cost to make — every one you sell loses money. Reprice, re-cost the recipe, or retire them." /></span>} value={<span style={{ color: losers ? "var(--clay)" : "var(--ink)", fontWeight: losers ? 700 : 500 }}>{losers}</span>} />
       </div>
 
       <div className="mb-5 scroll-mt-6" id="price-coach">

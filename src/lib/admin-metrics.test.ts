@@ -17,9 +17,10 @@ describe("billingBadge", () => {
     expect(billingBadge({ ...base, billingStatus: "active" }, now)).toMatchObject({ state: "subscribed", label: "Paying", paying: true });
     expect(billingBadge({ ...base, billingStatus: "past_due" }, now)).toMatchObject({ state: "past_due", tone: "clay", paying: true });
   });
-  it("trial shows days left and turns clay inside the last week", () => {
+  it("trial shows days left and turns amber (watch) inside the last week", () => {
     expect(billingBadge({ ...base, trialEndsAt: day(12) }, now)).toMatchObject({ state: "trialing", label: "Trial · 12d left", tone: "muted" });
-    expect(billingBadge({ ...base, trialEndsAt: day(3) }, now)).toMatchObject({ label: "Trial · 3d left", tone: "clay" });
+    expect(billingBadge({ ...base, trialEndsAt: day(3) }, now)).toMatchObject({ label: "Trial · 3d left", tone: "amber" });
+    expect(billingBadge({ ...base, billingStatus: "past_due" }, now).urgent).toBe(true);
   });
   it("ended trial with no subscription is locked; canceled is canceled", () => {
     expect(billingBadge({ ...base, trialEndsAt: day(-1) }, now).state).toBe("locked");
