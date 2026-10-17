@@ -57,6 +57,8 @@ export type MealFormInitial = {
   swatch: string;
   imageUrl: string;
   shelfLifeDays: string;
+  isAddOn: boolean;
+  upsellPrompt: string;
   expectedServings: string;
   actualServings: string;
   prepNotes: string;
@@ -541,6 +543,25 @@ export function MealForm({
               Active (visible in storefront)
             </span>
           </label>
+        </div>
+        <div className="mt-4 rounded-lg border p-3" style={{ borderColor: "var(--line)", background: "var(--paper)" }}>
+          <label className="flex items-start gap-2 cursor-pointer select-none">
+            <input type="checkbox" name="isAddOn" defaultChecked={initial.isAddOn} className="mt-1" />
+            <span>
+              <span className="block text-[13px] font-medium" style={{ color: "var(--ink)" }}>Offer as an add-on at checkout</span>
+              <span className="block text-[12px]" style={{ color: "var(--muted)" }}>
+                Shows under “Add to your order” in the cart when it isn’t already there. Best for sauces, snacks, extra protein, desserts — the small items that lift the average order.
+              </span>
+            </span>
+          </label>
+          <input
+            name="upsellPrompt"
+            defaultValue={initial.upsellPrompt}
+            placeholder="Optional one-liner, e.g. “Pairs with any bowl” or “Most people add two”"
+            maxLength={80}
+            className={`${INP} mt-2`}
+            style={inputStyle}
+          />
         </div>
       </Card>
 

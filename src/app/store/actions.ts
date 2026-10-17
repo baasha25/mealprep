@@ -109,6 +109,8 @@ const PlaceOrderInput = z.object({
         optionIds: z.array(z.string().min(1)).max(20).optional(),
         // Per-item delivery date when a one-time order is split across two days.
         deliveryDate: z.string().datetime().optional(),
+        // True when the customer added it from the checkout "Add to your order" strip.
+        upsell: z.boolean().optional(),
       }),
     )
     .min(1, "Your cart is empty."),
@@ -227,6 +229,7 @@ export async function placeOrder(input: PlaceOrderInputT): Promise<PlaceOrderRes
       deliveryDate: itemDates[idx],
       optionsSnapshot: r.picks.length ? r.picks : undefined,
       optionsKey: r.optionsKey || null,
+      addedVia: i.upsell ? "upsell" : null,
     };
   });
 

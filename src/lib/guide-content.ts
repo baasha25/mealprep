@@ -210,6 +210,7 @@ export const GUIDE: GuideArea[] = [
           ["Retire / Restore", "Retire takes a meal off the storefront but KEEPS its recipe (ingredients, method, costs) — it moves to the Retired tab. Restore brings it back exactly as it was. Nothing is lost, so you can rotate a menu item out for the season and bring it back later."],
           ["On menu / Retired / All", "Tabs that filter the library: what's currently sold, what you've retired, or everything. The search box finds a recipe by name or diet."],
           ["Recipe / ingredients", "The ingredients (and amounts) that make the meal. Optional to sell, but required for cost, margin, purchasing, and waste numbers to work."],
+          ["Offer as an add-on at checkout", "Tick this on small items (sauces, snacks, extra protein, desserts). They appear under \"Add to your order\" in the customer\u2019s cart whenever they aren\u2019t already in it, with an optional one-liner. Up to three show at a time, cheapest first. Analytics shows how often they get added and what they bring in."],
         ],
         tips: ["Prices can be changed any time — Menu → click the meal → edit → Save. The change is live immediately.", "No photo yet? The card falls back to a clean color tile, so your storefront still looks tidy — but a real photo converts far better.", "Retiring is also the safe way to 'remove' a meal that appears in past orders — its history and recipe stay intact."],
       },
@@ -521,6 +522,7 @@ export const GUIDE: GuideArea[] = [
           ["Subscription plans", "Your Meal Plans shown as weekly/bi-weekly options with the per-week price."],
           ["Meal cards", "Each meal with its price, diet tag, calories, protein, and star rating."],
           ["Your order", "The customer's running cart before checkout."],
+          ["Add to your order", "Up to three of your checkout add-ons (meals you ticked \"Offer as an add-on\" in Menu) with a one-tap + Add. Only shown for items not already in the cart."],
           ["Delivery day (one-time orders)", "When you run more than one delivery day, a one-time customer picks a day at checkout — and can tick \"Split my order across two delivery days\" to receive some meals on each day, assigning each meal itself. On a split order, the packing slip shows which meals go on which day, flagged \"Split delivery.\""],
         ],
         tips: [

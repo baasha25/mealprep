@@ -82,6 +82,8 @@ export default async function StorePage({
     priceCents: m.priceCents,
     swatch: m.swatch,
     imageUrl: cldImage(m.imageUrl, { w: 700, h: 400 }),
+    isAddOn: m.isAddOn,
+    upsellPrompt: m.upsellPrompt,
     allergens: m.allergens,
     calories: m.calories,
     proteinG: m.proteinG,

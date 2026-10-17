@@ -39,6 +39,8 @@ export default async function EditMealPage({
     active: meal.active,
     swatch: meal.swatch,
     imageUrl: meal.imageUrl ?? "",
+    isAddOn: meal.isAddOn,
+    upsellPrompt: meal.upsellPrompt ?? "",
     shelfLifeDays: meal.shelfLifeDays != null ? String(meal.shelfLifeDays) : "",
     expectedServings: meal.expectedServings != null ? String(meal.expectedServings) : "",
     actualServings: meal.actualServings != null ? String(meal.actualServings) : "",

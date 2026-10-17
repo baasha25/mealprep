@@ -23,11 +23,16 @@ export default async function AnalyticsPage({
     db.subscription.count({ where: { businessId: business.id, status: "active" } }),
     db.orderItem.findMany({
       where: { order: where },
-      select: { nameSnapshot: true, qty: true, unitPriceCentsSnapshot: true },
+      select: { nameSnapshot: true, qty: true, unitPriceCentsSnapshot: true, addedVia: true, orderId: true },
     }),
   ]);
 
   const revenueCents = orders.reduce((s, o) => s + o.totalCents, 0);
+  // Checkout add-ons: how often the "Add to your order" strip converts, and what it adds.
+  const upsellItems = orderItems.filter((it) => it.addedVia === "upsell");
+  const upsellRevenueCents = upsellItems.reduce((s, it) => s + it.qty * it.unitPriceCentsSnapshot, 0);
+  const ordersWithUpsell = new Set(upsellItems.map((it) => it.orderId)).size;
+  const attachPct = orders.length ? Math.round((ordersWithUpsell / orders.length) * 100) : 0;
   const aovCents = orders.length ? Math.round(revenueCents / orders.length) : 0;
 
   // Top meals by revenue.
@@ -76,6 +81,9 @@ export default async function AnalyticsPage({
         <Kpi icon={<Receipt size={16} />} label="Avg order value" value={formatCents(aovCents)} />
         <Kpi icon={<Repeat size={16} />} label="Active subscribers" value={activeSubs} />
         <Kpi icon={<Users size={16} />} label="Customers" value={customerCount} />
+      </div>
+      <div className="grid sm:grid-cols-4 gap-3.5 mb-6 -mt-3">
+        <Kpi icon={<Receipt size={16} />} label={`Add-ons at checkout · ${attachPct}% of orders`} value={formatCents0(upsellRevenueCents)} delta={upsellItems.length ? `${upsellItems.reduce((s, it) => s + it.qty, 0)} items` : undefined} />
       </div>
 
       <div className="grid lg:grid-cols-[1.5fr_1fr] gap-4">

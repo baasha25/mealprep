@@ -365,6 +365,9 @@ model Meal {
   allergens String[] @default([])
   active    Boolean  @default(true)
   shelfLifeDays Int?  // days the finished meal keeps; drives label "best by" (null = use kitchen default)
+  // Checkout add-on: offered in the cart ("Add to your order") when not already in it.
+  isAddOn       Boolean @default(false)
+  upsellPrompt  String? // optional one-liner shown with the add-on, e.g. "Pairs with any bowl"
   // Recipe yield (food-cost lever #3): servings the recipe is costed for vs. what
   // the kitchen actually gets. If actual < expected, real per-plate cost is higher.
   expectedServings Int? // recipe yield the plate cost assumes
@@ -690,6 +693,7 @@ model OrderItem {
   qty                    Int
   unitPriceCentsSnapshot Int
   nameSnapshot           String
+  addedVia               String? // "upsell" when added from the checkout add-on strip (attach-rate analytics)
   // Per-item delivery date — set when a one-time order is split across two
   // delivery days (each meal assigned to a day). Null = the order's single date.
   deliveryDate           DateTime?

@@ -49,6 +49,8 @@ export type StoreMeal = {
   priceCents: number;
   swatch: string;
   imageUrl: string | null;
+  isAddOn: boolean;
+  upsellPrompt: string | null;
   allergens: string[];
   calories: number;
   proteinG: number;
@@ -99,6 +101,8 @@ export function Storefront({
   // Build-your-own: cart keys for configured meals are "<mealId>|<optionsKey>";
   // plain meals keep their mealId as the key. cartOpts remembers each key's option ids.
   const [cartOpts, setCartOpts] = useState<Record<string, string[]>>({});
+  // Cart keys that were added from the "Add to your order" strip (for attach-rate analytics).
+  const [upsellKeys, setUpsellKeys] = useState<Set<string>>(new Set());
   const [chooser, setChooser] = useState<{ mealId: string; picks: Record<string, string[]>; error: string | null } | null>(null);
   const mealOfKey = (key: string) => mealById.get(key.split("|")[0]);
   const optionPicksOfKey = (key: string) => {
@@ -220,6 +224,7 @@ export function Storefront({
           mealId: key.split("|")[0],
           optionIds: cartOpts[key] ?? [],
           qty,
+          upsell: upsellKeys.has(key) || undefined,
           // Per-item delivery date only when splitting; else the order's single date.
           deliveryDate:
             fulfillment === "delivery" && splitDelivery && deliveryDate ? dateOf(key) : undefined,
@@ -559,6 +564,35 @@ export function Storefront({
                   ) : null;
                 })}
               </div>
+
+              {(() => {
+                const inCart = new Set(Object.keys(cart).map((k) => k.split("|")[0]));
+                const addOns = meals.filter((m) => m.isAddOn && !inCart.has(m.id) && m.optionGroups.length === 0).sort((a, b) => a.priceCents - b.priceCents).slice(0, 3);
+                if (addOns.length === 0) return null;
+                return (
+                  <div className="rounded-lg border p-3 mb-3" style={{ borderColor: "var(--line)", background: "var(--paper)" }}>
+                    <div className="text-[11px] font-semibold uppercase tracking-wide mb-2" style={{ color: "var(--muted)" }}>Add to your order</div>
+                    <div className="space-y-1.5">
+                      {addOns.map((m) => (
+                        <div key={m.id} className="flex items-center gap-2 text-[13px]">
+                          <div className="flex-1 min-w-0">
+                            <div className="truncate" style={{ color: "var(--ink)" }}>{m.name} <span style={{ color: "var(--muted)" }}>· {formatCents(m.priceCents)}</span></div>
+                            {m.upsellPrompt && <div className="text-[11.5px] truncate" style={{ color: "var(--muted)" }}>{m.upsellPrompt}</div>}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => { add(m.id); setUpsellKeys((k) => new Set(k).add(m.id)); }}
+                            className="text-[12px] font-medium px-2.5 py-1 rounded-md"
+                            style={{ background: "var(--pine)", color: "#f4f2ec" }}
+                          >
+                            + Add
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
 
               <button
                 onClick={() => setSubscribe((s) => !s)}
