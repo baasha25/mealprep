@@ -16,6 +16,10 @@ const CreateInput = z.object({
   company: z.string().trim().max(120).optional(),
   code: z.string().trim().min(2, "Code must be at least 2 characters"),
   commissionPct: z.coerce.number().min(0, "Can't be negative").max(50, "Keep it 50% or under"),
+  feeSharePct: z.coerce.number().min(0).max(50).default(20),
+  bonusDollars: z.coerce.number().min(0).max(1000).default(150),
+  stepUpPct: z.coerce.number().min(0).max(50).default(25),
+  stepUpAt: z.coerce.number().int().min(0).max(1000).default(10),
 });
 
 /** Create a partner with a unique ref code and commission rate. */
@@ -27,6 +31,10 @@ export async function createPartner(_prev: ActionResult | null, formData: FormDa
     company: formData.get("company") || undefined,
     code: formData.get("code"),
     commissionPct: formData.get("commissionPct"),
+    feeSharePct: formData.get("feeSharePct") || undefined,
+    bonusDollars: formData.get("bonusDollars") || undefined,
+    stepUpPct: formData.get("stepUpPct") || undefined,
+    stepUpAt: formData.get("stepUpAt") || undefined,
   });
   if (!parsed.success) return { ok: false, message: parsed.error.issues[0]?.message ?? "Invalid details." };
 
@@ -43,6 +51,10 @@ export async function createPartner(_prev: ActionResult | null, formData: FormDa
       company: parsed.data.company || null,
       code,
       commissionBps: Math.round(parsed.data.commissionPct * 100),
+      feeShareBps: Math.round(parsed.data.feeSharePct * 100),
+      activationBonusCents: Math.round(parsed.data.bonusDollars * 100),
+      stepUpBps: Math.round(parsed.data.stepUpPct * 100),
+      stepUpAtKitchens: parsed.data.stepUpAt,
     },
   });
   revalidatePath("/admin/partners");

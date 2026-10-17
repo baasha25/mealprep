@@ -168,6 +168,10 @@ model Partner {
   company         String?
   code            String   @unique // ref link slug, e.g. "cam" → /?ref=cam
   commissionBps   Int      @default(2000) // 20% of the kitchen's subscription payment
+  feeShareBps     Int      @default(2000) // 20% of PrepFlow's platform fee on referred kitchens' sales
+  activationBonusCents Int @default(15000) // one-time $150 when a referred kitchen pays its first invoice
+  stepUpBps       Int      @default(2500) // both recurring shares move to this rate...
+  stepUpAtKitchens Int     @default(10)   // ...once this many referred kitchens are live and paying
   status          String   @default("active") // active | paused
   stripeAccountId String?  @unique // Connect Express account that receives transfers
   payoutsEnabled  Boolean  @default(false) // true once Stripe onboarding is complete
@@ -192,7 +196,8 @@ model PartnerCommission {
   baseAmountCents Int // the invoice amount it was computed from
   currency        String   @default("cad")
   commissionBps   Int // rate snapshot at accrual time
-  sourceInvoiceId String   @unique // Stripe invoice id — idempotency guard
+  kind            String   @default("subscription") // subscription | activation_bonus | platform_fee
+  sourceInvoiceId String   @unique // idempotency guard: Stripe invoice id, or "bonus:<biz>" / "fee:<biz>:<YYYY-MM>"
   periodMonth     String // accrual month, e.g. "2026-09"
   status          String   @default("pending") // pending | paid | void
   createdAt       DateTime @default(now())

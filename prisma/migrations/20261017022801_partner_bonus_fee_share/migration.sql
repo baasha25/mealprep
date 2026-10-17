@@ -1,0 +1,8 @@
+-- AlterTable
+ALTER TABLE "Partner" ADD COLUMN     "activationBonusCents" INTEGER NOT NULL DEFAULT 15000,
+ADD COLUMN     "feeShareBps" INTEGER NOT NULL DEFAULT 2000,
+ADD COLUMN     "stepUpAtKitchens" INTEGER NOT NULL DEFAULT 10,
+ADD COLUMN     "stepUpBps" INTEGER NOT NULL DEFAULT 2500;
+
+-- AlterTable
+ALTER TABLE "PartnerCommission" ADD COLUMN     "kind" TEXT NOT NULL DEFAULT 'subscription';

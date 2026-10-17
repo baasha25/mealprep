@@ -15,13 +15,15 @@ export default async function PartnerStatsPage({ params }: { params: Promise<{ t
     where: { statsToken: token },
     include: {
       _count: { select: { referredBusinesses: true } },
-      commissions: { select: { amountCents: true, status: true } },
+      commissions: { select: { amountCents: true, status: true, kind: true } },
     },
   });
   if (!partner) notFound();
 
   const paid = partner.commissions.filter((c) => c.status === "paid").reduce((s, c) => s + c.amountCents, 0);
   const pending = partner.commissions.filter((c) => c.status === "pending").reduce((s, c) => s + c.amountCents, 0);
+  const byKind = (kind: string) => partner.commissions.filter((c) => c.kind === kind && c.status !== "void").reduce((s, c) => s + c.amountCents, 0);
+  const pct = (bps: number) => `${bps / 100}%`;
   const origin = (await appUrl()) || "https://prepflow.ca";
   const refLink = `${origin}/?ref=${partner.code}`;
 
@@ -38,13 +40,19 @@ export default async function PartnerStatsPage({ params }: { params: Promise<{ t
 
         <h1 className="disp text-[24px] font-medium mb-1" style={{ color: "var(--ink)" }}>Hi {partner.name.split(" ")[0]} 👋</h1>
         <p className="text-[14px] mb-7" style={{ color: "var(--muted)" }}>
-          Here's how your PrepFlow referrals are doing. You earn {(partner.commissionBps / 100).toFixed(partner.commissionBps % 100 ? 1 : 0)}% of each kitchen's monthly software fee, every month they stay.
+          Here's how your PrepFlow referrals are doing. You earn {pct(partner.commissionBps)} of each kitchen's monthly subscription and {pct(partner.feeShareBps)} of the platform fee on their sales, every month they stay{partner.activationBonusCents > 0 ? `, plus a ${formatCents(partner.activationBonusCents)} bonus when each kitchen pays its first invoice` : ""}{partner.stepUpAtKitchens > 0 ? `. Both shares rise to ${pct(partner.stepUpBps)} once ${partner.stepUpAtKitchens} of your kitchens are live` : ""}.
         </p>
 
         <div className="grid grid-cols-3 gap-3 mb-7">
           <Stat label="Kitchens referred" value={String(partner._count.referredBusinesses)} />
           <Stat label="Earned to date" value={formatCents(paid)} accent="var(--pine)" />
           <Stat label="Pending" value={formatCents(pending)} accent="var(--clay)" />
+        </div>
+
+        <div className="grid grid-cols-3 gap-3 mb-7">
+          <Stat label="Subscription share" value={formatCents(byKind("subscription"))} />
+          <Stat label="Platform-fee share" value={formatCents(byKind("platform_fee"))} />
+          <Stat label="Activation bonuses" value={formatCents(byKind("activation_bonus"))} />
         </div>
 
         <div className="rounded-xl border p-4" style={{ borderColor: "var(--line)", background: "var(--surface)" }}>

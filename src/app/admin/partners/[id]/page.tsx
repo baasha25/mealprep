@@ -4,6 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import { requireSuperAdmin } from "@/lib/admin";
 import { db } from "@/lib/db";
 import { formatCents } from "@/lib/money";
+import { KIND_LABEL } from "@/lib/partner-commission";
 import { appUrl } from "@/lib/app-url";
 import { PartnerAdmin } from "./partner-admin";
 
@@ -49,7 +50,7 @@ export default async function PartnerDetailPage({ params }: { params: Promise<{ 
         )}
       </div>
       <p className="text-[13px] mb-6" style={{ color: "var(--muted)" }}>
-        {partner.company ? `${partner.company} · ` : ""}{partner.email} · {(partner.commissionBps / 100).toFixed(partner.commissionBps % 100 ? 1 : 0)}% recurring
+        {partner.company ? `${partner.company} · ` : ""}{partner.email} · {partner.commissionBps / 100}% of subscriptions · {partner.feeShareBps / 100}% of platform fees · ${partner.activationBonusCents / 100} activation bonus{partner.stepUpAtKitchens > 0 ? ` · steps to ${partner.stepUpBps / 100}% at ${partner.stepUpAtKitchens} live kitchens` : ""}
       </p>
 
       <div className="grid grid-cols-3 gap-3 mb-7 max-w-lg">
@@ -88,14 +89,14 @@ export default async function PartnerDetailPage({ params }: { params: Promise<{ 
         <section>
           <h2 className="text-[13px] font-semibold uppercase tracking-wide mb-3" style={{ color: "var(--muted)" }}>Commission ledger</h2>
           {partner.commissions.length === 0 ? (
-            <Empty>No commissions yet — they accrue when a referred kitchen pays a software invoice.</Empty>
+            <Empty>No commissions yet — subscription share and the activation bonus accrue when a referred kitchen pays its first software invoice; platform-fee share accrues monthly.</Empty>
           ) : (
             <div className="rounded-xl border divide-y overflow-hidden" style={{ borderColor: "var(--line)" }}>
               {partner.commissions.map((c) => (
                 <div key={c.id} className="flex items-center justify-between px-4 py-2.5">
                   <div>
                     <div className="text-[13.5px]" style={{ color: "var(--ink)" }}>{c.business.name}</div>
-                    <div className="text-[11.5px]" style={{ color: "var(--muted)" }}>{c.periodMonth} · on {formatCents(c.baseAmountCents)}</div>
+                    <div className="text-[11.5px]" style={{ color: "var(--muted)" }}>{KIND_LABEL[c.kind] ?? c.kind} · {c.periodMonth}{c.kind === "activation_bonus" ? "" : ` · ${c.commissionBps / 100}% of ${formatCents(c.baseAmountCents)}`}</div>
                   </div>
                   <div className="text-right">
                     <div className="text-[13.5px] font-semibold" style={{ color: "var(--ink)" }}>{formatCents(c.amountCents)}</div>

@@ -12,7 +12,13 @@ export function CreatePartnerForm() {
       <Field name="email" label="Email" type="email" placeholder="cam@example.com" required />
       <Field name="company" label="Company (optional)" placeholder="Cam Gordon Consulting" />
       <Field name="code" label="Ref code" placeholder="cam" required hint="Becomes their link: prepflow.ca/?ref=<code>" />
-      <Field name="commissionPct" label="Commission %" type="number" placeholder="20" required defaultValue="20" hint="Percent of the kitchen's monthly software fee" />
+      <Field name="commissionPct" label="Subscription share %" type="number" placeholder="20" required defaultValue="20" hint="Percent of every paid software invoice" />
+      <Field name="feeSharePct" label="Platform-fee share %" type="number" placeholder="20" defaultValue="20" hint="Percent of PrepFlow's platform fee on their kitchens' sales, accrued monthly" />
+      <Field name="bonusDollars" label="Activation bonus ($)" type="number" placeholder="150" defaultValue="150" hint="One-time, when a referred kitchen pays its first invoice" />
+      <div className="grid grid-cols-2 gap-3">
+        <Field name="stepUpPct" label="Step-up rate %" type="number" placeholder="25" defaultValue="25" hint="Both shares move to this rate…" />
+        <Field name="stepUpAt" label="…at this many live kitchens" type="number" placeholder="10" defaultValue="10" hint="0 = no step-up" />
+      </div>
 
       <button
         type="submit"

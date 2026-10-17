@@ -28,3 +28,28 @@ describe("periodMonth", () => {
     expect(periodMonth(new Date("2026-01-01T00:00:00Z"))).toBe("2026-01");
   });
 });
+
+import { effectiveRateBps, feeShareCents, platformFeeCents, monthBounds, previousMonth } from "./partner-commission";
+
+describe("step-up and fee share", () => {
+  it("uses the base rate until the step-up threshold, then the higher rate", () => {
+    expect(effectiveRateBps(2000, 2500, 10, 0)).toBe(2000);
+    expect(effectiveRateBps(2000, 2500, 10, 9)).toBe(2000);
+    expect(effectiveRateBps(2000, 2500, 10, 10)).toBe(2500);
+    expect(effectiveRateBps(2000, 2500, 10, 40)).toBe(2500);
+    expect(effectiveRateBps(2000, 1000, 10, 40)).toBe(2000); // never steps down
+    expect(effectiveRateBps(2000, 2500, 0, 40)).toBe(2000); // disabled threshold
+  });
+  it("fee share: $40,000 sales on Growth (1.25%) → fee $500 → partner 20% = $100", () => {
+    expect(platformFeeCents(4_000_000, 125)).toBe(50_000);
+    expect(feeShareCents(4_000_000, 125, 2000)).toBe(10_000);
+    expect(feeShareCents(4_000_000, 125, 2500)).toBe(12_500); // after step-up
+  });
+  it("month bounds and previous month are UTC calendar months", () => {
+    const b = monthBounds("2026-09");
+    expect(b.start.toISOString()).toBe("2026-09-01T00:00:00.000Z");
+    expect(b.end.toISOString()).toBe("2026-10-01T00:00:00.000Z");
+    expect(previousMonth(new Date("2026-10-02T06:00:00Z"))).toBe("2026-09");
+    expect(previousMonth(new Date("2026-01-15T00:00:00Z"))).toBe("2025-12");
+  });
+});
