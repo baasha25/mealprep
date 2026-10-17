@@ -55,7 +55,7 @@ export function NearbyPrices({ competitors, rows, suggestedCount, isPro, suggest
 
       {/* Add by URL + nearby suggestions */}
       <form className="flex gap-2 mb-2" onSubmit={(e) => { e.preventDefault(); if (!url.trim()) return; run(async () => { const r = await addCompetitor({ url }); if (r.ok) setUrl(""); return r; }); }}>
-        <input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="Competitor website, e.g. powerkitchen.ca" className="flex-1 px-3 py-2 rounded-lg border text-[13px] outline-none" style={{ borderColor: "var(--line)", background: "var(--paper)", color: "var(--ink)" }} />
+        <input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="Competitor website" className="flex-1 px-3 py-2 rounded-lg border text-[13px] outline-none" style={{ borderColor: "var(--line)", background: "var(--paper)", color: "var(--ink)" }} />
         <button type="submit" disabled={pending} className="px-3.5 py-2 rounded-lg text-[13px] font-medium disabled:opacity-60" style={{ background: "var(--pine)", color: "#f4f2ec" }}>{pending ? "Reading…" : "Watch"}</button>
       </form>
       {nearby.length > 0 && (
