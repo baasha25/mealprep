@@ -3,6 +3,9 @@ import { Leaf } from "lucide-react";
 import { db } from "@/lib/db";
 import { formatCents } from "@/lib/money";
 import { appUrl } from "@/lib/app-url";
+import { revenueStatusWhere } from "@/lib/order-status";
+import { billingBadge } from "@/lib/admin-metrics";
+import { TIERS, type TierKey } from "@/lib/tiers";
 import { CopyLink } from "./copy-link";
 
 export const dynamic = "force-dynamic";
@@ -16,6 +19,11 @@ export default async function PartnerStatsPage({ params }: { params: Promise<{ t
     include: {
       _count: { select: { referredBusinesses: true } },
       commissions: { select: { amountCents: true, status: true, kind: true } },
+      referredBusinesses: {
+        where: { isDemo: false },
+        orderBy: { createdAt: "desc" },
+        select: { id: true, name: true, tier: true, createdAt: true, sharePartnerStats: true, trialEndsAt: true, billingStatus: true, billingComped: true, billingSubscriptionId: true },
+      },
     },
   });
   if (!partner) notFound();
@@ -26,6 +34,20 @@ export default async function PartnerStatsPage({ params }: { params: Promise<{ t
   const pct = (bps: number) => `${bps / 100}%`;
   const origin = (await appUrl()) || "https://prepflow.ca";
   const refLink = `${origin}/?ref=${partner.code}`;
+
+  // Consented kitchens only: last month + this month sales and order counts.
+  const now = new Date();
+  const thisStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const lastStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const consented = partner.referredBusinesses.filter((b) => b.sharePartnerStats).map((b) => b.id);
+  const [thisMo, lastMo] = consented.length
+    ? await Promise.all([
+        db.order.groupBy({ by: ["businessId"], where: { businessId: { in: consented }, ...revenueStatusWhere, createdAt: { gte: thisStart } }, _sum: { totalCents: true }, _count: { _all: true } }),
+        db.order.groupBy({ by: ["businessId"], where: { businessId: { in: consented }, ...revenueStatusWhere, createdAt: { gte: lastStart, lt: thisStart } }, _sum: { totalCents: true }, _count: { _all: true } }),
+      ])
+    : [[], []];
+  const tm = new Map(thisMo.map((g) => [g.businessId, g])); const lm = new Map(lastMo.map((g) => [g.businessId, g]));
+  const fmtMonth = (d: Date) => d.toLocaleString("en-US", { month: "short" });
 
   return (
     <div className="min-h-screen" style={{ background: "var(--paper)" }}>
@@ -53,6 +75,41 @@ export default async function PartnerStatsPage({ params }: { params: Promise<{ t
           <Stat label="Subscription share" value={formatCents(byKind("subscription"))} />
           <Stat label="Platform-fee share" value={formatCents(byKind("platform_fee"))} />
           <Stat label="Activation bonuses" value={formatCents(byKind("activation_bonus"))} />
+        </div>
+
+        <div className="rounded-xl border overflow-hidden mb-7" style={{ borderColor: "var(--line)", background: "var(--surface)" }}>
+          <div className="px-4 py-2.5 text-[12px] uppercase tracking-wide flex items-center justify-between" style={{ color: "var(--muted)", borderBottom: "1px solid var(--line)" }}>
+            <span>Your kitchens</span>
+            <span className="normal-case tracking-normal">Sales shown only where the kitchen has agreed to share</span>
+          </div>
+          {partner.referredBusinesses.length === 0 ? (
+            <p className="px-4 py-6 text-[13px]" style={{ color: "var(--muted)" }}>No kitchens yet. Share your link below.</p>
+          ) : (
+            <div className="divide-y" style={{ borderColor: "var(--line)" }}>
+              {partner.referredBusinesses.map((b) => {
+                const badge = billingBadge({ ...b, tier: b.tier as TierKey }, now);
+                const t = tm.get(b.id); const l = lm.get(b.id);
+                return (
+                  <div key={b.id} className="px-4 py-3 grid grid-cols-[1fr_auto] gap-3 items-center">
+                    <div className="min-w-0">
+                      <div className="text-[13.5px] font-medium truncate" style={{ color: "var(--ink)" }}>{b.name}</div>
+                      <div className="text-[11.5px]" style={{ color: "var(--muted)" }}>{TIERS[b.tier as TierKey].name} · {badge.label} · joined {b.createdAt.toLocaleDateString("en-US", { month: "short", day: "numeric" })}</div>
+                    </div>
+                    <div className="text-right text-[12px]" style={{ color: "var(--ink-soft)" }}>
+                      {b.sharePartnerStats ? (
+                        <>
+                          <div><span style={{ color: "var(--muted)" }}>{fmtMonth(lastStart)}:</span> {formatCents(l?._sum.totalCents ?? 0)} · {l?._count._all ?? 0} orders</div>
+                          <div><span style={{ color: "var(--muted)" }}>{fmtMonth(thisStart)} so far:</span> {formatCents(t?._sum.totalCents ?? 0)} · {t?._count._all ?? 0} orders</div>
+                        </>
+                      ) : (
+                        <span style={{ color: "var(--muted)" }}>Not shared</span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         <div className="rounded-xl border p-4" style={{ borderColor: "var(--line)", background: "var(--surface)" }}>

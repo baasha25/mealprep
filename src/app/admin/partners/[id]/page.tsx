@@ -17,7 +17,7 @@ export default async function PartnerDetailPage({ params }: { params: Promise<{ 
   const partner = await db.partner.findUnique({
     where: { id },
     include: {
-      referredBusinesses: { select: { id: true, name: true, tier: true, billingStatus: true, createdAt: true }, orderBy: { createdAt: "desc" } },
+      referredBusinesses: { select: { id: true, name: true, tier: true, billingStatus: true, createdAt: true, sharePartnerStats: true }, orderBy: { createdAt: "desc" } },
       commissions: {
         orderBy: { createdAt: "desc" },
         include: { business: { select: { name: true } } },
@@ -79,7 +79,7 @@ export default async function PartnerDetailPage({ params }: { params: Promise<{ 
               {partner.referredBusinesses.map((b) => (
                 <div key={b.id} className="flex items-center justify-between px-4 py-2.5">
                   <span className="text-[14px]" style={{ color: "var(--ink)" }}>{b.name}</span>
-                  <span className="text-[12px]" style={{ color: "var(--muted)" }}>{b.tier} · {b.billingStatus} · {fmtDate.format(b.createdAt)}</span>
+                  <span className="text-[12px]" style={{ color: "var(--muted)" }}>{b.tier} · {b.billingStatus} · {fmtDate.format(b.createdAt)}{b.sharePartnerStats ? " · shares sales with partner" : ""}</span>
                 </div>
               ))}
             </div>

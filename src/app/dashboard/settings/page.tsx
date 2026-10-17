@@ -7,6 +7,9 @@ import { SettingsForm, type SettingsInitial } from "./settings-form";
 
 export default async function SettingsPage() {
   const { business } = await requireOwner();
+  const referredBy = business.referredByPartnerId
+    ? await db.partner.findUnique({ where: { id: business.referredByPartnerId }, select: { name: true } })
+    : null;
 
   // Ensure a settings row exists (defaults defined in the Prisma schema).
   const settings = await db.businessSettings.upsert({
@@ -22,6 +25,8 @@ export default async function SettingsPage() {
     brandColor: business.brandColor,
     logoUrl: business.logoUrl ?? "",
     customDomain: business.customDomain ?? "",
+    sharePartnerStats: business.sharePartnerStats,
+    referredByPartnerName: referredBy?.name ?? null,
     isPro: effectiveTier({ tier: business.tier as TierKey, trialEndsAt: business.trialEndsAt }) === "pro",
     tier: business.tier as TierKey,
     subDiscount: bpsToPercent(settings.subDiscountBps),

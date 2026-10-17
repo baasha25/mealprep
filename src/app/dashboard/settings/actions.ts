@@ -64,6 +64,7 @@ const SettingsInput = z.object({
   winBackDays: z.coerce.number().int().min(7).max(365),
   winBackCouponCode: z.string().trim().toUpperCase().max(24).optional().default(""),
   notifyReviewRequest: z.boolean(),
+  sharePartnerStats: z.boolean(),
   googleReviewUrl: z.string().trim().max(300).optional().default("").refine((v) => v === "" || /^https:\/\/(g\.page|search\.google\.com|www\.google\.com|maps\.app\.goo\.gl|goo\.gl|business\.google\.com)\//.test(v), "Paste the link Google gives you under 'Ask for reviews' (it starts with https://g.page/ or https://search.google.com/)."),
   reviewRequestDays: z.coerce.number().int().min(1).max(14),
   adminMinutesPerOrder: z.coerce.number().int().min(0).max(60),
@@ -119,6 +120,7 @@ export async function updateSettings(
     winBackDays: formData.get("winBackDays") ?? 45,
     winBackCouponCode: formData.get("winBackCouponCode") ?? "",
     notifyReviewRequest: formData.get("notifyReviewRequest") === "on",
+    sharePartnerStats: formData.get("sharePartnerStats") === "on",
     googleReviewUrl: formData.get("googleReviewUrl") ?? "",
     reviewRequestDays: formData.get("reviewRequestDays") ?? 2,
     adminMinutesPerOrder: formData.get("adminMinutesPerOrder") ?? 4,
@@ -149,7 +151,7 @@ export async function updateSettings(
   await db.$transaction([
     db.business.update({
       where: { id: business.id },
-      data: { name: d.name, brandColor: d.brandColor, logoUrl: d.logoUrl, customDomain: d.customDomain || null, tier: effectiveTier },
+      data: { name: d.name, brandColor: d.brandColor, logoUrl: d.logoUrl, customDomain: d.customDomain || null, tier: effectiveTier, sharePartnerStats: d.sharePartnerStats },
     }),
     db.businessSettings.upsert({
       where: { businessId: business.id },

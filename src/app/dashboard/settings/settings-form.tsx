@@ -14,6 +14,8 @@ export type SettingsInitial = {
   brandColor: string;
   logoUrl: string;
   customDomain: string;
+  sharePartnerStats: boolean;
+  referredByPartnerName: string | null;
   isPro: boolean;
   tier: TierKey;
   subDiscount: number;
@@ -532,6 +534,20 @@ export function SettingsForm({ initial }: { initial: SettingsInitial }) {
             </Field>
           </div>
         </div>
+        {initial.referredByPartnerName && (
+          <div className="mt-4 pt-4" style={{ borderTop: "1px solid var(--line)" }}>
+            <p className="text-[12.5px] mb-2.5" style={{ color: "var(--muted)" }}>Your referral partner</p>
+            <label className="flex items-start gap-2 cursor-pointer select-none">
+              <input type="checkbox" name="sharePartnerStats" defaultChecked={initial.sharePartnerStats} className="mt-0.5" />
+              <span>
+                <span className="text-[13px] block" style={{ color: "var(--ink)" }}>Share my monthly totals with {initial.referredByPartnerName}</span>
+                <span className="text-[12px]" style={{ color: "var(--muted)" }}>
+                  {initial.referredByPartnerName} referred you to PrepFlow. With this on, they can see your monthly sales total and order count on their partner page, so they can coach you from real numbers. Never your customers, recipes or anything else. Off by default; turn it off any time.
+                </span>
+              </span>
+            </label>
+          </div>
+        )}
         <div className="mt-4 pt-4" style={{ borderTop: "1px solid var(--line)" }}>
           <Field label="Minutes a manual order used to take you" hint="Used only for the 'admin time saved' estimate in Reports → Monthly value report. Tallying, keying in, labelling — be honest, it's your number.">
             <input name="adminMinutesPerOrder" type="number" min="0" max="60" defaultValue={initial.adminMinutesPerOrder} className={`${INP} w-28`} style={inputStyle} />

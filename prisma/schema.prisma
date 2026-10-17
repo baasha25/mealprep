@@ -138,6 +138,9 @@ model Business {
   // Partner Program: which partner referred this kitchen (if any). Attribution
   // is first-touch, captured from a ?ref=<code> link at signup.
   referredByPartnerId String?
+  // Kitchen's consent to show its monthly sales + order totals (never customer
+  // data) to the partner who referred it, on that partner's stats page.
+  sharePartnerStats   Boolean @default(false)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
