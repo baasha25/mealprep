@@ -19,6 +19,10 @@ import { PriceCoach } from "./price-coach";
 import { ingredientPriceRises } from "@/lib/alerts-data";
 import { PriceSimulator } from "./price-simulator";
 import { MenuBoard, CLASS_STYLE } from "./menu-board";
+import { NearbyPrices } from "./nearby-prices";
+import { loadNearbyPrices } from "@/lib/competitors-data";
+import { effectiveTier, type TierKey } from "@/lib/tiers";
+import ontarioKitchens from "@/data/ontario-kitchens.json";
 import {
   plateCostFromRecipe,
   mealEconomics,
@@ -168,6 +172,10 @@ export default async function ProfitabilityPage({
 
   // Ingredient price-rise alerts from receipts (shared with the Dashboard panel).
   const alerts = await ingredientPriceRises(business.id);
+
+  // Nearby prices (Pro): watched competitors + per-meal comparison.
+  const isPro = effectiveTier({ tier: business.tier as TierKey, trialEndsAt: business.trialEndsAt }) === "pro";
+  const nearby = isPro ? await loadNearbyPrices(business.id) : { competitors: [], rows: [], suggestedCount: 0 };
 
   // Rows the Dashboard sent the owner here to look at (same thresholds as the panel).
   const focusedRows =
@@ -395,6 +403,10 @@ export default async function ProfitabilityPage({
             losing: b.losing,
           }))}
         />
+      </div>
+
+      <div id="nearby-prices" className="scroll-mt-6">
+        <NearbyPrices competitors={nearby.competitors} rows={nearby.rows} suggestedCount={nearby.suggestedCount} isPro={isPro} suggestions={ontarioKitchens as { name: string; domain: string; city: string; region: string; platform: string }[]} />
       </div>
 
       <div className="mb-5 scroll-mt-6" id="simulator">

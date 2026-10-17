@@ -786,3 +786,64 @@ model OperatingCost {
 
   @@index([businessId])
 }
+
+
+/* ============================== Price intelligence: nearby competitors ============================== */
+// A competitor the kitchen chose to watch. We store only public facts: item
+// names, listed prices, a link back, and when we last checked. Never
+// descriptions or photos, never another PrepFlow tenant's data.
+
+model Competitor {
+  id            String   @id @default(cuid())
+  businessId    String
+  name          String
+  domain        String   // bare host, e.g. powerkitchen.ca
+  url           String   // where we fetched from
+  platform      String?  // shopify | woocommerce | unsupported
+  status        String   @default("ok") // ok | unsupported | error
+  lastCheckedAt DateTime?
+  lastError     String?
+  createdAt     DateTime @default(now())
+
+  items   CompetitorItem[]
+
+  @@unique([businessId, domain])
+  @@index([businessId])
+}
+
+model CompetitorItem {
+  id           String     @id @default(cuid())
+  competitorId String
+  competitor   Competitor @relation(fields: [competitorId], references: [id], onDelete: Cascade)
+  externalId   String     // the store's own id/handle — stable across refreshes
+  name         String
+  priceCents   Int
+  url          String?
+  portion      String?    // e.g. "450 g" when the store publishes it
+  active       Boolean    @default(true) // false once it disappears from their menu
+  seenAt       DateTime   @default(now())
+
+  matches CompetitorMatch[]
+
+  @@unique([competitorId, externalId])
+  @@index([competitorId])
+}
+
+// A proposed or confirmed pairing between one of the kitchen's meals and a
+// competitor item. Suggestions come from name matching; the owner confirms or
+// dismisses, and only confirmed pairs feed the comparison.
+model CompetitorMatch {
+  id               String         @id @default(cuid())
+  businessId       String
+  mealId           String
+  competitorItemId String
+  item             CompetitorItem @relation(fields: [competitorItemId], references: [id], onDelete: Cascade)
+  status           String         @default("suggested") // suggested | confirmed | dismissed
+  score            Int            @default(0) // 0–100 name-similarity at suggestion time
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  @@unique([mealId, competitorItemId])
+  @@index([businessId, status])
+  @@index([mealId])
+}
