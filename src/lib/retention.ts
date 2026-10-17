@@ -5,21 +5,21 @@
 
 import { abandonedDue, winBackDue } from "@/lib/insights";
 
-export type RetentionSummary = { scannedOrders: number; abandonedSent: number; scannedCustomers: number; winBackSent: number };
+export type RetentionSummary = { scannedOrders: number; abandonedSent: number; scannedCustomers: number; winBackSent: number; reviewRequestsSent: number };
 
 export async function runRetentionEmails(now: Date = new Date()): Promise<RetentionSummary> {
   const { db } = await import("@/lib/db");
-  const { sendAbandonedCheckout, sendWinBack } = await import("@/lib/email");
+  const { sendAbandonedCheckout, sendWinBack, sendReviewRequest } = await import("@/lib/email");
   const { appUrl } = await import("@/lib/app-url");
   const { revenueStatusWhere } = await import("@/lib/order-status");
   const origin = await appUrl();
-  const summary: RetentionSummary = { scannedOrders: 0, abandonedSent: 0, scannedCustomers: 0, winBackSent: 0 };
+  const summary: RetentionSummary = { scannedOrders: 0, abandonedSent: 0, scannedCustomers: 0, winBackSent: 0, reviewRequestsSent: 0 };
 
   const businesses = await db.business.findMany({
     where: { isDemo: false, slug: { not: null } },
     select: {
       id: true, name: true, brandColor: true, slug: true,
-      settings: { select: { notifyAbandoned: true, notifyWinBack: true, winBackDays: true, winBackCouponCode: true } },
+      settings: { select: { notifyAbandoned: true, notifyWinBack: true, winBackDays: true, winBackCouponCode: true, notifyReviewRequest: true, googleReviewUrl: true, reviewRequestDays: true } },
     },
   });
   const bizById = new Map(businesses.map((b) => [b.id, b]));
@@ -106,6 +106,59 @@ export async function runRetentionEmails(now: Date = new Date()): Promise<Retent
         days,
       });
       summary.winBackSent++;
+    }
+  }
+
+  // ── Review requests: N days after a delivered order, ask for a Google review ──
+  // One per customer per 30 days; never for demo tenants; only when the kitchen
+  // turned it on and pasted its Google review link.
+  for (const biz of businesses) {
+    const st = biz.settings;
+    if (!st?.notifyReviewRequest || !st.googleReviewUrl || !biz.slug) continue;
+    const days = Math.max(1, st.reviewRequestDays ?? 2);
+    const windowEnd = new Date(now.getTime() - days * 86_400_000);
+    const windowStart = new Date(now.getTime() - (days + 12) * 86_400_000);
+    const delivered = await db.order.findMany({
+      where: {
+        businessId: biz.id,
+        status: "fulfilled",
+        customerId: { not: null },
+        OR: [
+          { deliveryDate: { gte: windowStart, lte: windowEnd } },
+          { deliveryDate: null, updatedAt: { gte: windowStart, lte: windowEnd } },
+        ],
+      },
+      orderBy: { updatedAt: "desc" },
+      take: 200,
+      select: { id: true, customerId: true, customer: { select: { name: true, email: true } }, items: { select: { nameSnapshot: true, qty: true } } },
+    });
+    if (delivered.length === 0) continue;
+    const custIds = [...new Set(delivered.map((o) => o.customerId as string))];
+    const recent = await db.sentNotification.findMany({
+      where: { businessId: biz.id, type: "review_request", targetId: { in: custIds }, createdAt: { gte: new Date(now.getTime() - 30 * 86_400_000) } },
+      select: { targetId: true },
+    });
+    const cooled = new Set(recent.map((r) => r.targetId));
+    const asked = new Set<string>();
+    for (const o of delivered) {
+      const cid = o.customerId as string;
+      if (!o.customer?.email || cooled.has(cid) || asked.has(cid)) continue;
+      try {
+        await db.sentNotification.create({ data: { businessId: biz.id, type: "review_request", targetId: cid, forDate: o.id } });
+      } catch {
+        continue;
+      }
+      asked.add(cid);
+      await sendReviewRequest({
+        to: o.customer.email,
+        customerName: o.customer.name,
+        businessName: biz.name,
+        brandColor: biz.brandColor,
+        googleReviewUrl: st.googleReviewUrl,
+        storeUrl: `${origin}/store/${biz.slug}`,
+        itemsSummary: o.items.slice(0, 3).map((i) => `${i.qty}× ${i.nameSnapshot}`).join(" · "),
+      });
+      summary.reviewRequestsSent++;
     }
   }
 

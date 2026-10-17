@@ -257,6 +257,11 @@ model BusinessSettings {
   notifyWinBack     Boolean @default(false) // "we miss you" after winBackDays without a paid order (no active sub)
   winBackDays       Int     @default(45)
   winBackCouponCode String? // optional code to include in the win-back email
+  // Google review requests: a few days after a delivered order, ask the customer
+  // for a public review (link the kitchen pastes from Google Business Profile).
+  notifyReviewRequest Boolean @default(false)
+  googleReviewUrl     String?
+  reviewRequestDays   Int     @default(2) // days after delivery to ask
   // Monthly value report: estimated minutes a manual order tally takes (kitchen-adjustable).
   adminMinutesPerOrder Int  @default(4)
 

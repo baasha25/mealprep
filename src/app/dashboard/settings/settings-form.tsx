@@ -36,6 +36,9 @@ export type SettingsInitial = {
   notifyWinBack: boolean;
   winBackDays: number;
   winBackCouponCode: string;
+  notifyReviewRequest: boolean;
+  googleReviewUrl: string;
+  reviewRequestDays: number;
   adminMinutesPerOrder: number;
   loyaltyPointsPerDollar: number;
   loyaltyRedeemCentsPerPoint: number;
@@ -510,6 +513,22 @@ export function SettingsForm({ initial }: { initial: SettingsInitial }) {
             </Field>
             <Field label="Win-back coupon code (optional)" hint="A coupon from Marketing to include in the email, e.g. COMEBACK10.">
               <input name="winBackCouponCode" defaultValue={initial.winBackCouponCode} placeholder="COMEBACK10" className={INP} style={inputStyle} />
+            </Field>
+          </div>
+          <label className="flex items-start gap-2 mt-4 cursor-pointer select-none">
+            <input type="checkbox" name="notifyReviewRequest" defaultChecked={initial.notifyReviewRequest} className="mt-0.5" />
+            <span>
+              <span className="text-[13px] block" style={{ color: "var(--ink)" }}>Google review request</span>
+              <span className="text-[12px]" style={{ color: "var(--muted)" }}>“How was your order?” with a button to your Google review page, a few days after each delivered order. At most one per customer per 30 days. Needs your review link below.</span>
+            </span>
+          </label>
+          <div className="grid sm:grid-cols-[1fr_160px] gap-4 mt-3">
+            <Field label="Your Google review link" hint="Google Business Profile → Ask for reviews → copy the link (it looks like g.page/r/…/review).">
+              <input name="googleReviewUrl" type="url" defaultValue={initial.googleReviewUrl} placeholder="https://g.page/r/…/review" className={INP} style={inputStyle} />
+              <ErrorText msg={errors.googleReviewUrl} />
+            </Field>
+            <Field label="Days after delivery" hint="1–14. Two is typical: they've eaten it, it's still fresh.">
+              <input name="reviewRequestDays" type="number" min="1" max="14" defaultValue={initial.reviewRequestDays} className={INP} style={inputStyle} />
             </Field>
           </div>
         </div>

@@ -63,6 +63,9 @@ const SettingsInput = z.object({
   notifyWinBack: z.boolean(),
   winBackDays: z.coerce.number().int().min(7).max(365),
   winBackCouponCode: z.string().trim().toUpperCase().max(24).optional().default(""),
+  notifyReviewRequest: z.boolean(),
+  googleReviewUrl: z.string().trim().max(300).optional().default("").refine((v) => v === "" || /^https:\/\/(g\.page|search\.google\.com|www\.google\.com|maps\.app\.goo\.gl|goo\.gl|business\.google\.com)\//.test(v), "Paste the link Google gives you under 'Ask for reviews' (it starts with https://g.page/ or https://search.google.com/)."),
+  reviewRequestDays: z.coerce.number().int().min(1).max(14),
   adminMinutesPerOrder: z.coerce.number().int().min(0).max(60),
 });
 
@@ -115,6 +118,9 @@ export async function updateSettings(
     notifyWinBack: formData.get("notifyWinBack") === "on",
     winBackDays: formData.get("winBackDays") ?? 45,
     winBackCouponCode: formData.get("winBackCouponCode") ?? "",
+    notifyReviewRequest: formData.get("notifyReviewRequest") === "on",
+    googleReviewUrl: formData.get("googleReviewUrl") ?? "",
+    reviewRequestDays: formData.get("reviewRequestDays") ?? 2,
     adminMinutesPerOrder: formData.get("adminMinutesPerOrder") ?? 4,
   });
 
@@ -172,6 +178,9 @@ export async function updateSettings(
         notifyWinBack: d.notifyWinBack,
         winBackDays: d.winBackDays,
         winBackCouponCode: d.winBackCouponCode || null,
+        notifyReviewRequest: d.notifyReviewRequest,
+        googleReviewUrl: d.googleReviewUrl || null,
+        reviewRequestDays: d.reviewRequestDays,
         adminMinutesPerOrder: d.adminMinutesPerOrder,
       },
       update: {
@@ -198,6 +207,9 @@ export async function updateSettings(
         notifyWinBack: d.notifyWinBack,
         winBackDays: d.winBackDays,
         winBackCouponCode: d.winBackCouponCode || null,
+        notifyReviewRequest: d.notifyReviewRequest,
+        googleReviewUrl: d.googleReviewUrl || null,
+        reviewRequestDays: d.reviewRequestDays,
         adminMinutesPerOrder: d.adminMinutesPerOrder,
       },
     }),

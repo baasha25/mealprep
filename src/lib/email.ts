@@ -400,6 +400,31 @@ export async function sendWinBack(opts: {
   });
 }
 
+/** Review request — a few days after a delivered order, ask for a public Google review. */
+export async function sendReviewRequest(opts: {
+  to: string;
+  customerName: string;
+  businessName: string;
+  brandColor?: string;
+  googleReviewUrl: string;
+  storeUrl: string;
+  itemsSummary: string;
+}): Promise<void> {
+  const first = opts.customerName.split(" ")[0] || "there";
+  await send({
+    to: opts.to,
+    subject: `How was your ${opts.businessName} order, ${first}?`,
+    businessName: opts.businessName,
+    brandColor: opts.brandColor,
+    heading: `How was it, ${escapeHtml(first)}?`,
+    subheading: `${escapeHtml(opts.itemsSummary)}`,
+    bodyHtml: `
+      <p style="margin:0 0 14px;color:${INK};font-size:14px;">We're a small kitchen, and a short Google review from you helps more than you'd think. It takes about a minute.</p>
+      <a href="${opts.googleReviewUrl}" style="display:inline-block;background:${opts.brandColor || "#2f4536"};color:#f4f2ec;text-decoration:none;font-size:14px;font-weight:500;padding:10px 18px;border-radius:8px;">Leave a Google review</a>
+      <p style="margin:16px 0 0;color:#6b6656;font-size:12.5px;">Prefer to rate the meals themselves? You can do that any time from <a href="${opts.storeUrl}/account" style="color:${opts.brandColor || "#2f4536"};">your account</a>. If something wasn't right, just reply to this email and we'll make it right.</p>`,
+  });
+}
+
 /** Recurring-charge receipt — sent when a subscription invoice is paid. */
 export async function sendSubscriptionReceipt(opts: {
   to: string;
