@@ -1,9 +1,10 @@
-import Link from "next/link";
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { Leaf } from "lucide-react";
 import { db } from "@/lib/db";
-import { getStorefrontBusiness } from "@/lib/storefront";
-import { cldImage, cldLogo } from "@/lib/cloudinary";
+import { getStorefrontBusiness, publicStoreUrls } from "@/lib/storefront";
+import { cldImage } from "@/lib/cloudinary";
+import { storeTitle, storeDescription, storeJsonLd, jsonLdScript, type SeoMeal } from "@/lib/seo";
+import { StoreHeader } from "./store-header";
 import {
   nextCutoffAt,
   nextDeliveryAfter,
@@ -18,12 +19,44 @@ import { Storefront, type StoreMeal, type StoreReview, type StoreSettings } from
 
 export const dynamic = "force-dynamic";
 
+/** Search + link-preview metadata: the kitchen's own words when set, its facts otherwise. */
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const { slug } = await params;
+  const business = await getStorefrontBusiness(slug);
+  if (!business || !business.settings) return { title: "Storefront not found" };
+  const s = business.settings;
+  const [mealCount, firstPhoto, urls] = await Promise.all([
+    db.meal.count({ where: { businessId: business.id, active: true } }),
+    db.meal.findFirst({ where: { businessId: business.id, active: true, imageUrl: { not: null } }, select: { imageUrl: true }, orderBy: { createdAt: "asc" } }),
+    publicStoreUrls(business),
+  ]);
+  const kitchen = { name: business.name, logoUrl: business.logoUrl, tagline: s.storeTagline, description: s.storeDescription, serviceArea: s.serviceArea };
+  const title = storeTitle(kitchen);
+  const description = storeDescription(kitchen, {
+    mealCount,
+    deliveryDaysLabel: s.fulfillment === "pickup" ? null : describeDeliveryDays(enabledDeliveryDays((s.deliveryDays ?? {}) as Record<string, boolean>)),
+    pickup: s.fulfillment !== "delivery",
+  });
+  const image = cldImage(firstPhoto?.imageUrl, { w: 1200, h: 630 }) ?? undefined;
+  return {
+    title,
+    description,
+    alternates: { canonical: urls.order },
+    robots: business.isDemo ? { index: false, follow: false } : undefined,
+    openGraph: { type: "website", siteName: business.name, title, description, url: urls.order, images: image ? [{ url: image, width: 1200, height: 630 }] : undefined },
+    twitter: { card: image ? "summary_large_image" : "summary", title, description, images: image ? [image] : undefined },
+  };
+}
+
 export default async function StorePage({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ add?: string }>;
 }) {
   const { slug } = await params;
+  const { add } = await searchParams;
   const business = await getStorefrontBusiness(slug);
   if (!business || !business.settings) notFound();
   const s = business.settings;
@@ -101,6 +134,32 @@ export default async function StorePage({
       })),
   }));
 
+  // What search engines read: the kitchen as a FoodEstablishment with its menu
+  // (prices, nutrition, verified ratings), on its canonical public address.
+  const urls = await publicStoreUrls(business);
+  const seoMeals: SeoMeal[] = meals.map((m) => ({
+    id: m.id,
+    name: m.name,
+    description: m.description,
+    diet: m.diet,
+    priceCents: m.priceCents,
+    imageUrl: cldImage(m.imageUrl, { w: 1200, h: 800 }),
+    calories: m.calories,
+    proteinG: m.proteinG,
+    carbsG: m.carbsG,
+    fatG: m.fatG,
+    allergens: m.allergens,
+    ratingAvg: ratingByMeal.get(m.id)?.avg ?? 0,
+    ratingCount: ratingByMeal.get(m.id)?.count ?? 0,
+    reviews: reviewsByMeal.get(m.id) ?? [],
+  }));
+  const jsonLd = storeJsonLd(
+    { name: business.name, logoUrl: business.logoUrl, tagline: s.storeTagline, description: s.storeDescription, serviceArea: s.serviceArea },
+    urls.order,
+    seoMeals,
+    urls.meal,
+  );
+
   // Live order-cut-off countdown, computed in the kitchen's own timezone.
   const tz = s.timezone || DEFAULT_TIMEZONE;
   const cutoffInstant = nextCutoffAt(s.cutoff, tz);
@@ -147,46 +206,16 @@ export default async function StorePage({
           brandColor={business.brandColor}
         />
       )}
-      <header
-        className="border-b"
-        style={{ borderColor: "var(--line)", background: "var(--surface)" }}
-      >
-        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
-          {business.logoUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={cldLogo(business.logoUrl, { h: 44 }) ?? business.logoUrl}
-              alt={business.name}
-              className="h-11 w-auto max-w-[220px] object-contain"
-            />
-          ) : (
-            <div className="flex items-center gap-2.5">
-              <div className="grid place-items-center w-8 h-8 rounded-md" style={{ background: "var(--pine)" }}>
-                <Leaf size={17} color="#f4f2ec" />
-              </div>
-              <div>
-                <div className="disp text-[18px] font-medium leading-none" style={{ color: "var(--ink)" }}>
-                  {business.name}
-                </div>
-                <div className="text-[11.5px]" style={{ color: "var(--muted)" }}>
-                  Fresh meals, made to order
-                </div>
-              </div>
-            </div>
-          )}
-          <Link href={`/store/${slug}/account`} className="text-[13px] font-medium" style={{ color: "var(--pine)" }}>
-            My account →
-          </Link>
-        </div>
-      </header>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdScript(jsonLd) }} />
+      <StoreHeader slug={slug} name={business.name} logoUrl={business.logoUrl} tagline={s.storeTagline} />
 
       <main className="max-w-6xl mx-auto px-6 py-8 fade">
         <div className="mb-7">
           <h1 className="disp text-[30px] leading-none font-medium" style={{ color: "var(--ink)" }}>
-            Order Fresh Meals
+            Order Fresh Meals{s.serviceArea ? <span style={{ color: "var(--ink-soft)" }}> · {s.serviceArea}</span> : null}
           </h1>
           <p className="text-[13.5px] mt-2.5" style={{ color: "var(--ink-soft)" }}>
-            Browse the menu, build your order, and subscribe to save every week.
+            {s.storeTagline || "Browse the menu, build your order, and subscribe to save every week."}
           </p>
         </div>
 
@@ -204,7 +233,7 @@ export default async function StorePage({
           />
         )}
 
-        <Storefront slug={slug} businessName={business.name} meals={storeMeals} settings={settings} />
+        <Storefront slug={slug} businessName={business.name} meals={storeMeals} settings={settings} initialAdd={add} />
       </main>
     </div>
   );

@@ -5,6 +5,8 @@ import { getStorefrontBusiness } from "@/lib/storefront";
 import { ensureSubscriptionFromCheckout } from "@/lib/billing";
 
 export const dynamic = "force-dynamic";
+// Personal pages: never in search results.
+export const metadata = { robots: { index: false, follow: false } };
 
 export default async function SubscribedPage({
   params,

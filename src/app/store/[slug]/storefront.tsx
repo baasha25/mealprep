@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
+import Link from "next/link";
 import {
   Plus,
   Minus,
@@ -70,6 +71,13 @@ export type StoreSettings = PricingSettings & {
   singleDeliveryDay: boolean; // kitchen runs exactly one delivery weekday
 };
 
+/** The option chooser's starting state for a build-your-own meal: its defaults ticked. */
+function defaultChooser(m: StoreMeal) {
+  const picks: Record<string, string[]> = {};
+  for (const g of m.optionGroups) picks[g.id] = g.options.filter((o) => o.isDefault).slice(0, g.maxSelect).map((o) => o.id);
+  return { mealId: m.id, picks, error: null as string | null };
+}
+
 const cardStyle = {
   borderColor: "var(--line)",
   background: "var(--surface)",
@@ -86,24 +94,34 @@ export function Storefront({
   businessName,
   meals,
   settings,
+  initialAdd,
 }: {
   slug: string;
   businessName: string;
   meals: StoreMeal[];
   settings: StoreSettings;
+  /** Meal id from ?add= (the meal page's "Add to order") — added once on load. */
+  initialAdd?: string;
 }) {
   const diets = useMemo(
     () => ["All", ...Array.from(new Set(meals.map((m) => m.diet).filter(Boolean) as string[]))],
     [meals],
   );
   const [diet, setDiet] = useState("All");
-  const [cart, setCart] = useState<Record<string, number>>({});
+  // Arriving from a meal page (?add=<id>): that meal starts in the cart, or its
+  // option chooser starts open. Seeded here (not in an effect) so there is no re-render.
+  const initialMeal = initialAdd ? meals.find((m) => m.id === initialAdd) : undefined;
+  const [cart, setCart] = useState<Record<string, number>>(() =>
+    initialMeal && !initialMeal.optionGroups.length ? { [initialMeal.id]: 1 } : {},
+  );
   // Build-your-own: cart keys for configured meals are "<mealId>|<optionsKey>";
   // plain meals keep their mealId as the key. cartOpts remembers each key's option ids.
   const [cartOpts, setCartOpts] = useState<Record<string, string[]>>({});
   // Cart keys that were added from the "Add to your order" strip (for attach-rate analytics).
   const [upsellKeys, setUpsellKeys] = useState<Set<string>>(new Set());
-  const [chooser, setChooser] = useState<{ mealId: string; picks: Record<string, string[]>; error: string | null } | null>(null);
+  const [chooser, setChooser] = useState<{ mealId: string; picks: Record<string, string[]>; error: string | null } | null>(() =>
+    initialMeal && initialMeal.optionGroups.length ? defaultChooser(initialMeal) : null,
+  );
   const mealOfKey = (key: string) => mealById.get(key.split("|")[0]);
   const optionPicksOfKey = (key: string) => {
     const m = mealOfKey(key);
@@ -120,11 +138,7 @@ export function Storefront({
     const m = mealOfKey(key);
     return m ? nameWithOptions(m.name, optionPicksOfKey(key)) : "";
   };
-  const openChooser = (m: StoreMeal) => {
-    const picks: Record<string, string[]> = {};
-    for (const g of m.optionGroups) picks[g.id] = g.options.filter((o) => o.isDefault).slice(0, g.maxSelect).map((o) => o.id);
-    setChooser({ mealId: m.id, picks, error: null });
-  };
+  const openChooser = (m: StoreMeal) => setChooser(defaultChooser(m));
   const confirmChooser = () => {
     if (!chooser) return;
     const m = mealById.get(chooser.mealId);
@@ -168,6 +182,14 @@ export function Storefront({
 
   const mealById = useMemo(() => new Map(meals.map((m) => [m.id, m])), [meals]);
   const list = meals.filter((m) => diet === "All" || m.diet === diet);
+
+  // After a ?add= arrival: bring the menu into view and drop the query so a
+  // refresh doesn't add the meal again. (The cart itself was seeded above.)
+  useEffect(() => {
+    if (!initialAdd) return;
+    document.getElementById("menu")?.scrollIntoView({ block: "start" });
+    window.history.replaceState(null, "", window.location.pathname);
+  }, [initialAdd]);
 
   const add = (id: string) => setCart((c) => ({ ...c, [id]: (c[id] || 0) + 1 }));
   const sub = (id: string) =>
@@ -389,7 +411,7 @@ export function Storefront({
           );
         })()}
 
-        <div className="grid sm:grid-cols-2 gap-4">
+        <div id="menu" className="grid sm:grid-cols-2 gap-4 scroll-mt-6">
           {list.map((m) => {
             const hasOptions = m.optionGroups.length > 0;
             const qty = hasOptions
@@ -444,7 +466,9 @@ export function Storefront({
                 </div>
                 <div className="p-4 flex flex-col flex-1">
                   <h3 className="text-[14px] font-semibold leading-snug" style={{ color: "var(--ink)" }}>
-                    {m.name}
+                    <Link href={`/store/${slug}/meal/${m.id}`} className="hover:underline" prefetch={false}>
+                      {m.name}
+                    </Link>
                   </h3>
                   {m.description && (
                     <p className="text-[12px] mt-1 mb-2 leading-snug" style={{ color: "var(--muted)" }}>

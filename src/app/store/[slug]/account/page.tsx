@@ -19,6 +19,8 @@ import { RateMeals, type ReviewableMeal } from "@/app/account/rate-meals";
 import { DeliveryAddress } from "@/app/account/delivery-address";
 
 export const dynamic = "force-dynamic";
+// Personal pages: never in search results.
+export const metadata = { robots: { index: false, follow: false } };
 
 export default async function KitchenAccountPage({
   params,

@@ -68,6 +68,10 @@ const SettingsInput = z.object({
   googleReviewUrl: z.string().trim().max(300).optional().default("").refine((v) => v === "" || /^https:\/\/(g\.page|search\.google\.com|www\.google\.com|maps\.app\.goo\.gl|goo\.gl|business\.google\.com)\//.test(v), "Paste the link Google gives you under 'Ask for reviews' (it starts with https://g.page/ or https://search.google.com/)."),
   reviewRequestDays: z.coerce.number().int().min(1).max(14),
   adminMinutesPerOrder: z.coerce.number().int().min(0).max(60),
+  // Search & link previews (Brand)
+  storeTagline: z.string().trim().max(90, "Keep the tagline under 90 characters").optional().default(""),
+  storeDescription: z.string().trim().max(200, "Keep the description under 200 characters — Google shows about 160").optional().default(""),
+  serviceArea: z.string().trim().max(80).optional().default(""),
 });
 
 export type SettingsActionState = {
@@ -124,6 +128,9 @@ export async function updateSettings(
     googleReviewUrl: formData.get("googleReviewUrl") ?? "",
     reviewRequestDays: formData.get("reviewRequestDays") ?? 2,
     adminMinutesPerOrder: formData.get("adminMinutesPerOrder") ?? 4,
+    storeTagline: formData.get("storeTagline") ?? "",
+    storeDescription: formData.get("storeDescription") ?? "",
+    serviceArea: formData.get("serviceArea") ?? "",
   });
 
   if (!parsed.success) {
@@ -184,6 +191,9 @@ export async function updateSettings(
         googleReviewUrl: d.googleReviewUrl || null,
         reviewRequestDays: d.reviewRequestDays,
         adminMinutesPerOrder: d.adminMinutesPerOrder,
+        storeTagline: d.storeTagline || null,
+        storeDescription: d.storeDescription || null,
+        serviceArea: d.serviceArea || null,
       },
       update: {
         subDiscountBps: percentToBps(d.subDiscount),
@@ -213,12 +223,16 @@ export async function updateSettings(
         googleReviewUrl: d.googleReviewUrl || null,
         reviewRequestDays: d.reviewRequestDays,
         adminMinutesPerOrder: d.adminMinutesPerOrder,
+        storeTagline: d.storeTagline || null,
+        storeDescription: d.storeDescription || null,
+        serviceArea: d.serviceArea || null,
       },
     }),
   ]);
 
   revalidatePath("/dashboard/settings");
   revalidatePath("/dashboard");
+  if (business.slug) revalidatePath(`/store/${business.slug}`);
   return { ok: true, message: "Settings saved." };
 }
 

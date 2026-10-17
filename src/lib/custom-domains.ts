@@ -23,19 +23,22 @@ export function normalizeHost(host: string | null | undefined): string {
 }
 
 // Storefront sub-paths a custom domain serves at its root.
-const STORE_PATHS = /^\/(account|success|subscribed)(\/.*)?$/;
+const STORE_PATHS = /^\/(account|success|subscribed|meal)(\/.*)?$/;
+// Per-storefront search files, served at the custom domain's root.
+const SEO_FILES = new Set(["/sitemap.xml", "/robots.txt"]);
 
 /**
  * Where a request on a custom domain should be internally rewritten to.
  * "/"            → /store/<slug>
- * "/account…"    → /store/<slug>/account…   (and /success, /subscribed)
+ * "/account…"    → /store/<slug>/account…   (and /success, /subscribed, /meal/<id>)
+ * "/sitemap.xml", "/robots.txt" → that kitchen's own search files
  * "/store/…", "/api/…", assets, anything else → null (leave untouched).
  */
 export function rewritePathForHost(host: string | null | undefined, pathname: string, map: DomainMap): string | null {
   const slug = map.get(normalizeHost(host));
   if (!slug) return null;
   if (pathname === "/" || pathname === "") return `/store/${slug}`;
-  if (STORE_PATHS.test(pathname)) return `/store/${slug}${pathname}`;
+  if (STORE_PATHS.test(pathname) || SEO_FILES.has(pathname)) return `/store/${slug}${pathname}`;
   return null;
 }
 
@@ -63,5 +66,10 @@ export function activeStorefrontOrigin(
 /** Storefront URLs for a kitchen — on its custom domain when active, else under /store/<slug>. */
 export function storefrontUrls(base: string, slug: string, customOrigin: string | null) {
   const root = customOrigin ?? `${base}/store/${slug}`;
-  return { order: root, account: `${root}/account`, signup: `${root}/account?signup` };
+  return { order: root, account: `${root}/account`, signup: `${root}/account?signup`, sitemap: `${root}/sitemap.xml` };
+}
+
+/** Canonical public URL of one meal's page (on the kitchen's domain when active). */
+export function mealPageUrl(base: string, slug: string, customOrigin: string | null, mealId: string) {
+  return `${storefrontUrls(base, slug, customOrigin).order}/meal/${mealId}`;
 }

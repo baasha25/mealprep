@@ -68,5 +68,9 @@ export const config = {
     // Run on everything except Next internals and files with an extension.
     "/((?!_next|.*\\..*).*)",
     "/",
+    // Dotted paths are skipped above; these two must reach the custom-domain
+    // rewrite so order.theirbrand.com/sitemap.xml serves that kitchen's sitemap.
+    "/sitemap.xml",
+    "/robots.txt",
   ],
 };

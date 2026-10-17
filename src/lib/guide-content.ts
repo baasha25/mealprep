@@ -524,6 +524,8 @@ export const GUIDE: GuideArea[] = [
           ["Meal cards", "Each meal with its price, diet tag, calories, protein, and star rating."],
           ["Your order", "The customer's running cart before checkout."],
           ["Add to your order", "Up to three of your checkout add-ons (meals you ticked \"Offer as an add-on\" in Menu) with a one-tap + Add. Only shown for items not already in the cart."],
+          ["Meal pages", "Every meal name links to its own page — photo, description, price, calories/protein/carbs/fat, allergens, verified reviews, and an Add-to-order button that drops it straight into the cart. These pages are what Google indexes, so a search like \"high protein meal prep Whitby\" can land on your dish, not a competitor's."],
+          ["Google & link previews", "Your storefront and meal pages carry a search title, description, canonical address, link-preview image and schema.org data (kitchen, menu, prices, nutrition, ratings). Set your Service area, Tagline and Search description in Settings → Brand; leave the description blank and we write one from your menu and delivery days. Demo kitchens and account/checkout pages are kept out of search."],
           ["Delivery day (one-time orders)", "When you run more than one delivery day, a one-time customer picks a day at checkout — and can tick \"Split my order across two delivery days\" to receive some meals on each day, assigning each meal itself. On a split order, the packing slip shows which meals go on which day, flagged \"Split delivery.\""],
         ],
         tips: [
@@ -547,6 +549,7 @@ export const GUIDE: GuideArea[] = [
           ["Link", "The raw web address of your storefront (or the account / sign-up pages). Paste it anywhere."],
           ["Paste-ready button (HTML)", "A styled button in your brand color that links to your ordering page — paste the HTML into your website builder."],
           ["Pop-up button", "Same button, but it opens ordering in a pop-up window so customers don't fully leave your site (like the delivery apps). Falls back to a new tab if the browser blocks pop-ups."],
+          ["Google & search — Sitemap", "The address of your storefront's sitemap (your menu page plus every meal page). Paste it into Google Search Console once; Google then finds new meals on its own. On your own domain it lives at yourdomain/sitemap.xml."],
         ],
         tips: [
           "Already have a website you love? Keep it. Point your site's 'Order Now' button at these links and your kitchen runs on PrepFlow behind the scenes — customers never have to rebuild a habit.",
@@ -638,6 +641,7 @@ export const GUIDE: GuideArea[] = [
           ["Subscription discount", "An automatic discount for subscribers vs one-time buyers."],
           ["Points per $1", "How many loyalty points customers earn per dollar spent."],
           ["Brand color", "Your storefront's accent color."],
+          ["Search & link previews", "Service area (city/region — goes into your page title so local searches find you), Tagline (one line under your name on the storefront), and Search description (the sentence under your link in Google and shared links; blank = written automatically from your menu, delivery days and area)."],
         ],
         tips: [
           "Your own domain (Pro, Settings → Brand → Custom domain): serve your storefront at e.g. order.yourkitchen.com. Enter the domain, add a CNAME record pointing it to prepflow.ca at your domain provider, then tell support — we switch it on (SSL + routing) as a concierge step, usually within a business day. Your existing marketing site stays exactly where it is; only ordering moves to your domain.",

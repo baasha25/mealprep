@@ -7,6 +7,8 @@ import { sendOrderConfirmation, sendOwnerNewOrder } from "@/lib/email";
 import { formatCents } from "@/lib/money";
 
 export const dynamic = "force-dynamic";
+// Personal pages: never in search results.
+export const metadata = { robots: { index: false, follow: false } };
 
 export default async function CheckoutSuccessPage({
   params,

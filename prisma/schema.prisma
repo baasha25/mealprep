@@ -268,6 +268,12 @@ model BusinessSettings {
   // Monthly value report: estimated minutes a manual order tally takes (kitchen-adjustable).
   adminMinutesPerOrder Int  @default(4)
 
+  // Storefront search presence (Settings → Brand → Search & link previews).
+  // Drive the page <title>/description, link previews and the JSON-LD Google reads.
+  storeTagline     String? // one line under the kitchen name, e.g. "Chef-made meal prep, delivered across Durham"
+  storeDescription String? // ~160-char search/link-preview description (null = written automatically)
+  serviceArea      String? // city/region for local search, e.g. "Mississauga & Oakville"
+
   // Fulfillment
   cutoff          String   @default("Sat 8:00 PM")
   timezone        String   @default("America/Toronto") // IANA tz the cutoff time is in; powers the storefront countdown

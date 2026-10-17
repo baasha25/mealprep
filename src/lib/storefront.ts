@@ -1,16 +1,33 @@
+import { cache } from "react";
 import { db } from "@/lib/db";
+import { appUrl } from "@/lib/app-url";
+import { parseDomainMap, activeStorefrontOrigin, storefrontUrls, mealPageUrl } from "@/lib/custom-domains";
 
 /**
  * Resolve the kitchen whose public storefront is being viewed, by its slug.
  * Each kitchen has its own storefront at /store/<slug>. Returns null if no
- * kitchen owns that slug.
+ * kitchen owns that slug. Memoized per request so generateMetadata and the
+ * page body share one query.
  */
-export async function getStorefrontBusiness(slug: string) {
+export const getStorefrontBusiness = cache(async (slug: string) => {
   if (!slug) return null;
   return db.business.findUnique({
     where: { slug },
     include: { settings: true },
   });
+});
+
+/**
+ * The public, canonical addresses of a storefront: on the kitchen's own domain
+ * when that is live (CUSTOM_DOMAINS), otherwise under <app>/store/<slug>.
+ * Used for <link rel=canonical>, JSON-LD urls and the per-kitchen sitemap.
+ */
+export async function publicStoreUrls(business: { slug: string | null; customDomain: string | null }) {
+  const slug = business.slug ?? "";
+  const base = await appUrl();
+  const customOrigin = activeStorefrontOrigin(business.customDomain, slug, parseDomainMap(process.env.CUSTOM_DOMAINS));
+  const urls = storefrontUrls(base, slug, customOrigin);
+  return { ...urls, base, customOrigin, meal: (mealId: string) => mealPageUrl(base, slug, customOrigin, mealId) };
 }
 
 /**

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseDomainMap, rewritePathForHost, isValidHostname, normalizeHost, activeStorefrontOrigin, storefrontUrls } from "./custom-domains";
+import { parseDomainMap, rewritePathForHost, isValidHostname, normalizeHost, activeStorefrontOrigin, storefrontUrls, mealPageUrl } from "./custom-domains";
 
 const map = parseDomainMap("order.balancekitchen.ca=balance-kitchen, WWW.Acme.com:3000=acme\nbad-entry, =x, y=");
 
@@ -16,6 +16,12 @@ describe("rewritePathForHost", () => {
     expect(rewritePathForHost("order.balancekitchen.ca", "/", map)).toBe("/store/balance-kitchen");
     expect(rewritePathForHost("ORDER.balancekitchen.ca:443", "/account", map)).toBe("/store/balance-kitchen/account");
     expect(rewritePathForHost("www.acme.com", "/success?x=1".split("?")[0], map)).toBe("/store/acme/success");
+  });
+  it("meal pages and the kitchen's own sitemap/robots live at the domain root", () => {
+    expect(rewritePathForHost("order.balancekitchen.ca", "/meal/clx123", map)).toBe("/store/balance-kitchen/meal/clx123");
+    expect(rewritePathForHost("order.balancekitchen.ca", "/sitemap.xml", map)).toBe("/store/balance-kitchen/sitemap.xml");
+    expect(rewritePathForHost("order.balancekitchen.ca", "/robots.txt", map)).toBe("/store/balance-kitchen/robots.txt");
+    expect(rewritePathForHost("order.balancekitchen.ca", "/sitemap.xml.bak", map)).toBeNull();
   });
   it("leaves /store, /api, assets and unknown hosts alone", () => {
     expect(rewritePathForHost("order.balancekitchen.ca", "/store/balance-kitchen/account", map)).toBeNull();
@@ -50,7 +56,10 @@ describe("activeStorefrontOrigin / storefrontUrls", () => {
       order: "https://order.balancekitchen.ca",
       account: "https://order.balancekitchen.ca/account",
       signup: "https://order.balancekitchen.ca/account?signup",
+      sitemap: "https://order.balancekitchen.ca/sitemap.xml",
     });
     expect(storefrontUrls("https://prepflow.ca", "balance-kitchen", null).order).toBe("https://prepflow.ca/store/balance-kitchen");
+    expect(mealPageUrl("https://prepflow.ca", "balance-kitchen", null, "m1")).toBe("https://prepflow.ca/store/balance-kitchen/meal/m1");
+    expect(mealPageUrl("https://prepflow.ca", "balance-kitchen", "https://order.balancekitchen.ca", "m1")).toBe("https://order.balancekitchen.ca/meal/m1");
   });
 });

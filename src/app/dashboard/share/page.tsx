@@ -54,7 +54,13 @@ export default async function SharePage() {
         sub="Copy these onto your own website or socials — no separate customer site to build."
       />
       {slug ? (
-        <ShareLinks links={links} brandColor={business.brandColor} domainStatus={domainStatus} customDomain={business.customDomain} />
+        <ShareLinks
+          links={links}
+          brandColor={business.brandColor}
+          domainStatus={domainStatus}
+          customDomain={business.customDomain}
+          sitemapUrl={urls.sitemap}
+        />
       ) : (
         <p className="text-[14px]" style={{ color: "var(--muted)" }}>
           Your storefront link isn&apos;t ready yet. Finish setup in Settings and it&apos;ll appear here.

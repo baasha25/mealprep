@@ -33,11 +33,13 @@ export function ShareLinks({
   brandColor,
   domainStatus = null,
   customDomain = null,
+  sitemapUrl = null,
 }: {
   links: ShareLink[];
   brandColor: string;
   domainStatus?: "active" | "pending" | null;
   customDomain?: string | null;
+  sitemapUrl?: string | null;
 }) {
   const [copied, setCopied] = useState<string | null>(null);
 
@@ -151,6 +153,38 @@ export function ShareLinks({
           </div>
         </div>
       ))}
+
+      {sitemapUrl && (
+        <div className="rounded-xl border p-5" style={card}>
+          <div className="text-[15px] font-semibold" style={{ color: "var(--ink)" }}>Google &amp; search</div>
+          <p className="text-[12.5px] mt-1 mb-3" style={{ color: "var(--muted)" }}>
+            Your storefront and every meal have their own search-ready page: title, description, price, nutrition and verified ratings in the format Google reads.
+            To get indexed faster, add your storefront in Google Search Console and submit this sitemap. Set your service area and tagline in Settings → Brand.
+          </p>
+          <div className="text-[11px] font-semibold uppercase tracking-wide mb-1.5" style={{ color: "var(--muted)" }}>
+            Sitemap
+          </div>
+          <div className="flex items-center gap-2">
+            <input
+              readOnly
+              value={sitemapUrl}
+              onFocus={(e) => e.currentTarget.select()}
+              className="flex-1 min-w-0 rounded-lg border px-3 py-2 text-[13px] font-mono outline-none"
+              style={{ borderColor: "var(--line)", background: "var(--paper)", color: "var(--ink)" }}
+            />
+            <CopyBtn id="sitemap" text={sitemapUrl} />
+          </div>
+          <a
+            href="https://search.google.com/search-console"
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1 text-[12.5px] font-medium mt-3"
+            style={{ color: "var(--pine)" }}
+          >
+            Open Google Search Console <ExternalLink size={13} />
+          </a>
+        </div>
+      )}
     </div>
   );
 }

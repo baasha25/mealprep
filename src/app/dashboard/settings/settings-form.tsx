@@ -42,6 +42,10 @@ export type SettingsInitial = {
   googleReviewUrl: string;
   reviewRequestDays: number;
   adminMinutesPerOrder: number;
+  storeTagline: string;
+  storeDescription: string;
+  serviceArea: string;
+  storeUrl: string | null;
   loyaltyPointsPerDollar: number;
   loyaltyRedeemCentsPerPoint: number;
   referralBonusPoints: number;
@@ -241,6 +245,37 @@ export function SettingsForm({ initial }: { initial: SettingsInitial }) {
           </Field>
         </div>
         <LogoUploadField initial={initial.logoUrl} />
+
+        {/* Search & link previews — what Google and shared links show for the storefront */}
+        <div className="mt-5 pt-5" style={{ borderTop: "1px solid var(--line)" }}>
+          <div className="text-[13px] font-semibold" style={{ color: "var(--ink)" }}>Search &amp; link previews</div>
+          <p className="text-[12px] mt-0.5 mb-3" style={{ color: "var(--muted)" }}>
+            Your storefront and every meal already have their own Google-ready page (title, description, prices, nutrition, verified ratings, sitemap).
+            These three fields make them read like you, and help people searching in your area find you.
+            {initial.storeUrl && (
+              <>
+                {" "}Sitemap:{" "}
+                <a href={`${initial.storeUrl}/sitemap.xml`} target="_blank" rel="noreferrer" className="underline" style={{ color: "var(--pine)" }}>
+                  {initial.storeUrl}/sitemap.xml
+                </a>
+              </>
+            )}
+          </p>
+          <div className="grid sm:grid-cols-2 gap-4">
+            <Field label="Service area" hint="City or region you deliver to, e.g. Mississauga & Oakville. Goes in your page title: “<name> · Meal prep in Mississauga & Oakville, delivered”.">
+              <input name="serviceArea" defaultValue={initial.serviceArea} placeholder="Durham Region" maxLength={80} className={INP} style={inputStyle} />
+              <ErrorText msg={errors.serviceArea} />
+            </Field>
+            <Field label="Tagline (one line)" hint="Shown under your name on the storefront, e.g. “Chef-made meal prep, delivered Mondays & Thursdays”.">
+              <input name="storeTagline" defaultValue={initial.storeTagline} placeholder="Fresh meals, made to order" maxLength={90} className={INP} style={inputStyle} />
+              <ErrorText msg={errors.storeTagline} />
+            </Field>
+          </div>
+          <Field className="mt-4" label="Search description" hint="The sentence under your link in Google and in shared links (about 160 characters). Leave blank and we write one from your menu, delivery days and area.">
+            <textarea name="storeDescription" defaultValue={initial.storeDescription} rows={2} maxLength={200} className={INP} style={inputStyle} placeholder="Macro-balanced meals cooked fresh every Sunday in Whitby. Pick your meals, order once or subscribe, delivered Monday across Durham." />
+            <ErrorText msg={errors.storeDescription} />
+          </Field>
+        </div>
       </Card>
 
       {/* Pricing & fees */}
