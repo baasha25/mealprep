@@ -118,6 +118,7 @@ export default async function StorePage({
     deliveryFeeCents: s.deliveryFeeCents,
     processingFeeCents: s.processingFeeCents,
     minOrderCents: s.minOrderCents,
+    minMeals: s.minMeals,
     fulfillment: s.fulfillment,
     pickupLocations: s.pickupLocations,
     deliveryDateOptions,

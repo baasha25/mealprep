@@ -704,6 +704,17 @@ export function Storefront({
                   {formatCents(settings.minOrderCents - totals.subtotalCents)} more.
                 </p>
               )}
+              {totals.belowMinMeals && (
+                <p
+                  className="text-[12px] mb-2.5 px-3 py-2 rounded-md"
+                  style={{
+                    background: "color-mix(in srgb, var(--clay) 9%, transparent)",
+                    color: "var(--clay)",
+                  }}
+                >
+                  Minimum {settings.minMeals} meals per order — add {totals.mealsShort} more.
+                </p>
+              )}
 
               {/* Fulfillment */}
               {canDelivery && canPickup && (
@@ -915,11 +926,11 @@ export function Storefront({
 
               <button
                 onClick={checkout}
-                disabled={pending || totals.belowMinimum || !formValid}
+                disabled={pending || totals.belowMinimum || totals.belowMinMeals || !formValid}
                 className="w-full py-2.5 rounded-lg font-medium text-[13.5px] flex items-center justify-center gap-2 disabled:opacity-60"
                 style={{
-                  background: totals.belowMinimum || !formValid ? "var(--sand)" : "var(--pine)",
-                  color: totals.belowMinimum || !formValid ? "#b3ada0" : "#f4f2ec",
+                  background: totals.belowMinimum || totals.belowMinMeals || !formValid ? "var(--sand)" : "var(--pine)",
+                  color: totals.belowMinimum || totals.belowMinMeals || !formValid ? "#b3ada0" : "#f4f2ec",
                 }}
               >
                 {pending ? "Placing…" : subscribe ? "Start subscription" : "Place order"}

@@ -11,6 +11,8 @@ export type PricingSettings = {
   deliveryFeeCents: number;
   processingFeeCents: number;
   minOrderCents: number;
+  /** Minimum number of meals per order (0 = no minimum). Optional for callers like POS. */
+  minMeals?: number;
 };
 
 export type AppliedCoupon =
@@ -29,6 +31,10 @@ export type OrderTotals = {
   feesCents: number;
   totalCents: number;
   belowMinimum: boolean;
+  /** Cart has items but fewer meals than the kitchen's minimum-meals rule. */
+  belowMinMeals: boolean;
+  /** Meals still needed to reach the minimum (0 when satisfied). */
+  mealsShort: number;
 };
 
 const applyBps = (cents: number, bps: number) =>
@@ -75,6 +81,9 @@ export function computeOrder(opts: {
 
   const totalCents = itemCount > 0 ? afterDiscounts + taxCents + feesCents : 0;
   const belowMinimum = itemCount > 0 && subtotalCents < settings.minOrderCents;
+  const minMeals = Math.max(0, settings.minMeals ?? 0);
+  const belowMinMeals = itemCount > 0 && itemCount < minMeals;
+  const mealsShort = belowMinMeals ? minMeals - itemCount : 0;
 
   return {
     itemCount,
@@ -88,5 +97,7 @@ export function computeOrder(opts: {
     feesCents,
     totalCents,
     belowMinimum,
+    belowMinMeals,
+    mealsShort,
   };
 }

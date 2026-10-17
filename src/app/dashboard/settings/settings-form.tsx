@@ -325,7 +325,7 @@ export function SettingsForm({ initial }: { initial: SettingsInitial }) {
             />
             <ErrorText msg={errors.minOrder} />
           </Field>
-          <Field label="Minimum meals / order">
+          <Field label="Minimum meals / order" hint="Fewest meals a one-time order can contain. 0 = no minimum. Subscriptions follow their plan instead.">
             <input
               name="minMeals"
               type="number"

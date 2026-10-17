@@ -630,6 +630,7 @@ export const GUIDE: GuideArea[] = [
           ["Order cut-off", "The day/time each week after which orders lock for the kitchen (e.g. 'Sat 8:00 PM'). Customers can edit/skip before this; after it, the kitchen's list is fixed."],
           ["Delivery days", "The weekday(s) your kitchen delivers. Tick every day you run. Customers then pick which of those they want: subscribers choose one or both (and split their week across two days if they want), and one-time orders pick a delivery date from these days at checkout."],
           ["Minimum order", "The smallest order value a customer can check out with."],
+          ["Minimum meals / order", "The fewest meals a one-time order can contain (0 = no minimum). Customers see \"add N more\" until they reach it. Subscriptions use their plan\u2019s meals per week instead. Want to take single-meal orders? Set both minimums to 0."],
           ["Subscription discount", "An automatic discount for subscribers vs one-time buyers."],
           ["Points per $1", "How many loyalty points customers earn per dollar spent."],
           ["Brand color", "Your storefront's accent color."],

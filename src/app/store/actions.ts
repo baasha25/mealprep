@@ -256,6 +256,9 @@ export async function placeOrder(input: PlaceOrderInputT): Promise<PlaceOrderRes
   if (base.belowMinimum) {
     return { ok: false, message: `Minimum order is $${(s.minOrderCents / 100).toFixed(2)}.` };
   }
+  if (base.belowMinMeals) {
+    return { ok: false, message: `Minimum ${s.minMeals} meals per order — add ${base.mealsShort} more.` };
+  }
 
   // Loyalty redemption (only if enabled and the customer already has a balance).
   const balance = existing?.loyaltyPoints ?? 0;

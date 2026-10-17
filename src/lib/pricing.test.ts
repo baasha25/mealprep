@@ -124,3 +124,17 @@ describe("computeOrder", () => {
     expect(t.totalCents).toBeGreaterThanOrEqual(0);
   });
 });
+
+describe("minimum meals per order", () => {
+  const line = (qty: number) => ({ mealId: "m1", qty, priceCents: 1400, unitPriceCents: 1400 });
+  it("flags a cart with fewer meals than the minimum and says how many are short", () => {
+    const t = computeOrder({ lines: [line(2)], settings: { ...settings, minMeals: 3 }, subscribe: false });
+    expect(t.belowMinMeals).toBe(true); expect(t.mealsShort).toBe(1);
+  });
+  it("is satisfied at the minimum and ignored when the minimum is 0 or unset", () => {
+    expect(computeOrder({ lines: [line(3)], settings: { ...settings, minMeals: 3 }, subscribe: false }).belowMinMeals).toBe(false);
+    expect(computeOrder({ lines: [line(1)], settings: { ...settings, minMeals: 0 }, subscribe: false }).belowMinMeals).toBe(false);
+    expect(computeOrder({ lines: [line(1)], settings, subscribe: false }).belowMinMeals).toBe(false);
+    expect(computeOrder({ lines: [], settings: { ...settings, minMeals: 3 }, subscribe: false }).belowMinMeals).toBe(false);
+  });
+});
