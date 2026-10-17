@@ -13,6 +13,12 @@ import {
   signCloudinaryParams,
   isCloudinaryUrl,
 } from "@/lib/cloudinary";
+import { ANTHROPIC_ENABLED } from "@/lib/anthropic";
+import { rateLimit } from "@/lib/ratelimit";
+import { publicStoreUrls } from "@/lib/storefront";
+import { templateByKey } from "@/lib/campaign-templates";
+import { draftCampaignCopy } from "@/lib/campaign-copy";
+import { topMealNames } from "@/lib/campaign-data";
 
 export type FormState = { ok: boolean; message?: string };
 
@@ -27,6 +33,15 @@ const CampaignInput = z.object({
     const s = String(v ?? "").trim();
     return s && isCloudinaryUrl(s) ? s : undefined;
   }, z.string().optional()),
+  // A template's suggested coupon, created (if missing) when the campaign sends
+  // so the code in the email actually works at checkout.
+  coupon: z
+    .object({
+      code: z.string().trim().toUpperCase().regex(/^[A-Z0-9-]{3,16}$/, "Coupon code: 3–16 letters/numbers"),
+      type: z.enum(["percent", "flat"]),
+      value: z.number().int().min(1).max(100000),
+    })
+    .optional(),
 });
 
 export type CampaignUploadSignature =
@@ -53,13 +68,29 @@ export async function sendEmailCampaign(input: {
   subject: string;
   message: string;
   imageUrl?: string;
+  coupon?: { code: string; type: "percent" | "flat"; value: number };
 }): Promise<FormState & { count?: number }> {
   const { business } = await requireOwner();
   const parsed = CampaignInput.safeParse(input);
   if (!parsed.success) {
     return { ok: false, message: parsed.error.issues[0]?.message ?? "Invalid campaign." };
   }
-  const { segment, subject, message, imageUrl } = parsed.data;
+  const { segment, subject, message, imageUrl, coupon } = parsed.data;
+
+  // The code promised in the email must exist before anyone clicks.
+  let couponNote = "";
+  if (coupon) {
+    if (coupon.type === "percent" && coupon.value > 100) return { ok: false, message: "A percent coupon can't exceed 100%." };
+    const existing = await db.coupon.findUnique({ where: { businessId_code: { businessId: business.id, code: coupon.code } } });
+    if (!existing) {
+      await db.coupon.create({ data: { businessId: business.id, code: coupon.code, type: coupon.type, value: coupon.value, active: true } });
+      couponNote = ` Coupon ${coupon.code} created.`;
+    } else if (!existing.active) {
+      await db.coupon.update({ where: { id: existing.id }, data: { active: true } });
+      couponNote = ` Coupon ${coupon.code} switched back on.`;
+    }
+    revalidatePath("/dashboard/marketing");
+  }
 
   let emails: string[] = [];
   if (segment === "subscribers") {
@@ -101,7 +132,56 @@ export async function sendEmailCampaign(input: {
       }),
     );
   }
-  return { ok: true, message: `Campaign sent to ${sent} customer${sent === 1 ? "" : "s"}.`, count: sent };
+  return { ok: true, message: `Campaign sent to ${sent} customer${sent === 1 ? "" : "s"}.${couponNote}`, count: sent };
+}
+
+/* ------------------------- AI copy ("Write it for me") ------------------------ */
+
+export type DraftResult = { ok: true; subject: string; message: string } | { ok: false; message: string };
+
+/**
+ * Ask Claude to write (or rewrite) the campaign from the kitchen's own facts:
+ * name, service area, best-selling dishes, cut-off, store link, the chosen
+ * template's occasion and the coupon. Gated by ANTHROPIC_API_KEY; rate-limited.
+ */
+export async function draftCampaign(input: {
+  templateKey?: string;
+  segment: "all" | "lapsed" | "subscribers";
+  subject: string;
+  message: string;
+  coupon?: { code: string; type: "percent" | "flat"; value: number };
+}): Promise<DraftResult> {
+  const { business } = await requireOwner();
+  if (!ANTHROPIC_ENABLED) return { ok: false, message: "AI writing isn't switched on for this installation yet." };
+  if (!(await rateLimit("campaign-draft", business.id, 20, "1 h")).ok) return { ok: false, message: "That's a lot of drafts — try again in an hour." };
+
+  const [settings, top, urls] = await Promise.all([
+    db.businessSettings.findUnique({ where: { businessId: business.id }, select: { serviceArea: true, cutoff: true } }),
+    topMealNames(business.id, 3),
+    publicStoreUrls(business),
+  ]);
+  const t = input.templateKey ? templateByKey(input.templateKey) : undefined;
+  const offer = input.coupon
+    ? `${input.coupon.type === "percent" ? `${input.coupon.value}% off` : `$${(input.coupon.value / 100).toFixed(2)} off`} with code ${input.coupon.code.toUpperCase()}`
+    : null;
+  try {
+    const d = await draftCampaignCopy({
+      kitchen: business.name,
+      serviceArea: settings?.serviceArea ?? null,
+      segment: input.segment,
+      template: t ? { label: t.label, brief: t.brief } : null,
+      currentSubject: String(input.subject ?? "").slice(0, 140),
+      currentMessage: String(input.message ?? "").slice(0, 4000),
+      offer,
+      topMeals: top,
+      storeUrl: urls.order,
+      cutoff: settings?.cutoff ?? "",
+    });
+    return { ok: true, ...d };
+  } catch (err) {
+    console.error("[campaign-draft] failed:", err);
+    return { ok: false, message: "Couldn't write a draft just now. Try again in a moment." };
+  }
 }
 
 /* -------------------------------- Coupons ------------------------------- */

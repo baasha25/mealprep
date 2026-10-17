@@ -1,15 +1,17 @@
 "use client";
 
 import { useActionState, useRef, useState, useTransition } from "react";
-import { Check, Plus, Gift, Send, ImagePlus, Loader2, X } from "lucide-react";
+import { Check, Plus, Gift, Send, ImagePlus, Loader2, X, Sparkles, CalendarDays } from "lucide-react";
 import { Field, INP, btnPrimary } from "@/components/ui";
 import {
   createCoupon,
   createGiftCard,
   sendEmailCampaign,
   signCampaignImageUpload,
+  draftCampaign,
   type FormState,
 } from "./actions";
+import { templatesForDate, fillTemplate, offerLabel, type TemplateVars, type CouponSuggestion } from "@/lib/campaign-templates";
 
 const inputStyle = { borderColor: "var(--line)", background: "var(--paper)", color: "var(--ink)" } as const;
 
@@ -100,16 +102,56 @@ const SEGMENTS: { key: "all" | "lapsed" | "subscribers"; label: string }[] = [
   { key: "subscribers", label: "Active subscribers" },
 ];
 
-export function CampaignForm() {
+export function CampaignForm({
+  vars,
+  aiEnabled,
+  existingCoupons,
+}: {
+  vars: TemplateVars;
+  aiEnabled: boolean;
+  existingCoupons: { code: string; active: boolean }[];
+}) {
   const [pending, start] = useTransition();
+  const [drafting, startDraft] = useTransition();
   const [segment, setSegment] = useState<"all" | "lapsed" | "subscribers">("all");
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
   const [imageUrl, setImageUrl] = useState("");
   const [imgBusy, setImgBusy] = useState(false);
   const [imgError, setImgError] = useState<string | null>(null);
+  const [templateKey, setTemplateKey] = useState<string | null>(null);
+  const [coupon, setCoupon] = useState<CouponSuggestion | null>(null);
+  const [createCouponOnSend, setCreateCouponOnSend] = useState(true);
+  const [draftError, setDraftError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const [state, setState] = useState<FormState | null>(null);
+
+  // Seasonal first — computed once per mount (the month doesn't change mid-edit).
+  const [templates] = useState(() => templatesForDate(new Date()));
+  const existing = coupon ? existingCoupons.find((c) => c.code === coupon.code) : undefined;
+
+  const applyTemplate = (key: string) => {
+    const t = templates.find((x) => x.key === key);
+    if (!t) return;
+    const v = { ...vars, code: t.coupon?.code ?? "", offer: offerLabel(t.coupon) };
+    setTemplateKey(key);
+    setSegment(t.segment);
+    setSubject(fillTemplate(t.subject, v));
+    setMessage(fillTemplate(t.body, v));
+    setCoupon(t.coupon ?? null);
+    setCreateCouponOnSend(true);
+    setState(null);
+    setDraftError(null);
+  };
+
+  const writeForMe = () =>
+    startDraft(async () => {
+      setDraftError(null);
+      const r = await draftCampaign({ templateKey: templateKey ?? undefined, segment, subject, message, coupon: coupon && createCouponOnSend ? coupon : undefined });
+      if (!r.ok) return setDraftError(r.message);
+      setSubject(r.subject);
+      setMessage(r.message);
+    });
 
   async function onPickImage(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -142,17 +184,56 @@ export function CampaignForm() {
   const send = () =>
     start(async () => {
       setState(null);
-      const r = await sendEmailCampaign({ segment, subject, message, imageUrl: imageUrl || undefined });
+      const r = await sendEmailCampaign({
+        segment,
+        subject,
+        message,
+        imageUrl: imageUrl || undefined,
+        coupon: coupon && createCouponOnSend ? coupon : undefined,
+      });
       setState(r);
       if (r.ok) {
         setSubject("");
         setMessage("");
         setImageUrl("");
+        setTemplateKey(null);
+        setCoupon(null);
       }
     });
 
+  const codeInMessage = coupon ? message.includes(coupon.code) || subject.includes(coupon.code) : true;
+
   return (
     <div className="space-y-3">
+      {/* Templates */}
+      <div>
+        <label className="block text-[12.5px] font-medium mb-1.5" style={{ color: "var(--ink)" }}>
+          Start from a template <span style={{ color: "var(--muted)", fontWeight: 400 }}>(seasonal ones first — filled with your kitchen, best sellers, cut-off and link)</span>
+        </label>
+        <div className="flex flex-wrap gap-1.5">
+          {templates.map((t) => (
+            <button
+              key={t.key}
+              type="button"
+              onClick={() => applyTemplate(t.key)}
+              title={t.brief}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[12px] font-medium border"
+              style={{
+                borderColor: templateKey === t.key ? "var(--pine)" : "var(--line)",
+                background: templateKey === t.key ? "color-mix(in srgb, var(--pine) 10%, transparent)" : "var(--paper)",
+                color: "var(--ink)",
+              }}
+            >
+              {t.now && <CalendarDays size={12} style={{ color: "var(--clay)" }} />}
+              {t.label}
+            </button>
+          ))}
+        </div>
+        {templateKey && (
+          <p className="text-[11.5px] mt-1.5" style={{ color: "var(--muted)" }}>{templates.find((t) => t.key === templateKey)?.brief}</p>
+        )}
+      </div>
+
       <div>
         <label className="block text-[12.5px] font-medium mb-1.5" style={{ color: "var(--ink)" }}>Send to</label>
         <div className="inline-flex rounded-lg border p-0.5 flex-wrap" style={{ borderColor: "var(--line)" }}>
@@ -173,7 +254,21 @@ export function CampaignForm() {
         </div>
       </div>
       <div>
-        <label className="block text-[12.5px] font-medium mb-1.5" style={{ color: "var(--ink)" }}>Subject</label>
+        <div className="flex items-center justify-between mb-1.5">
+          <label className="block text-[12.5px] font-medium" style={{ color: "var(--ink)" }}>Subject</label>
+          {aiEnabled && (
+            <button
+              type="button"
+              onClick={writeForMe}
+              disabled={drafting}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[12px] font-medium border disabled:opacity-60"
+              style={{ borderColor: "var(--line)", color: "var(--pine)", background: "var(--surface)" }}
+              title="Writes the subject and message from your kitchen's facts: name, area, best sellers, cut-off, the template's occasion and the coupon. Rewrites what's in the boxes if you've started."
+            >
+              {drafting ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />} {drafting ? "Writing…" : subject || message ? "Rewrite it for me" : "Write it for me"}
+            </button>
+          )}
+        </div>
         <input
           value={subject}
           onChange={(e) => setSubject(e.target.value)}
@@ -182,13 +277,14 @@ export function CampaignForm() {
           className="w-full rounded-lg border px-3 py-2.5 text-[14px] outline-none"
           style={inputStyle}
         />
+        {draftError && <p className="text-[11.5px] mt-1" style={{ color: "var(--clay)" }}>{draftError}</p>}
       </div>
       <div>
         <label className="block text-[12.5px] font-medium mb-1.5" style={{ color: "var(--ink)" }}>Message</label>
         <textarea
           value={message}
           onChange={(e) => setMessage(e.target.value)}
-          rows={5}
+          rows={7}
           maxLength={4000}
           placeholder="Write your email… (blank lines become paragraphs)"
           className="w-full rounded-lg border px-3 py-2.5 text-[14px] outline-none resize-y"
@@ -198,6 +294,23 @@ export function CampaignForm() {
           Formatting: <code>**bold**</code> · <code>[link text](https://…)</code> · a blank line starts a new paragraph.
         </p>
       </div>
+
+      {/* Coupon that goes with the template */}
+      {coupon && (
+        <label className="flex items-start gap-2.5 rounded-lg px-3.5 py-3 cursor-pointer" style={{ background: "var(--paper)", border: "1px solid var(--line)" }}>
+          <input type="checkbox" checked={createCouponOnSend} onChange={(e) => setCreateCouponOnSend(e.target.checked)} className="mt-0.5" />
+          <span className="text-[12.5px]" style={{ color: "var(--ink)" }}>
+            {existing ? (
+              <>Uses your existing coupon <span className="font-mono font-semibold">{coupon.code}</span> ({offerLabel(coupon)}){existing.active ? "" : " — it's switched off; sending turns it back on"}.</>
+            ) : (
+              <>Create coupon <span className="font-mono font-semibold">{coupon.code}</span> ({offerLabel(coupon)}) when I send, so the code in the email works at checkout.</>
+            )}
+            {!codeInMessage && <span className="block mt-0.5" style={{ color: "var(--clay)" }}>The code isn&apos;t in your message any more — add it back or untick this.</span>}
+            <span className="block mt-0.5" style={{ color: "var(--muted)" }}>Remember to switch the coupon off in Coupons when the promotion ends.</span>
+          </span>
+        </label>
+      )}
+
       <div>
         <label className="block text-[12.5px] font-medium mb-1.5" style={{ color: "var(--ink)" }}>Photo <span style={{ color: "var(--muted)", fontWeight: 400 }}>(optional — shows at the top of the email)</span></label>
         <div className="flex items-center gap-3">

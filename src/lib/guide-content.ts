@@ -533,8 +533,14 @@ export const GUIDE: GuideArea[] = [
           ["Gift cards — outstanding", "Total unredeemed gift-card value your customers are holding (a liability you'll fulfill)."],
           ["Gift card — balance 'of' total", "Each card shows remaining balance out of its original amount (e.g. $40.00 of $75.00)."],
           ["Email campaign — Send to", "Choose the audience: All customers, Lapsed (haven't ordered in 45+ days), or Active subscribers."],
+          ["Start from a template", "Thirteen ready emails for the meal-prep calendar: New year reset, Valentine's night in, Spring menu, Mother's Day gift cards, Too hot to cook, Back to routine, Thanksgiving week, Black Friday 48 hours, Holiday gift cards, We miss you, New dishes, Bring a friend, Thank-you to subscribers. Seasonal ones (marked with a calendar icon) sort first. Picking one fills the audience, subject and message with your kitchen name, service area, two best sellers, cut-off and store link; edit anything."],
+          ["Create coupon when I send", "A template's suggested code (e.g. NEWYEAR15, 15% off) is created the moment you send — so the code in the email works at checkout. If the code already exists it's reused (and switched back on if it was off). Switch it off in Coupons when the promotion ends."],
+          ["Write it for me / Rewrite it for me", "Has the email written from your facts only: kitchen name, service area, your two or three best-selling dishes, the cut-off, the template's occasion and the coupon. It never invents dishes, prices or dates. If you've started typing, it rewrites what you have instead. Needs the AI key set on your installation (ask support if the button is missing)."],
         ],
-        tips: ["'Lapsed (45+ days)' is your win-back list — a discount email to people who've drifted is one of the cheapest ways to bring revenue back. Emails send from your verified domain."],
+        tips: [
+          "'Lapsed (45+ days)' is your win-back list — a discount email to people who've drifted is one of the cheapest ways to bring revenue back. Emails send from your verified domain.",
+          "A simple rhythm: one seasonal template a month, 'New dishes' whenever the menu changes, 'We miss you' every six weeks. Set your Service area in Settings → Brand so templates and AI copy name it.",
+        ],
       },
       {
         id: "storefront",

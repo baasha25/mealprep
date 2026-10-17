@@ -5,13 +5,22 @@ import { Page, Head, Card, CardTitle } from "@/components/ui";
 import { formatCents } from "@/lib/money";
 import { CouponForm, GiftCardForm, CampaignForm } from "./forms";
 import { toggleCoupon, deleteCoupon } from "./actions";
+import { topMealNames } from "@/lib/campaign-data";
+import { ANTHROPIC_ENABLED } from "@/lib/anthropic";
+import { publicStoreUrls } from "@/lib/storefront";
+import { templateVars } from "@/lib/campaign-templates";
 
 export default async function MarketingPage() {
   const { business } = await requireOwner();
-  const [coupons, giftCards] = await Promise.all([
+  const [coupons, giftCards, settings, topMeals, urls] = await Promise.all([
     db.coupon.findMany({ where: { businessId: business.id }, orderBy: { code: "asc" } }),
     db.giftCard.findMany({ where: { businessId: business.id }, orderBy: { createdAt: "desc" } }),
+    db.businessSettings.findUnique({ where: { businessId: business.id }, select: { serviceArea: true, cutoff: true } }),
+    topMealNames(business.id, 2),
+    publicStoreUrls(business),
   ]);
+  // Facts the seasonal templates are filled with (kitchen name, area, best sellers, cut-off, store link).
+  const vars = templateVars({ kitchen: business.name, serviceArea: settings?.serviceArea, storeUrl: urls.order, cutoff: settings?.cutoff ?? "", topMeals });
 
   const couponLabel = (c: (typeof coupons)[number]) =>
     c.type === "percent" ? `${c.value}% off` : `${formatCents(c.value)} off`;
@@ -89,10 +98,10 @@ export default async function MarketingPage() {
       <Card className="mt-4">
         <CardTitle icon={<Mail size={15} />} title="Email campaign" />
         <p className="text-[12.5px] mb-4" style={{ color: "var(--muted)" }}>
-          Send a one-off email to a customer segment from your verified domain — win back lapsed
-          customers or announce a promo.
+          Send a one-off email to a customer segment — start from a seasonal template, have it written for you, or type your own.
+          A template&apos;s coupon is created when you send, so the code in the email works at checkout.
         </p>
-        <CampaignForm />
+        <CampaignForm vars={vars} aiEnabled={ANTHROPIC_ENABLED} existingCoupons={coupons.map((c) => ({ code: c.code, active: c.active }))} />
       </Card>
     </Page>
   );
