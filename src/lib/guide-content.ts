@@ -303,6 +303,30 @@ export const GUIDE: GuideArea[] = [
         tips: ["Use the search box to find an order by customer name or order code. Click the arrow on the right to open an order and see its items, or issue a refund."],
       },
       {
+        id: "catering",
+        title: "Catering & large orders",
+        where: "Sales → Catering",
+        does: "Office lunches, team events, parties: a customer asks for a date and headcount, you send a quote, they approve and pay, and the order drops into production like any other. You confirm before anything is charged, so you never cook for an order you didn't price.",
+        use: [
+          "Turn it on in Settings → Catering & large orders (set your minimum notice and minimum meals). Your storefront gets a “Catering & large orders” link.",
+          "A request arrives (you're emailed, and it shows under Needs attention). Open Sales → Catering → the request.",
+          "Build the quote: add meals from your menu (prices fill in), add custom lines (trays, desserts, set-up), a delivery/set-up fee, a discount and a note. Send quote.",
+          "The customer gets an email with the quote and an Approve & pay button. When they pay, the request shows Paid and the order appears in Orders and Kitchen OS with the event date.",
+          "Paid by e-transfer or cash instead? Open the request → Record payment. Can't do it? Decline (with an optional reason) and the customer is told.",
+        ],
+        numbers: [
+          ["New request / Quote sent / Approved · unpaid / Paid / Declined", "Where each request is. Approved means the customer said yes but the card payment didn't finish yet — their link still lets them pay; you can also record an offline payment."],
+          ["Quote (~ on new requests)", "Before you quote, the estimate uses your menu prices for what they picked. After you quote, it's the exact total they'll pay (food after discount + tax + delivery/set-up fee)."],
+          ["Catering revenue this month", "Paid catering orders created this month. These orders are type Catering in Orders and count in Analytics and the P&L like any other paid order."],
+          ["Minimum notice / Minimum meals", "From Settings. Notice is counted in your timezone from today. Under the meal minimum, a customer must describe what they need instead of picking meals — you still get the request and can quote it."],
+        ],
+        tips: [
+          "Kitchen OS counts a catering order in today's stations only when the event is within 7 days; later events are listed in a “Catering events” card so you can plan buying without swamping this week's prep.",
+          "Quotes lock once the customer approves. Need to change something after that? Decline (which cancels the unpaid order) and send a fresh quote, or adjust the order's items from Orders once paid.",
+          "Share the catering link directly with offices and planners: it's your storefront address followed by /catering.",
+        ],
+      },
+      {
         id: "customers",
         title: "Customers",
         where: "Sales → Customers",
@@ -526,6 +550,7 @@ export const GUIDE: GuideArea[] = [
           ["Add to your order", "Up to three of your checkout add-ons (meals you ticked \"Offer as an add-on\" in Menu) with a one-tap + Add. Only shown for items not already in the cart."],
           ["Meal pages", "Every meal name links to its own page — photo, description, price, calories/protein/carbs/fat, allergens, verified reviews, and an Add-to-order button that drops it straight into the cart. These pages are what Google indexes, so a search like \"high protein meal prep Whitby\" can land on your dish, not a competitor's."],
           ["Google & link previews", "Your storefront and meal pages carry a search title, description, canonical address, link-preview image and schema.org data (kitchen, menu, prices, nutrition, ratings). Set your Service area, Tagline and Search description in Settings → Brand; leave the description blank and we write one from your menu and delivery days. Demo kitchens and account/checkout pages are kept out of search."],
+          ["Catering & large orders link", "Shown under the storefront heading when catering is on (Settings → Catering). It opens the request page: date, time, headcount, delivery or pickup, meals with quantities (or a description), and contact details. No payment is taken on this page."],
           ["Delivery day (one-time orders)", "When you run more than one delivery day, a one-time customer picks a day at checkout — and can tick \"Split my order across two delivery days\" to receive some meals on each day, assigning each meal itself. On a split order, the packing slip shows which meals go on which day, flagged \"Split delivery.\""],
         ],
         tips: [
@@ -641,6 +666,7 @@ export const GUIDE: GuideArea[] = [
           ["Subscription discount", "An automatic discount for subscribers vs one-time buyers."],
           ["Points per $1", "How many loyalty points customers earn per dollar spent."],
           ["Brand color", "Your storefront's accent color."],
+          ["Catering & large orders", "Turn storefront catering requests on/off, set the minimum notice in days and the minimum meals, and write the intro shown on the catering page. See Sales → Catering for how quotes work."],
           ["Search & link previews", "Service area (city/region — goes into your page title so local searches find you), Tagline (one line under your name on the storefront), and Search description (the sentence under your link in Google and shared links; blank = written automatically from your menu, delivery days and area)."],
         ],
         tips: [

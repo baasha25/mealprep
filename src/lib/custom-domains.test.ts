@@ -21,6 +21,7 @@ describe("rewritePathForHost", () => {
     expect(rewritePathForHost("order.balancekitchen.ca", "/meal/clx123", map)).toBe("/store/balance-kitchen/meal/clx123");
     expect(rewritePathForHost("order.balancekitchen.ca", "/sitemap.xml", map)).toBe("/store/balance-kitchen/sitemap.xml");
     expect(rewritePathForHost("order.balancekitchen.ca", "/robots.txt", map)).toBe("/store/balance-kitchen/robots.txt");
+    expect(rewritePathForHost("order.balancekitchen.ca", "/catering/abc123", map)).toBe("/store/balance-kitchen/catering/abc123");
     expect(rewritePathForHost("order.balancekitchen.ca", "/sitemap.xml.bak", map)).toBeNull();
   });
   it("leaves /store, /api, assets and unknown hosts alone", () => {

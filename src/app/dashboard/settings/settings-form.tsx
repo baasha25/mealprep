@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useRef, useState } from "react";
-import { Check, Store, Percent, Truck, Star, Bell, ImagePlus, Loader2, X } from "lucide-react";
+import { Check, Store, Percent, Truck, Star, Bell, ImagePlus, Loader2, X, UtensilsCrossed } from "lucide-react";
 import { Card, CardTitle, Field, INP, btnPrimary } from "@/components/ui";
 import { updateSettings, signLogoUpload, type SettingsActionState } from "./actions";
 import { TIERS, TIER_KEYS, feePctLabel, type TierKey } from "@/lib/tiers";
@@ -42,6 +42,10 @@ export type SettingsInitial = {
   googleReviewUrl: string;
   reviewRequestDays: number;
   adminMinutesPerOrder: number;
+  cateringEnabled: boolean;
+  cateringLeadDays: number;
+  cateringMinMeals: number;
+  cateringIntro: string;
   storeTagline: string;
   storeDescription: string;
   serviceArea: string;
@@ -447,6 +451,35 @@ export function SettingsForm({ initial }: { initial: SettingsInitial }) {
       </Card>
 
       {/* Loyalty & referrals */}
+
+      {/* Catering & large orders */}
+      <Card>
+        <div id="catering" className="scroll-mt-6" />
+        <CardTitle icon={<UtensilsCrossed size={15} />} title="Catering & large orders" note="Quote first, charge after approval" />
+        <label className="flex items-start gap-2.5 cursor-pointer">
+          <input type="checkbox" name="cateringEnabled" defaultChecked={initial.cateringEnabled} className="mt-0.5" />
+          <span>
+            <span className="text-[13px] font-medium block" style={{ color: "var(--ink)" }}>Take catering requests on the storefront</span>
+            <span className="text-[12px]" style={{ color: "var(--muted)" }}>
+              Adds a &ldquo;Catering &amp; large orders&rdquo; page where offices and event planners pick a date, headcount and meals (or describe what they need). You build a quote in Sales &rarr; Catering; they approve and pay by card, or you record an e-transfer. Nothing is charged before you confirm.
+            </span>
+          </span>
+        </label>
+        <div className="grid sm:grid-cols-2 gap-4 mt-4">
+          <Field label="Minimum notice (days)" hint="The earliest event date a customer can pick, counted from today in your timezone.">
+            <input name="cateringLeadDays" type="number" min={0} max={60} defaultValue={initial.cateringLeadDays} className={INP} style={inputStyle} />
+            <ErrorText msg={errors.cateringLeadDays} />
+          </Field>
+          <Field label="Minimum meals" hint="Below this, a customer must describe what they need instead of picking meals (you still get the request).">
+            <input name="cateringMinMeals" type="number" min={0} max={1000} defaultValue={initial.cateringMinMeals} className={INP} style={inputStyle} />
+            <ErrorText msg={errors.cateringMinMeals} />
+          </Field>
+        </div>
+        <Field className="mt-4" label="Intro on the catering page (optional)" hint="One or two sentences. Blank = a sensible default mentioning your kitchen name.">
+          <textarea name="cateringIntro" defaultValue={initial.cateringIntro} rows={2} maxLength={300} className={INP} style={inputStyle} placeholder="Boxed lunches, family-style trays and breakfast spreads for offices and events across Durham. Dietary needs welcome." />
+          <ErrorText msg={errors.cateringIntro} />
+        </Field>
+      </Card>
       <Card>
         <Card>
         <CardTitle icon={<Star size={15} />} title="Customer reviews" />

@@ -638,3 +638,94 @@ function escapeHtml(s: string): string {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
 }
+
+
+/* ------------------------------ Catering -------------------------------- */
+
+type CateringEmailBase = { to: string; businessName: string; brandColor?: string; code: string; eventDateLabel: string };
+
+/** Customer: "we got your request" with a link to watch its status. */
+export async function sendCateringRequestReceived(opts: CateringEmailBase & { firstName: string; statusUrl: string; summary: string; leadNote: string }): Promise<void> {
+  await send({
+    to: opts.to,
+    subject: `We got your catering request — ${opts.businessName}`,
+    businessName: opts.businessName,
+    brandColor: opts.brandColor,
+    heading: `Thanks, ${escapeHtml(opts.firstName)} — request received`,
+    subheading: `Request #${opts.code} · ${escapeHtml(opts.eventDateLabel)} · ${escapeHtml(opts.summary)}`,
+    bodyHtml: `
+      <p style="margin:0 0 14px;color:${INK};font-size:14px;line-height:1.5;">${escapeHtml(opts.businessName)} is reviewing it and will send you a quote to approve. Nothing is charged until you approve the quote.</p>
+      <p style="margin:0 0 18px;color:${SOFT};font-size:13px;">${escapeHtml(opts.leadNote)}</p>
+      <a href="${opts.statusUrl}" style="display:inline-block;background:${opts.brandColor || "#2f4536"};color:#f4f2ec;text-decoration:none;font-size:14px;font-weight:500;padding:10px 18px;border-radius:8px;">View your request</a>`,
+  });
+}
+
+/** Owner: a new catering request landed. */
+export async function sendCateringRequestOwner(opts: CateringEmailBase & { name: string; email: string; phone: string | null; company: string | null; summary: string; fulfillment: string; address: string | null; notes: string | null; dashboardUrl: string }): Promise<void> {
+  const rows = [
+    ["Customer", `${escapeHtml(opts.name)}${opts.company ? ` · ${escapeHtml(opts.company)}` : ""}`],
+    ["Contact", `${escapeHtml(opts.email)}${opts.phone ? ` · ${escapeHtml(opts.phone)}` : ""}`],
+    ["Event", escapeHtml(opts.eventDateLabel)],
+    ["Size", escapeHtml(opts.summary)],
+    [opts.fulfillment === "pickup" ? "Pickup" : "Delivery", opts.address ? escapeHtml(opts.address) : opts.fulfillment === "pickup" ? "Customer picks up" : "—"],
+  ]
+    .map(([k, v]) => `<tr><td style="padding:4px 12px 4px 0;color:${SOFT};font-size:13px;white-space:nowrap;">${k}</td><td style="padding:4px 0;color:${INK};font-size:13px;">${v}</td></tr>`)
+    .join("");
+  await send({
+    to: opts.to,
+    subject: `Catering request #${opts.code} — ${opts.eventDateLabel}`,
+    businessName: opts.businessName,
+    brandColor: opts.brandColor,
+    heading: "New catering request",
+    subheading: `#${opts.code} · quote it from the dashboard`,
+    bodyHtml: `
+      <table style="width:100%;margin-bottom:14px;">${rows}</table>
+      ${opts.notes ? `<div style="white-space:pre-wrap;color:${INK};font-size:14px;line-height:1.5;border-top:1px solid ${LINE};padding-top:12px;margin-bottom:14px;">${escapeHtml(opts.notes)}</div>` : ""}
+      <a href="${opts.dashboardUrl}" style="display:inline-block;background:${opts.brandColor || "#2f4536"};color:#f4f2ec;text-decoration:none;font-size:14px;font-weight:500;padding:10px 18px;border-radius:8px;">Open and send a quote</a>`,
+  });
+}
+
+/** Customer: the kitchen's quote, with a button to approve and pay. */
+export async function sendCateringQuote(opts: CateringEmailBase & { firstName: string; quoteUrl: string; items: { nameSnapshot: string; qty: number; unitPriceCentsSnapshot: number }[]; subtotalCents: number; discountCents: number; taxCents: number; deliveryFeeCents: number; totalCents: number; ownerNote: string | null; resend: boolean }): Promise<void> {
+  const line = (label: string, value: string, strong = false) => `
+    <tr>
+      <td style="padding:4px 0;color:${strong ? INK : SOFT};font-size:${strong ? "15px" : "13px"};font-weight:${strong ? "600" : "400"};">${label}</td>
+      <td style="padding:4px 0;color:${strong ? INK : SOFT};font-size:${strong ? "15px" : "13px"};font-weight:${strong ? "600" : "400"};text-align:right;">${value}</td>
+    </tr>`;
+  await send({
+    to: opts.to,
+    subject: `${opts.resend ? "Updated quote" : "Your quote"} #${opts.code} — ${opts.businessName}`,
+    businessName: opts.businessName,
+    brandColor: opts.brandColor,
+    heading: `${opts.resend ? "Updated quote" : "Your catering quote"} · ${formatCents(opts.totalCents)}`,
+    subheading: `#${opts.code} · ${escapeHtml(opts.eventDateLabel)}`,
+    bodyHtml: `
+      <p style="margin:0 0 14px;color:${INK};font-size:14px;line-height:1.5;">Hi ${escapeHtml(opts.firstName)}, here is what ${escapeHtml(opts.businessName)} proposes. Approve it and pay online to lock in your date.</p>
+      ${opts.ownerNote ? `<div style="white-space:pre-wrap;color:${INK};font-size:14px;line-height:1.5;background:#f4f2ec;border-radius:10px;padding:12px 14px;margin-bottom:14px;">${escapeHtml(opts.ownerNote)}</div>` : ""}
+      ${itemsTable(opts.items)}
+      <table style="width:100%;border-collapse:collapse;">
+        ${line("Subtotal", formatCents(opts.subtotalCents))}
+        ${opts.discountCents ? line("Discount", `− ${formatCents(opts.discountCents)}`) : ""}
+        ${opts.deliveryFeeCents ? line("Delivery", formatCents(opts.deliveryFeeCents)) : ""}
+        ${opts.taxCents ? line("Tax", formatCents(opts.taxCents)) : ""}
+        ${line("Total", formatCents(opts.totalCents), true)}
+      </table>
+      <a href="${opts.quoteUrl}" style="display:inline-block;margin-top:20px;background:${opts.brandColor || "#2f4536"};color:#f4f2ec;text-decoration:none;font-size:14px;font-weight:500;padding:10px 18px;border-radius:8px;">Review and approve</a>`,
+  });
+}
+
+/** Customer: the kitchen can't take this one. */
+export async function sendCateringDeclined(opts: CateringEmailBase & { firstName: string; reason: string | null; storeUrl: string }): Promise<void> {
+  await send({
+    to: opts.to,
+    subject: `About your catering request #${opts.code} — ${opts.businessName}`,
+    businessName: opts.businessName,
+    brandColor: opts.brandColor,
+    heading: "We can't take this one",
+    subheading: `#${opts.code} · ${escapeHtml(opts.eventDateLabel)}`,
+    bodyHtml: `
+      <p style="margin:0 0 14px;color:${INK};font-size:14px;line-height:1.5;">Hi ${escapeHtml(opts.firstName)}, thank you for thinking of ${escapeHtml(opts.businessName)}. Unfortunately we can't take on this request${opts.reason ? `: ${escapeHtml(opts.reason)}` : "."}</p>
+      <p style="margin:0 0 18px;color:${SOFT};font-size:13px;">Our regular menu is always open for smaller orders.</p>
+      <a href="${opts.storeUrl}" style="display:inline-block;background:${opts.brandColor || "#2f4536"};color:#f4f2ec;text-decoration:none;font-size:14px;font-weight:500;padding:10px 18px;border-radius:8px;">See the menu</a>`,
+  });
+}

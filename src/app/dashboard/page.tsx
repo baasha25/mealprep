@@ -65,12 +65,14 @@ export default async function DashboardPage({
   let attention: { key: string; text: string; href: string; level: AlertLevel }[] = [];
 
   if (isOwner) {
-    const [rises, margins, risk, pendingReviews] = await Promise.all([
+    const [rises, margins, risk, pendingReviews, cateringNew] = await Promise.all([
       ingredientPriceRises(business.id),
       menuMarginSnapshot(business.id),
       atRiskSubscribers(business.id),
       db.mealReview.count({ where: { businessId: business.id, status: "pending" } }),
+      db.cateringRequest.count({ where: { businessId: business.id, status: "requested" } }),
     ]);
+    if (cateringNew) attention.push({ key: "catering", level: "watch", href: "/dashboard/catering", text: `Quote: ${cateringNew} catering request${cateringNew === 1 ? "" : "s"} waiting for a price` });
     if (margins.losing.length) attention.push({ key: "losing", level: "urgent", href: "/dashboard/profitability?focus=losing", text: `Reprice: ${margins.losing.slice(0, 3).map((m) => m.name).join(", ")}${margins.losing.length > 3 ? ` +${margins.losing.length - 3} more` : ""} ${margins.losing.length === 1 ? "loses" : "lose"} money on every plate` });
     if (margins.thin.length) attention.push({ key: "thin", level: "watch", href: "/dashboard/profitability?focus=thin", text: `Check margin: ${margins.thin.slice(0, 3).map((m) => `${m.name} (${Math.round(m.marginBps / 100)}%)`).join(", ")}${margins.thin.length > 3 ? ` +${margins.thin.length - 3} more` : ""} under 50%` });
     if (rises.length) attention.push({ key: "rises", level: "watch", href: "/dashboard/profitability?focus=rises", text: `Re-source or reprice: ${rises.slice(0, 2).map((r) => `${r.name} +${bpsToPercent(r.changeBps).toFixed(0)}%`).join(", ")}${rises.length > 2 ? ` +${rises.length - 2} more` : ""} since last delivery` });

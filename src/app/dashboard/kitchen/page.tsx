@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ChefHat, ClipboardList, Flame, Salad, Soup, Boxes, Repeat, PackageCheck } from "lucide-react";
+import { ChefHat, ClipboardList, Flame, Salad, Soup, Boxes, Repeat, PackageCheck, UtensilsCrossed } from "lucide-react";
 import { requireBusiness } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { Page, Head, Kpi, Card } from "@/components/ui";
@@ -31,9 +31,18 @@ export default async function KitchenPage() {
   const now = new Date();
   const startToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
-  const [items, subs] = await Promise.all([
+  // Catering orders more than a week out stay off today's counts (they'd swamp
+  // the station lists) but are listed below so the kitchen can plan for them.
+  const horizon = new Date(now.getTime() + 7 * 86400000);
+  const [items, subs, catering] = await Promise.all([
     db.orderItem.findMany({
-      where: { order: { businessId: business.id, status: { in: [...PRODUCING] } } },
+      where: {
+        order: {
+          businessId: business.id,
+          status: { in: [...PRODUCING] },
+          OR: [{ type: { not: "catering" } }, { deliveryDate: null }, { deliveryDate: { lte: horizon } }],
+        },
+      },
       include: { meal: { select: { diet: true, swatch: true } } },
     }),
     // Active subscriptions' nearest upcoming delivery selection.
@@ -48,6 +57,11 @@ export default async function KitchenPage() {
           include: { items: { include: { meal: { select: { name: true, diet: true, swatch: true } } } } },
         },
       },
+    }),
+    db.order.findMany({
+      where: { businessId: business.id, type: "catering", status: { in: [...PRODUCING] } },
+      orderBy: { deliveryDate: "asc" },
+      select: { id: true, deliveryDate: true, fulfillment: true, customer: { select: { name: true } }, items: { select: { qty: true } } },
     }),
   ]);
 
@@ -124,7 +138,7 @@ export default async function KitchenPage() {
         <Kpi icon={<Boxes size={16} />} label="Distinct recipes" value={meals.length} />
       </div>
 
-      {meals.length === 0 ? (
+      {meals.length === 0 && catering.length === 0 ? (
         <div
           className="rounded-xl border p-10 text-center"
           style={{ borderColor: "var(--line)", background: "var(--surface)" }}
@@ -184,6 +198,34 @@ export default async function KitchenPage() {
               </Card>
             );
           })}
+
+          {catering.length > 0 && (
+            <Card>
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <UtensilsCrossed size={16} style={{ color: "var(--pine)" }} />
+                  <h3 className="text-[15px] font-semibold" style={{ color: "var(--ink)" }}>
+                    Catering events ({catering.length})
+                  </h3>
+                </div>
+                <span className="text-[12px]" style={{ color: "var(--muted)" }}>Within 7 days counted above; later ones listed to plan</span>
+              </div>
+              <div className="space-y-2">
+                {catering.map((o) => {
+                  const soon = !o.deliveryDate || o.deliveryDate <= horizon;
+                  const qty = o.items.reduce((s, i) => s + i.qty, 0);
+                  return (
+                    <Link key={o.id} href={`/dashboard/orders/${o.id}`} className="flex items-center gap-3 px-3 py-2.5 rounded-lg" style={{ background: "var(--paper)", border: "1px solid var(--line)" }}>
+                      <span className="grid place-items-center min-w-9 h-8 px-2 rounded-md disp text-[15px] font-medium" style={{ background: "color-mix(in srgb, var(--pine) 10%, transparent)", color: "var(--pine)" }}>{qty}</span>
+                      <span className="text-[13.5px] font-medium" style={{ color: "var(--ink)" }}>{o.customer?.name ?? "Catering"}</span>
+                      <span className="text-[12px]" style={{ color: "var(--muted)" }}>{o.deliveryDate ? dateFmt.format(o.deliveryDate) : "date TBC"} · {o.fulfillment}</span>
+                      <span className="ml-auto text-[11px] font-semibold uppercase tracking-wide" style={{ color: soon ? "var(--clay)" : "var(--muted)" }}>{soon ? "In this run" : "Later"}</span>
+                    </Link>
+                  );
+                })}
+              </div>
+            </Card>
+          )}
 
           {packing.length > 0 && (
             <Card>

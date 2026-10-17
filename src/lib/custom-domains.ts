@@ -23,14 +23,14 @@ export function normalizeHost(host: string | null | undefined): string {
 }
 
 // Storefront sub-paths a custom domain serves at its root.
-const STORE_PATHS = /^\/(account|success|subscribed|meal)(\/.*)?$/;
+const STORE_PATHS = /^\/(account|success|subscribed|meal|catering)(\/.*)?$/;
 // Per-storefront search files, served at the custom domain's root.
 const SEO_FILES = new Set(["/sitemap.xml", "/robots.txt"]);
 
 /**
  * Where a request on a custom domain should be internally rewritten to.
  * "/"            → /store/<slug>
- * "/account…"    → /store/<slug>/account…   (and /success, /subscribed, /meal/<id>)
+ * "/account…"    → /store/<slug>/account…   (and /success, /subscribed, /meal/<id>, /catering…)
  * "/sitemap.xml", "/robots.txt" → that kitchen's own search files
  * "/store/…", "/api/…", assets, anything else → null (leave untouched).
  */

@@ -24,6 +24,7 @@ export default async function CheckoutSuccessPage({
   let paid = false;
   let amountCents = 0;
   let code = "";
+  let whenLabel = "You\u2019ll get your meals on the next delivery.";
 
   if (STRIPE_ENABLED && session_id) {
     try {
@@ -31,7 +32,7 @@ export default async function CheckoutSuccessPage({
       const orderId = session.metadata?.orderId;
       amountCents = session.amount_total ?? 0;
       if (session.payment_status === "paid" && orderId) {
-        const order = await db.order.findFirst({ where: { id: orderId }, select: { id: true, status: true } });
+        const order = await db.order.findFirst({ where: { id: orderId }, select: { id: true, status: true, type: true, deliveryDate: true } });
         if (order) {
           code = order.id.slice(-6);
           paid = true;
@@ -45,8 +46,15 @@ export default async function CheckoutSuccessPage({
                 data: { orderId: order.id, stripePaymentIntentId: paymentIntentId, amountCents, status: "succeeded" },
               }),
             ]);
+            // A catering order: the request behind it is now paid/confirmed.
+            if (order.type === "catering") {
+              await db.cateringRequest.updateMany({ where: { orderId: order.id }, data: { status: "paid", paidAt: new Date() } });
+            }
             await sendOrderConfirmation(order.id);
             await sendOwnerNewOrder(order.id);
+          }
+          if (order.type === "catering" && order.deliveryDate) {
+            whenLabel = `Your catering order is confirmed for ${new Intl.DateTimeFormat("en-US", { timeZone: business?.settings?.timezone || "America/Toronto", weekday: "long", month: "long", day: "numeric" }).format(order.deliveryDate)}.`;
           }
         }
       }
@@ -74,7 +82,7 @@ export default async function CheckoutSuccessPage({
             </div>
             <h1 className="disp text-[28px] font-medium" style={{ color: "var(--ink)" }}>Payment received</h1>
             <p className="text-[14px] mt-2" style={{ color: "var(--ink-soft)" }}>
-              Thanks! We&apos;ve charged {formatCents(amountCents)} and your order{code ? ` #${code}` : ""} is confirmed. You&apos;ll get your meals on the next delivery.
+              Thanks! We&apos;ve charged {formatCents(amountCents)} and your order{code ? ` #${code}` : ""} is confirmed. {whenLabel}
             </p>
           </>
         ) : (

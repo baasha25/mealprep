@@ -37,6 +37,17 @@ enum OrderType {
   subscription
   one_time
   pos
+  catering // large/event order created when a catering quote is approved and paid
+}
+
+// Catering request lifecycle: requested → quoted → approved (customer said yes;
+// order created, awaiting payment) → paid. Owner may decline before payment.
+enum CateringStatus {
+  requested
+  quoted
+  approved
+  paid
+  declined
 }
 
 enum OrderStatus {
@@ -156,6 +167,7 @@ model Business {
   operatingCosts OperatingCost[]
   referredByPartner   Partner? @relation("PartnerReferrals", fields: [referredByPartnerId], references: [id])
   partnerCommissions  PartnerCommission[]
+  cateringRequests    CateringRequest[]
 }
 
 // ─── Partner Program ────────────────────────────────────────────────────────
@@ -268,6 +280,13 @@ model BusinessSettings {
   // Monthly value report: estimated minutes a manual order tally takes (kitchen-adjustable).
   adminMinutesPerOrder Int  @default(4)
 
+  // Catering / large orders (Settings → Catering). Off by default; the kitchen
+  // turns it on and the storefront shows "Catering & large orders".
+  cateringEnabled  Boolean @default(false)
+  cateringLeadDays Int     @default(3)  // minimum days' notice for an event date
+  cateringMinMeals Int     @default(10) // minimum meals on a catering request
+  cateringIntro    String? // short pitch on the request page, e.g. "Boxed lunches and trays for offices and events"
+
   // Storefront search presence (Settings → Brand → Search & link previews).
   // Drive the page <title>/description, link previews and the JSON-LD Google reads.
   storeTagline     String? // one line under the kitchen name, e.g. "Chef-made meal prep, delivered across Durham"
@@ -339,6 +358,7 @@ model Customer {
   reviews       MealReview[]
   referredBy    Customer?  @relation("Referrals", fields: [referredById], references: [id])
   referrals     Customer[] @relation("Referrals")
+  cateringRequests CateringRequest[]
 
   @@unique([businessId, email])
   @@unique([businessId, referralCode])
@@ -693,9 +713,58 @@ model Order {
   items    OrderItem[]
   payments Payment[]
   delivery Delivery?
+  cateringRequest CateringRequest?
 
   @@index([businessId])
   @@index([customerId])
+}
+
+/// A catering / large-order request from the storefront. The kitchen turns it
+/// into a quote (items, fee, note); the customer approves and pays through the
+/// usual checkout, which creates the Order that then flows into production.
+/// Items stay editable JSON until approval, then are snapshotted onto the Order.
+model CateringRequest {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  customerId String?
+  customer   Customer? @relation(fields: [customerId], references: [id])
+  token      String   @unique // unguessable id for the customer's quote link
+  status     CateringStatus @default(requested)
+
+  // Who / when / where
+  name        String
+  email       String
+  phone       String?
+  company     String?
+  eventDate   DateTime // calendar day of the event (noon UTC; shown in the kitchen's tz)
+  eventTime   String?  // free text, e.g. "11:30 AM"
+  headcount   Int?
+  fulfillment Fulfillment @default(delivery)
+  address     String?
+  notes       String?  // what the customer asked for
+
+  // The quote (owner-edited until approval). items: [{mealId, name, qty, unitPriceCents}]
+  items            Json  @default("[]")
+  deliveryFeeCents Int   @default(0)
+  discountCents    Int   @default(0)
+  taxRateBps       Int   @default(0) // snapshot of the kitchen's tax rate when quoted
+  ownerNote        String? // message shown on the quote
+  declineReason    String?
+
+  quotedAt   DateTime?
+  approvedAt DateTime?
+  paidAt     DateTime?
+  declinedAt DateTime?
+
+  orderId String? @unique
+  order   Order?  @relation(fields: [orderId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([businessId, status])
+  @@index([businessId, eventDate])
 }
 
 model OrderItem {

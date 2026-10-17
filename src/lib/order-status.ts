@@ -32,6 +32,7 @@ export const ORDER_TYPE_LABEL: Record<string, string> = {
   subscription: "Subscription",
   one_time: "One-time",
   pos: "POS",
+  catering: "Catering",
 };
 
 /**

@@ -230,7 +230,7 @@ export function sitemapXml(urls: { loc: string; lastmod?: string | null; priorit
 /** robots.txt for one storefront (on its own domain): index the menu, not the account. */
 export function storeRobotsTxt(sitemapUrl: string, indexable: boolean): string {
   if (!indexable) return "User-agent: *\nDisallow: /\n";
-  return ["User-agent: *", "Allow: /", "Disallow: /account", "Disallow: /success", "Disallow: /subscribed", "", `Sitemap: ${sitemapUrl}`, ""].join("\n");
+  return ["User-agent: *", "Allow: /", "Disallow: /account", "Disallow: /success", "Disallow: /subscribed", "Disallow: /catering/", "", `Sitemap: ${sitemapUrl}`, ""].join("\n");
 }
 
 /** Embed JSON-LD safely inside a <script> (no </script> or HTML-comment breakouts). */

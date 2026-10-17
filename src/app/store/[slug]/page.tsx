@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { getStorefrontBusiness, publicStoreUrls } from "@/lib/storefront";
@@ -217,6 +218,11 @@ export default async function StorePage({
           <p className="text-[13.5px] mt-2.5" style={{ color: "var(--ink-soft)" }}>
             {s.storeTagline || "Browse the menu, build your order, and subscribe to save every week."}
           </p>
+          {s.cateringEnabled && (
+            <Link href={`/store/${slug}/catering`} className="inline-flex items-center gap-1.5 mt-3 text-[13px] font-medium" style={{ color: "var(--pine)" }}>
+              Feeding a group? Catering &amp; large orders →
+            </Link>
+          )}
         </div>
 
         {plans.length > 0 && (
