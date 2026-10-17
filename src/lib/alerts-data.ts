@@ -1,6 +1,8 @@
 // Server-side data for "needs attention" signals — shared by the Dashboard
 // panel, Profitability, and Subscriptions so every page reads the same rules.
 
+import { cache } from "react";
+import { unstable_cache } from "next/cache";
 import { db } from "@/lib/db";
 import { costPerUnitFromReceipt } from "@/lib/inventory";
 import { priceChangeBps, plateCostFromRecipe, mealEconomics } from "@/lib/profitability";
@@ -11,7 +13,7 @@ import { subscriberRisk, marginAlerts, type RiskReason } from "@/lib/insights";
 export type PriceRise = { name: string; changeBps: number; affected: string[] };
 
 /** Ingredients whose latest receipt cost/unit rose ≥ minBps vs the previous receipt. */
-export async function ingredientPriceRises(businessId: string, minBps = 300): Promise<PriceRise[]> {
+export const ingredientPriceRises = cache(async function ingredientPriceRises(businessId: string, minBps = 300): Promise<PriceRise[]> {
   const priced = await db.ingredient.findMany({
     where: { businessId },
     select: {
@@ -34,12 +36,12 @@ export async function ingredientPriceRises(businessId: string, minBps = 300): Pr
     })
     .filter((x): x is PriceRise => x !== null)
     .sort((a, b) => b.changeBps - a.changeBps);
-}
+});
 
 export type MarginRow = { id: string; name: string; priceCents: number; costCents: number; marginBps: number; losing: boolean; hasRecipe: boolean };
 
 /** Every active meal's plate cost (default configuration) + margin, and the alert split. */
-export async function menuMarginSnapshot(businessId: string, thresholdBps = 5000): Promise<{ rows: MarginRow[]; losing: MarginRow[]; thin: MarginRow[] }> {
+export const menuMarginSnapshot = cache(async function menuMarginSnapshot(businessId: string, thresholdBps = 5000): Promise<{ rows: MarginRow[]; losing: MarginRow[]; thin: MarginRow[] }> {
   const meals = await db.meal.findMany({
     where: { businessId, active: true },
     select: {
@@ -63,7 +65,7 @@ export async function menuMarginSnapshot(businessId: string, thresholdBps = 5000
   });
   const { losing, thin } = marginAlerts(rows, thresholdBps);
   return { rows, losing, thin };
-}
+});
 
 export type AtRiskSub = {
   id: string;
@@ -77,7 +79,7 @@ export type AtRiskSub = {
 };
 
 /** Active/paused subscribers showing churn signals (see insights.subscriberRisk). */
-export async function atRiskSubscribers(businessId: string, now: Date = new Date()): Promise<AtRiskSub[]> {
+export const atRiskSubscribers = cache(async function atRiskSubscribers(businessId: string, now: Date = new Date()): Promise<AtRiskSub[]> {
   const subs = await db.subscription.findMany({
     where: { businessId, status: { in: ["active", "paused"] } },
     include: { customer: { select: { id: true, name: true, email: true } }, plan: { select: { name: true } } },
@@ -132,4 +134,26 @@ export async function atRiskSubscribers(businessId: string, now: Date = new Date
   // Most urgent first: failed payment > stale delivery > inactive > paused.
   const rank: Record<RiskReason, number> = { payment_failed: 0, stale_delivery: 1, inactive: 2, paused: 3 };
   return out.sort((a, b) => Math.min(...a.reasons.map((r) => rank[r])) - Math.min(...b.reasons.map((r) => rank[r])));
+});
+
+/**
+ * The sidebar's "something urgent" count (meals losing money, failed subscriber
+ * cards). The dashboard layout runs on EVERY dashboard page, so this is cached
+ * for five minutes per kitchen instead of re-costing the whole menu each click.
+ * The Overview page still computes the live list.
+ */
+export async function sidebarUrgentCount(businessId: string): Promise<number> {
+  return unstable_cache(
+    async () => {
+      const [{ losing }, failedCards] = await Promise.all([
+        menuMarginSnapshot(businessId),
+        db.subscription.count({
+          where: { businessId, status: "active", customer: { orders: { some: { status: "pending", createdAt: { gte: new Date(Date.now() - 14 * 86_400_000) } } } } },
+        }),
+      ]);
+      return losing.length + (failedCards > 0 ? 1 : 0);
+    },
+    ["sidebar-urgent", businessId],
+    { revalidate: 300 },
+  )();
 }

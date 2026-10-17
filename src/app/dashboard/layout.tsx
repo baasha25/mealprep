@@ -7,9 +7,8 @@ import { TIERS, effectiveTier, type TierKey } from "@/lib/tiers";
 import { trialStatus } from "@/lib/trial";
 import { kitchenAccess, KITCHEN_BILLING_ENABLED, type BillingStatus } from "@/lib/kitchen-billing";
 import { Lock } from "lucide-react";
-import { db } from "@/lib/db";
 import { DashboardSidebar } from "@/components/dashboard-sidebar";
-import { menuMarginSnapshot } from "@/lib/alerts-data";
+import { sidebarUrgentCount } from "@/lib/alerts-data";
 import { cldLogo } from "@/lib/cloudinary";
 import { exitStaffPreview } from "./staff/actions";
 
@@ -38,11 +37,7 @@ export default async function DashboardLayout({
   let urgent = 0;
   if (role === "owner") {
     try {
-      const [{ losing }, failedCards] = await Promise.all([
-        menuMarginSnapshot(business.id),
-        db.subscription.count({ where: { businessId: business.id, status: "active", customer: { orders: { some: { status: "pending", createdAt: { gte: new Date(Date.now() - 14 * 86_400_000) } } } } } }),
-      ]);
-      urgent = losing.length + (failedCards > 0 ? 1 : 0);
+      urgent = await sidebarUrgentCount(business.id); // cached 5 min per kitchen
     } catch { urgent = 0; }
   }
   const planLabel = TIERS[usage.tier].name;

@@ -9,14 +9,18 @@ import { ORDER_TYPE_LABEL } from "@/lib/order-status";
 import { StatusControl } from "./status-control";
 import { updateOrderStatus } from "./actions";
 
+const PAGE_SIZE = 100;
+
 export default async function OrdersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string; page?: string }>;
 }) {
   const { business, role } = await requireBusiness();
   const isStaff = role !== "owner";
-  const term = ((await searchParams).q ?? "").trim();
+  const sp = await searchParams;
+  const term = (sp.q ?? "").trim();
+  const page = Math.max(1, parseInt(sp.page ?? "1", 10) || 1);
 
   // Staff don't see revenue: drop the total figure + the per-order $ column.
   const headerCols = isStaff
@@ -26,24 +30,39 @@ export default async function OrdersPage({
     ? "sm:grid-cols-[1fr_120px_90px_140px_28px]"
     : "sm:grid-cols-[1fr_120px_90px_140px_120px_28px]";
 
-  const orders = await db.order.findMany({
-    where: { businessId: business.id },
-    orderBy: { createdAt: "desc" },
-    include: {
-      customer: { select: { name: true } },
-      _count: { select: { items: true } },
-    },
-  });
-
-  const revenueCents = orders.reduce((s, o) => s + o.totalCents, 0);
-
-  // Search by order code (last-6 of the id) or customer name; totals stay full.
-  const t = term.toLowerCase();
-  const shown = t
-    ? orders.filter(
-        (o) => o.id.toLowerCase().includes(t) || (o.customer?.name ?? "").toLowerCase().includes(t),
-      )
-    : orders;
+  // Search by order code (last-6 of the id) or customer name — in the database,
+  // not in memory. The list is paged so a kitchen with thousands of orders
+  // renders in the same time as one with twenty. Totals stay across all orders.
+  const where = {
+    businessId: business.id,
+    ...(term
+      ? {
+          OR: [
+            { id: { endsWith: term.replace(/^#/, "").toLowerCase() } },
+            { customer: { is: { name: { contains: term, mode: "insensitive" as const } } } },
+          ],
+        }
+      : {}),
+  };
+  const [orders, matchCount, totals] = await Promise.all([
+    db.order.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      skip: (page - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
+      include: {
+        customer: { select: { name: true } },
+        _count: { select: { items: true } },
+      },
+    }),
+    db.order.count({ where }),
+    db.order.aggregate({ where: { businessId: business.id }, _count: { _all: true }, _sum: { totalCents: true } }),
+  ]);
+  const allCount = totals._count._all;
+  const revenueCents = totals._sum.totalCents ?? 0;
+  const shown = orders;
+  const pageCount = Math.max(1, Math.ceil(matchCount / PAGE_SIZE));
+  const pageHref = (p: number) => `/dashboard/orders?${term ? `q=${encodeURIComponent(term)}&` : ""}page=${p}`;
 
   return (
     <Page>
@@ -59,13 +78,13 @@ export default async function OrdersPage({
               </div>
             )}
             <div className="text-[11.5px]" style={{ color: "var(--muted)" }}>
-              {orders.length} order{orders.length === 1 ? "" : "s"}
+              {allCount} order{allCount === 1 ? "" : "s"}
             </div>
           </div>
         }
       />
 
-      {orders.length === 0 ? (
+      {allCount === 0 ? (
         <div
           className="rounded-xl border p-10 text-center"
           style={{ borderColor: "var(--line)", background: "var(--surface)" }}
@@ -143,6 +162,25 @@ export default async function OrdersPage({
               </Link>
             </div>
               ))}
+            </div>
+          )}
+          {pageCount > 1 && (
+            <div className="flex items-center justify-between mt-3 text-[12.5px]" style={{ color: "var(--muted)" }}>
+              <span>
+                Page {page} of {pageCount} · {matchCount} {term ? "matching " : ""}order{matchCount === 1 ? "" : "s"}
+              </span>
+              <div className="flex gap-1.5">
+                {page > 1 && (
+                  <Link href={pageHref(page - 1)} className="px-3 py-1.5 rounded-md border font-medium" style={{ borderColor: "var(--line)", color: "var(--ink)" }}>
+                    ← Newer
+                  </Link>
+                )}
+                {page < pageCount && (
+                  <Link href={pageHref(page + 1)} className="px-3 py-1.5 rounded-md border font-medium" style={{ borderColor: "var(--line)", color: "var(--ink)" }}>
+                    Older →
+                  </Link>
+                )}
+              </div>
             </div>
           )}
         </>

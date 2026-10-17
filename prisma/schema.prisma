@@ -309,6 +309,23 @@ model BusinessSettings {
 
 // Idempotency log for scheduled customer notifications — guarantees the daily
 // cron never sends the same reminder twice for the same delivery.
+/// Content-Security-Policy violation reports (policy is report-only today).
+/// One row per (page path, directive, blocked origin) with a running count, so
+/// the operator can see whether the allowlist is clean before enforcing.
+model CspReport {
+  id           String   @id @default(cuid())
+  documentPath String   // pathname of the page that reported (no query string)
+  directive    String   // e.g. "script-src-elem"
+  blockedUri   String   // origin only (or "inline" / "eval" / "data")
+  count        Int      @default(1)
+  sample       Json?    // one raw report for debugging
+  firstSeenAt  DateTime @default(now())
+  lastSeenAt   DateTime @default(now())
+
+  @@unique([documentPath, directive, blockedUri])
+  @@index([lastSeenAt])
+}
+
 model SentNotification {
   id         String   @id @default(cuid())
   businessId String

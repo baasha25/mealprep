@@ -299,8 +299,9 @@ export const GUIDE: GuideArea[] = [
           ["Meals", "How many meals are in the order."],
           ["Status", "Where the order is: Paid, and you can move it through your fulfillment stages using the dropdown."],
           ["Total ($)", "What the customer paid for that order (meals + tax + fees)."],
+          ["Newer / Older (pages)", "Orders show 100 to a page, newest first; the total and count at the top always cover every order. Search looks up order codes and customer names across all pages."],
         ],
-        tips: ["Use the search box to find an order by customer name or order code. Click the arrow on the right to open an order and see its items, or issue a refund."],
+        tips: ["Use the search box to find an order by customer name or order code (with or without the #). Click the arrow on the right to open an order and see its items, or issue a refund."],
       },
       {
         id: "catering",

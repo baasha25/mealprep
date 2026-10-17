@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Store, DollarSign, Compass, Percent, ShoppingBag, Clock, MoonStar, AlertTriangle, Sparkles, Search, ArrowUpRight, ArrowDownRight, Minus } from "lucide-react";
+import { Store, DollarSign, Compass, Percent, ShoppingBag, Clock, MoonStar, AlertTriangle, Sparkles, Search, ArrowUpRight, ArrowDownRight, Minus, ShieldCheck } from "lucide-react";
 import { requireSuperAdmin } from "@/lib/admin";
 import { db } from "@/lib/db";
 import { Kpi } from "@/components/ui";
@@ -104,6 +104,11 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
   for (const r of rows) acqMap.set(r.acqSource || "direct", (acqMap.get(r.acqSource || "direct") ?? 0) + 1);
   const acqRows = [...acqMap.entries()].map(([source, count]) => ({ source, count })).sort((a, b) => b.count - a.count);
   const maxAcq = Math.max(1, ...acqRows.map((r) => r.count));
+
+  // ── Content-Security-Policy (report-only) — is the allowlist clean enough to enforce? ──
+  const cspSince = new Date(now.getTime() - 14 * 86_400_000);
+  const cspRows = await db.cspReport.findMany({ where: { lastSeenAt: { gte: cspSince } }, orderBy: [{ count: "desc" }], take: 40 });
+  const cspTotal = cspRows.reduce((s, r) => s + r.count, 0);
 
   const visible = filterKitchens(rows, filter, q);
   const fmtDate = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "2-digit" });
@@ -266,6 +271,36 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
                   <div className="h-2 rounded-full" style={{ width: `${(r.count / maxAcq) * 100}%`, background: "var(--pine)" }} />
                 </div>
                 <span className="text-[12px] tabular-nums text-right whitespace-nowrap" style={{ color: "var(--muted)" }}>{r.count} kitchen{r.count === 1 ? "" : "s"}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* CSP report-only — evidence for switching the header to enforcing */}
+      <div className="rounded-xl border p-5 mt-4" style={{ borderColor: "var(--line)", background: "var(--surface)" }}>
+        <div className="flex items-center gap-2 mb-1">
+          <ShieldCheck size={15} style={{ color: cspRows.length ? "var(--clay)" : "var(--pine)" }} />
+          <span className="text-[14px] font-semibold" style={{ color: "var(--ink)" }}>Content Security Policy — report-only, last 14 days</span>
+          <span className="text-[12px] ml-auto" style={{ color: "var(--muted)" }}>{cspRows.length === 0 ? "no violations reported" : `${cspRows.length} distinct · ${cspTotal} reports`}</span>
+        </div>
+        <p className="text-[12px] mb-3" style={{ color: "var(--muted)" }}>
+          Browsers post here whenever the strict policy <em>would</em> block something. Empty for two weeks of real traffic = safe to switch the header from report-only to enforcing (a one-line change in next.config.ts). Anything listed needs an allowlist entry first, or it breaks for customers the moment the policy enforces.
+        </p>
+        {cspRows.length === 0 ? (
+          <p className="text-[13px] font-medium" style={{ color: "var(--pine)" }}>Clean. Nothing would have been blocked.</p>
+        ) : (
+          <div className="rounded-lg overflow-hidden" style={{ border: "1px solid var(--line)" }}>
+            <div className="grid grid-cols-[1.2fr_1.6fr_1.4fr_auto_auto] gap-3 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide" style={{ color: "var(--muted)", borderBottom: "1px solid var(--line)" }}>
+              <div>Directive</div><div>Blocked</div><div>On page</div><div className="text-right">Reports</div><div className="text-right">Last seen</div>
+            </div>
+            {cspRows.map((r) => (
+              <div key={r.id} className="grid grid-cols-[1.2fr_1.6fr_1.4fr_auto_auto] gap-3 px-3 py-2 text-[12.5px]" style={{ borderBottom: "1px solid var(--line)" }}>
+                <span className="font-mono truncate" style={{ color: "var(--ink)" }}>{r.directive}</span>
+                <span className="font-mono truncate" style={{ color: "var(--clay)" }} title={r.blockedUri}>{r.blockedUri}</span>
+                <span className="font-mono truncate" style={{ color: "var(--ink-soft)" }} title={r.documentPath}>{r.documentPath}</span>
+                <span className="tabular-nums text-right" style={{ color: "var(--ink)" }}>{r.count}</span>
+                <span className="text-right whitespace-nowrap" style={{ color: "var(--muted)" }}>{agoLabel(r.lastSeenAt, now)}</span>
               </div>
             ))}
           </div>
