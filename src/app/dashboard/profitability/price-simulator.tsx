@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { FlaskConical } from "lucide-react";
 import { mealEconomics, suggestedPriceCents } from "@/lib/profitability";
+import { PRESETS, priceChangePct, expectedVolumeChangePct, thresholdWarning, elasticityAdvice, type ElasticityPreset } from "@/lib/elasticity";
 import { formatCents, bpsToPercent } from "@/lib/money";
 import { Card, CardTitle } from "@/components/ui";
 
@@ -21,6 +22,9 @@ export function PriceSimulator({ meals, rangeLabel }: { meals: SimMeal[]; rangeL
   const meal = costed.find((m) => m.id === mealId) ?? first;
   const [price, setPrice] = useState<string>(meal ? (meal.priceCents / 100).toFixed(2) : "");
   const [unitsPct, setUnitsPct] = useState(0);
+  // Customer-response preset drives the volume slider from the price change;
+  // dragging the slider by hand switches to "custom".
+  const [preset, setPreset] = useState<ElasticityPreset>("typical");
 
   // The Price coach's "Try it" button hands a meal + suggested price down here.
   useEffect(() => {
@@ -48,7 +52,22 @@ export function PriceSimulator({ meals, rangeLabel }: { meals: SimMeal[]; rangeL
     return { newPrice, cur, nxt, projUnits, curContribution, newContribution, delta: newContribution - curContribution, breakEvenUnits };
   }, [meal, price, unitsPct]);
 
+  // Elasticity: expected volume change for the current price move.
+  const priceChange = meal && sim ? priceChangePct(meal.priceCents, sim.newPrice) : 0;
+  const activePreset = PRESETS.find((p) => p.key === preset) ?? null;
+  const autoVolume = activePreset ? expectedVolumeChangePct(priceChange, activePreset.e) : null;
+  useEffect(() => {
+    if (autoVolume != null) setUnitsPct(autoVolume);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoVolume]);
+
   if (!meal || !sim) return null;
+  const affordableLoss = sim.breakEvenUnits != null && meal.units > 0 && sim.newPrice > meal.priceCents
+    ? Math.max(0, Math.round((1 - sim.breakEvenUnits / meal.units) * 100))
+    : null;
+  const advice = elasticityAdvice({ priceChange, expectedVolume: unitsPct, affordableLoss, presetLabel: activePreset?.label ?? "custom" });
+  const threshold = thresholdWarning(meal.priceCents, sim.newPrice);
+  const adviceColor = advice.tone === "good" ? "var(--pine)" : advice.tone === "bad" ? "var(--clay)" : advice.tone === "caution" ? "#8a6d1f" : "var(--muted)";
 
   const pick = (id: string) => {
     const m = costed.find((x) => x.id === id);
@@ -82,11 +101,32 @@ export function PriceSimulator({ meals, rangeLabel }: { meals: SimMeal[]; rangeL
             </div>
             <input type="range" min={minP} max={maxP} step={0.25} value={Number(price) || 0} onChange={(e) => setPrice(Number(e.target.value).toFixed(2))} className="w-full mt-2" />
           </label>
+          <div className="block">
+            <span className="text-[12px]" style={{ color: "var(--muted)" }}>How will customers respond?</span>
+            <div className="mt-1 inline-flex rounded-lg border p-0.5 flex-wrap" style={{ borderColor: "var(--line)" }}>
+              {PRESETS.map((p) => (
+                <button key={p.key} type="button" onClick={() => setPreset(p.key)} title={p.blurb}
+                  className="px-2.5 py-1 rounded-md text-[12px] font-medium"
+                  style={{ background: preset === p.key ? "var(--pine)" : "transparent", color: preset === p.key ? "#f4f2ec" : "var(--muted)" }}>
+                  {p.label}
+                </button>
+              ))}
+              <button type="button" onClick={() => setPreset("custom")} className="px-2.5 py-1 rounded-md text-[12px] font-medium"
+                style={{ background: preset === "custom" ? "var(--pine)" : "transparent", color: preset === "custom" ? "#f4f2ec" : "var(--muted)" }}>Custom</button>
+            </div>
+            <span className="block text-[11px] mt-1" style={{ color: "var(--muted)" }}>{activePreset ? activePreset.blurb : "You set the volume change yourself."}</span>
+          </div>
           <label className="block">
-            <span className="text-[12px]" style={{ color: "var(--muted)" }}>If sales change by <strong style={{ color: "var(--ink)" }}>{unitsPct > 0 ? "+" : ""}{unitsPct}%</strong></span>
-            <input type="range" min={-50} max={50} step={5} value={unitsPct} onChange={(e) => setUnitsPct(Number(e.target.value))} className="w-full mt-1" />
-            <span className="text-[11px]" style={{ color: "var(--muted)" }}>Raising price often costs a little volume — drag to see where it still pays.</span>
+            <span className="text-[12px]" style={{ color: "var(--muted)" }}>Sales change <strong style={{ color: "var(--ink)" }}>{unitsPct > 0 ? "+" : ""}{unitsPct}%</strong>{activePreset ? <span> · expected at a {activePreset.label.toLowerCase()} response</span> : null}</span>
+            <input type="range" min={-95} max={100} step={1} value={unitsPct} onChange={(e) => { setPreset("custom"); setUnitsPct(Number(e.target.value)); }} className="w-full mt-1" />
           </label>
+          {threshold !== "none" && (
+            <p className="text-[11.5px] px-2.5 py-2 rounded-lg" style={{ background: "color-mix(in srgb, #c9a227 12%, transparent)", color: "#8a6d1f" }}>
+              {threshold === "big" ? `A ${priceChange.toFixed(0)}% jump is the kind customers notice. Two or three smaller steps usually hold more volume.`
+                : threshold === "round-number" ? "This crosses a whole-dollar line, which registers more than the arithmetic suggests. Consider stopping just under it."
+                : "Changes under about 5% rarely register; this one is on the edge of noticeable."}
+            </p>
+          )}
         </div>
 
         <div className="rounded-lg p-4" style={{ background: "var(--paper)", border: "1px solid var(--line)" }}>
@@ -124,6 +164,10 @@ export function PriceSimulator({ meals, rangeLabel }: { meals: SimMeal[]; rangeL
                 : sim.breakEvenUnits != null && sim.newPrice < meal.priceCents
                   ? `At the lower price you'd need ${sim.breakEvenUnits} sales (vs ${meal.units}) just to match today's contribution.`
                   : "Move the price to see the effect."}
+          </p>
+          <p className="text-[11.5px] mt-2 font-medium" style={{ color: adviceColor }}>{advice.text}</p>
+          <p className="text-[10.5px] mt-2" style={{ color: "var(--muted)" }}>
+            Presets use published price-elasticity figures for food away from home (about 0.8 on average). Your own customers will differ; treat this as a starting point, not a forecast.
           </p>
         </div>
       </div>
