@@ -3,11 +3,21 @@ import { db } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
-// Health check that also warms the Neon compute. Point a free cron
-// (cron-job.org / UptimeRobot) at /api/health every ~4 min during active
-// hours to avoid cold-start latency on the first real request.
-export async function GET() {
+/**
+ * Health check.
+ *
+ * Plain GET (uptime monitors): answers without touching the database, so it
+ * never wakes Neon. The scheduled keep-warm ping also lands here and only keeps
+ * the Netlify function warm — the database is allowed to suspend when idle.
+ * (Keeping Neon awake 24/7 was costing ~180 compute-hours a month on a free
+ * plan with 100 shared across every project.)
+ *
+ * GET /api/health?db=1: also runs SELECT 1 to prove the database is reachable.
+ */
+export async function GET(req: Request) {
   const start = Date.now();
+  const wantDb = new URL(req.url).searchParams.get("db") === "1";
+  if (!wantDb) return NextResponse.json({ ok: true, ms: Date.now() - start });
   try {
     await db.$queryRaw`SELECT 1`;
     return NextResponse.json({ ok: true, db: "up", ms: Date.now() - start });

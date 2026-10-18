@@ -1,4 +1,7 @@
 // Netlify Scheduled Function — pings the app's /api/health every 5 minutes so
+// the serverless function stays warm. The endpoint does NOT touch the database,
+// so Neon still suspends when idle (free-plan compute hours are shared).
+// Original note: pings the app's /api/health every 5 minutes so
 // the Next.js server function and the Neon compute stay warm. Without this the
 // first dashboard request after a quiet spell pays a multi-second cold start
 // (measured 5.3s on the sales sandbox, vs ~0.4s warm).
