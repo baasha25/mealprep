@@ -6,11 +6,18 @@ import { Card, CardTitle } from "@/components/ui";
 import { formatCents } from "@/lib/money";
 import { READ_METHOD_LABEL, isEstimatedMethod } from "@/lib/competitors";
 import { addCompetitor, refreshCompetitor, removeCompetitor, setMatchStatus } from "./competitor-actions";
-import type { NearbyCompetitor, NearbyRow } from "@/lib/competitors-data";
+import type { NearbyCompetitor, NearbyRow, PlanRow } from "@/lib/competitors-data";
+
+// Subscription services customers quote by name; they publish plan pricing, not dish prices.
+const NATIONAL: { name: string; domain: string }[] = [
+  { name: "CookUnity", domain: "cookunity.com" },
+  { name: "Goodfood", domain: "makegoodfood.ca" },
+];
 
 type Suggestion = { name: string; domain: string; city: string; region: string; platform: string };
 
-export function NearbyPrices({ competitors, rows, suggestedCount, isPro, suggestions }: { competitors: NearbyCompetitor[]; rows: NearbyRow[]; suggestedCount: number; isPro: boolean; suggestions: Suggestion[] }) {
+export function NearbyPrices({ competitors, rows, planRows, suggestedCount, isPro, suggestions }: { competitors: NearbyCompetitor[]; rows: NearbyRow[]; planRows: PlanRow[]; suggestedCount: number; isPro: boolean; suggestions: Suggestion[] }) {
+  const [openPlan, setOpenPlan] = useState<Record<string, boolean>>({});
   const [url, setUrl] = useState("");
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [pending, start] = useTransition();
@@ -46,7 +53,7 @@ export function NearbyPrices({ competitors, rows, suggestedCount, isPro, suggest
         {competitors.map((c) => (
           <div key={c.id} className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg border text-[12px]" style={{ borderColor: c.status === "ok" ? "var(--line)" : "var(--clay)", background: "var(--paper)" }} title={c.lastError ?? ""}>
             <span className="font-medium" style={{ color: "var(--ink)" }}>{c.name}</span>
-            <span style={{ color: "var(--muted)" }}>{c.status === "ok" ? `${c.itemCount} items · ${c.lastCheckedAt ? new Date(c.lastCheckedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "—"}` : c.status === "unsupported" ? "can't read yet" : "error"}</span>
+            <span style={{ color: "var(--muted)" }}>{c.status === "ok" ? `${c.itemCount ? `${c.itemCount} items` : ""}${c.itemCount && c.planCount ? " · " : ""}${c.planCount ? `${c.planCount} plan${c.planCount === 1 ? "" : "s"}` : ""}${!c.itemCount && !c.planCount ? "0 items" : ""} · ${c.lastCheckedAt ? new Date(c.lastCheckedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "—"}` : c.status === "unsupported" ? "can't read yet" : "error"}</span>
             {c.status === "ok" && c.platform && (
               <span className="text-[10.5px] px-1.5 py-px rounded" title={isEstimatedMethod(c.platform) ? "Prices were read from the page text by AI, not from a structured feed — treat as estimates (≈)." : `Read from their ${READ_METHOD_LABEL[c.platform] ?? c.platform} — exact listed prices.`} style={{ background: isEstimatedMethod(c.platform) ? "#f3e9c9" : "var(--sand)", color: isEstimatedMethod(c.platform) ? "#8a6d1f" : "var(--muted)" }}>
                 {isEstimatedMethod(c.platform) ? "≈ AI-read" : READ_METHOD_LABEL[c.platform] ?? c.platform}
@@ -73,6 +80,14 @@ export function NearbyPrices({ competitors, rows, suggestedCount, isPro, suggest
           <span>: </span>
           {nearby.map((s) => (
             <button key={s.domain} type="button" disabled={pending} onClick={() => run(() => addCompetitor({ url: s.domain, name: s.name }))} className="inline-block mr-1.5 mb-1 px-2 py-0.5 rounded-md border" style={{ borderColor: "var(--line)", color: "var(--ink)", background: "var(--surface)" }} title={`${s.city} · ${s.platform}`}>+ {s.name}</button>
+          ))}
+        </div>
+      )}
+      {NATIONAL.some((n) => !watched.has(n.domain)) && (
+        <div className="mb-4 text-[12px]" style={{ color: "var(--muted)" }}>
+          <span>Subscription services (plan pricing): </span>
+          {NATIONAL.filter((n) => !watched.has(n.domain)).map((n) => (
+            <button key={n.domain} type="button" disabled={pending} onClick={() => run(() => addCompetitor({ url: n.domain, name: n.name }))} className="inline-block mr-1.5 mb-1 px-2 py-0.5 rounded-md border" style={{ borderColor: "var(--line)", color: "var(--ink)", background: "var(--surface)" }} title="Publishes per-meal prices by plan size, not dish prices">+ {n.name}</button>
           ))}
         </div>
       )}
@@ -121,6 +136,48 @@ export function NearbyPrices({ competitors, rows, suggestedCount, isPro, suggest
               </div>
             );
           })}
+        </div>
+      )}
+      {/* Weekly plans vs nearby — the subscription question, kept apart from single plates */}
+      {planRows.length > 0 && planRows.some((r) => r.comps.length > 0) && (
+        <div className="mt-5">
+          <div className="flex items-baseline justify-between mb-1.5">
+            <h4 className="text-[13.5px] font-semibold" style={{ color: "var(--ink)" }}>Weekly plans vs nearby</h4>
+            <span className="text-[11.5px]" style={{ color: "var(--muted)" }}>per-meal price at the same plan size · ≈ read from their pricing page</span>
+          </div>
+          <div className="rounded-lg overflow-hidden" style={{ border: "1px solid var(--line)" }}>
+            <div className="grid grid-cols-[1.4fr_90px_1fr_1.4fr_110px_20px] gap-2 px-3 py-1.5 text-[10.5px] font-semibold uppercase tracking-wide" style={{ color: "var(--muted)", borderBottom: "1px solid var(--line)", background: "var(--paper)" }}>
+              <div>Your plan</div><div className="text-right">You / meal</div><div className="text-right">Plans found</div><div className="text-right">Nearby range · median</div><div>Position</div><div />
+            </div>
+            {planRows.map((r) => {
+              const isOpen = openPlan[r.plan.id];
+              return (
+                <div key={r.plan.id} style={{ borderBottom: "1px solid var(--line)" }}>
+                  <button type="button" onClick={() => setOpenPlan((o) => ({ ...o, [r.plan.id]: !o[r.plan.id] }))} className="w-full grid grid-cols-[1.4fr_90px_1fr_1.4fr_110px_20px] gap-2 px-3 py-2 items-center text-left">
+                    <span className="text-[13px] font-medium truncate" style={{ color: "var(--ink)" }}>{r.plan.name} <span style={{ color: "var(--muted)", fontWeight: 400 }}>· {r.plan.mealsPerWeek} meals</span></span>
+                    <span className="text-[13px] text-right tabular-nums" style={{ color: "var(--ink)" }}>{formatCents(r.plan.perMealPriceCents)}</span>
+                    <span className="text-[12px] text-right" style={{ color: "var(--muted)" }}>{r.comps.length ? `${r.comps.length} competitor${r.comps.length === 1 ? "" : "s"}` : "none at this size"}</span>
+                    <span className="text-[12px] text-right tabular-nums" style={{ color: "var(--ink-soft)" }}>{r.comparison.count ? `${formatCents(r.comparison.minCents)}–${formatCents(r.comparison.maxCents)} · ${formatCents(r.comparison.medianCents)}` : "—"}</span>
+                    <span className="text-[12px] font-medium" style={{ color: tone(r.position.tone) }}>{r.comps.length ? r.position.label : "No competitor plan at this size"}</span>
+                    <span style={{ color: "var(--muted)" }}>{r.comps.length ? (isOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />) : null}</span>
+                  </button>
+                  {isOpen && r.comps.length > 0 && (
+                    <div className="px-3 pb-2.5 space-y-1.5">
+                      {r.comps.map((c, i) => (
+                        <div key={i} className="flex items-center gap-2 text-[12.5px] px-2.5 py-1.5 rounded-md" style={{ background: "var(--paper)" }}>
+                          <span className="flex-1 min-w-0 truncate" style={{ color: "var(--ink)" }}>
+                            <span style={{ color: "var(--muted)" }}>{c.competitorName}: </span>{c.label ?? `${c.mealsPerWeek} meals`}{c.nearestSize ? <span style={{ color: "#8a6d1f" }}> · nearest size ({c.mealsPerWeek})</span> : null}{c.startingFrom ? <span style={{ color: "var(--muted)" }}> · &lsquo;from&rsquo; price</span> : null}
+                          </span>
+                          <span className="tabular-nums font-medium" style={{ color: "var(--ink)" }} title={c.startingFrom ? "A 'from' price or one that depends on postal code" : "Listed per-meal price for this plan size"}>≈ {formatCents(c.perMealCents)}/meal</span>
+                          {c.url && <a href={c.url} target="_blank" rel="noreferrer noopener" title="Open their pricing page" style={{ color: "var(--muted)" }}><ExternalLink size={12} /></a>}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
       <p className="text-[11px] mt-3" style={{ color: "var(--muted)" }}>

@@ -37,7 +37,7 @@ export async function addCompetitor(input: { url: string; name?: string }): Prom
   const r = await refreshCompetitorData(comp.id);
   revalidatePath("/dashboard/profitability");
   if (!r.ok) return { ok: false, message: `Added ${name}, but: ${r.error}` };
-  return { ok: true, message: `${name}: ${r.items} items read. Suggested matches are waiting for your confirm.` };
+  return { ok: true, message: readSummary(name, r.items, r.plans ?? 0) };
 }
 
 export async function refreshCompetitor(id: string): Promise<CompResult> {
@@ -48,7 +48,7 @@ export async function refreshCompetitor(id: string): Promise<CompResult> {
   if (!comp) return { ok: false, message: "Not found." };
   const r = await refreshCompetitorData(comp.id);
   revalidatePath("/dashboard/profitability");
-  return r.ok ? { ok: true, message: `Refreshed: ${r.items} items.` } : { ok: false, message: r.error ?? "Could not read their menu." };
+  return r.ok ? { ok: true, message: readSummary("Refreshed", r.items, r.plans ?? 0) } : { ok: false, message: r.error ?? "Could not read their menu." };
 }
 
 export async function removeCompetitor(id: string): Promise<CompResult> {
@@ -63,4 +63,14 @@ export async function setMatchStatus(matchId: string, status: "confirmed" | "dis
   const r = await db.competitorMatch.updateMany({ where: { id: matchId, businessId: business.id }, data: { status } });
   revalidatePath("/dashboard/profitability");
   return r.count ? { ok: true, message: status === "confirmed" ? "Matched." : "Dismissed." } : { ok: false, message: "Not found." };
+}
+
+/** "Name: 18 items read and 3 plan prices." — honest about plan-only sellers. */
+function readSummary(name: string, items: number, plans: number): string {
+  const parts: string[] = [];
+  if (items) parts.push(`${items} item${items === 1 ? "" : "s"} read`);
+  if (plans) parts.push(`${plans} plan price${plans === 1 ? "" : "s"} read`);
+  if (!items && !plans) return `${name}: nothing priced was found on their public pages.`;
+  const tail = items ? " Suggested matches are waiting for your confirm." : " They don't publish dish prices, so see 'Weekly plans vs nearby'.";
+  return `${name}: ${parts.join(" and ")}.${tail}`;
 }

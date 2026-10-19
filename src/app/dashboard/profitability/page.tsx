@@ -175,7 +175,7 @@ export default async function ProfitabilityPage({
 
   // Nearby prices (Pro): watched competitors + per-meal comparison.
   const isPro = effectiveTier({ tier: business.tier as TierKey, trialEndsAt: business.trialEndsAt }) === "pro";
-  const nearby = isPro ? await loadNearbyPrices(business.id) : { competitors: [], rows: [], suggestedCount: 0 };
+  const nearby = isPro ? await loadNearbyPrices(business.id) : { competitors: [], rows: [], planRows: [], suggestedCount: 0 };
 
   // Rows the Dashboard sent the owner here to look at (same thresholds as the panel).
   const focusedRows =
@@ -406,7 +406,7 @@ export default async function ProfitabilityPage({
       </div>
 
       <div id="nearby-prices" className="scroll-mt-6">
-        <NearbyPrices competitors={nearby.competitors} rows={nearby.rows} suggestedCount={nearby.suggestedCount} isPro={isPro} suggestions={ontarioKitchens as { name: string; domain: string; city: string; region: string; platform: string }[]} />
+        <NearbyPrices competitors={nearby.competitors} rows={nearby.rows} planRows={nearby.planRows} suggestedCount={nearby.suggestedCount} isPro={isPro} suggestions={ontarioKitchens as { name: string; domain: string; city: string; region: string; platform: string }[]} />
       </div>
 
       <div className="mb-5 scroll-mt-6" id="simulator">

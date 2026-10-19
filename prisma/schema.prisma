@@ -898,9 +898,31 @@ model Competitor {
   createdAt     DateTime @default(now())
 
   items   CompetitorItem[]
+  plans   CompetitorPlan[]
 
   @@unique([businessId, domain])
   @@index([businessId])
+}
+
+/// A competitor's published weekly-plan pricing (per-meal price by plan size),
+/// kept apart from dish prices so plan-only sellers (CookUnity, Sprwt kitchens)
+/// compare against the kitchen's Meal Plans, never against single plates.
+model CompetitorPlan {
+  id               String     @id @default(cuid())
+  competitorId     String
+  competitor       Competitor @relation(fields: [competitorId], references: [id], onDelete: Cascade)
+  mealsPerWeek     Int
+  perMealCents     Int
+  deliveryFeeCents Int?       // null = not published
+  label            String?    // their name for it, e.g. "6 meals / week"
+  startingFrom     Boolean    @default(false) // a "from" price or one that varies by postal code
+  estimated        Boolean    @default(true)  // read from page text by AI
+  url              String?
+  active           Boolean    @default(true)
+  seenAt           DateTime   @default(now())
+
+  @@unique([competitorId, mealsPerWeek])
+  @@index([competitorId])
 }
 
 model CompetitorItem {

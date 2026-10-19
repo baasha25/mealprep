@@ -32,10 +32,11 @@ export const READ_METHOD_LABEL: Record<string, string> = {
   squarespace: "Squarespace feed",
   ai: "AI-read · estimated",
   "ai-rendered": "AI-read · estimated",
+  "ai-plans": "plans only · estimated",
   unsupported: "can't read yet",
 };
 export function isEstimatedMethod(platform: string | null | undefined): boolean {
-  return platform === "ai" || platform === "ai-rendered";
+  return platform === "ai" || platform === "ai-rendered" || platform === "ai-plans";
 }
 
 const UA = "PrepFlowPriceWatch/1.0 (+https://prepflow.ca; public menu prices only)";
