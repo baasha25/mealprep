@@ -6,10 +6,10 @@ import { fetchCompetitorMenu, suggestFor, compare, positionLabel, type Compariso
 export const MAX_COMPETITORS = 10;
 
 /** Pull the latest menu for one competitor, upsert items, then rebuild suggestions for the kitchen. */
-export async function refreshCompetitorData(competitorId: string): Promise<{ ok: boolean; items: number; error?: string }> {
+export async function refreshCompetitorData(competitorId: string, opts: { deadlineMs?: number } = {}): Promise<{ ok: boolean; items: number; error?: string }> {
   const comp = await db.competitor.findUnique({ where: { id: competitorId }, select: { id: true, businessId: true, domain: true } });
   if (!comp) return { ok: false, items: 0, error: "Not found" };
-  const res = await fetchCompetitorMenu(comp.domain);
+  const res = await fetchCompetitorMenu(comp.domain, { deadlineMs: opts.deadlineMs });
   if (!res.ok) {
     await db.competitor.update({ where: { id: comp.id }, data: { status: res.platform === "unsupported" ? "unsupported" : "error", platform: res.platform === "unsupported" ? "unsupported" : undefined, lastError: res.error, lastCheckedAt: new Date() } });
     return { ok: false, items: 0, error: res.error };
@@ -20,15 +20,41 @@ export async function refreshCompetitorData(competitorId: string): Promise<{ ok:
     seen.add(it.externalId);
     await db.competitorItem.upsert({
       where: { competitorId_externalId: { competitorId: comp.id, externalId: it.externalId } },
-      create: { competitorId: comp.id, externalId: it.externalId, name: it.name, priceCents: it.priceCents, url: it.url, portion: it.portion, active: true, seenAt: now },
-      update: { name: it.name, priceCents: it.priceCents, url: it.url, portion: it.portion, active: true, seenAt: now },
+      create: { competitorId: comp.id, externalId: it.externalId, name: it.name, priceCents: it.priceCents, url: it.url, portion: it.portion, estimated: Boolean(it.estimated), active: true, seenAt: now },
+      update: { name: it.name, priceCents: it.priceCents, url: it.url, portion: it.portion, estimated: Boolean(it.estimated), active: true, seenAt: now },
     });
   }
   // Items that vanished from their menu stop counting (history kept).
   await db.competitorItem.updateMany({ where: { competitorId: comp.id, externalId: { notIn: [...seen] } }, data: { active: false } });
-  await db.competitor.update({ where: { id: comp.id }, data: { platform: res.platform, status: "ok", lastError: null, lastCheckedAt: now } });
+  await db.competitor.update({ where: { id: comp.id }, data: { platform: res.platform, status: "ok", lastError: res.note ?? null, lastCheckedAt: now } });
   await rebuildSuggestions(comp.businessId);
   return { ok: true, items: res.items.length };
+}
+
+/**
+ * Cron: refresh the stalest competitors within a wall-clock budget. AI reads can
+ * take 20–60 s each, so one run may not cover everyone; the schedule is daily
+ * and anything checked in the last `minAgeDays` is skipped, so the backlog
+ * drains across the week without any single run timing out.
+ */
+export async function refreshStaleCompetitors(opts: { budgetMs: number; minAgeDays?: number; max?: number }): Promise<{ attempted: number; ok: number; failed: number; skipped: number }> {
+  const started = Date.now();
+  const cutoff = new Date(Date.now() - (opts.minAgeDays ?? 6) * 86_400_000);
+  const comps = await db.competitor.findMany({
+    where: { status: { not: "unsupported" }, OR: [{ lastCheckedAt: null }, { lastCheckedAt: { lt: cutoff } }] },
+    orderBy: [{ lastCheckedAt: { sort: "asc", nulls: "first" } }],
+    select: { id: true },
+    take: opts.max ?? 100,
+  });
+  let ok = 0, failed = 0, attempted = 0;
+  for (const c of comps) {
+    const left = opts.budgetMs - (Date.now() - started);
+    if (left < 15_000) break;
+    attempted++;
+    const r = await refreshCompetitorData(c.id, { deadlineMs: Math.min(75_000, left - 5_000) });
+    if (r.ok) ok++; else failed++;
+  }
+  return { attempted, ok, failed, skipped: comps.length - attempted };
 }
 
 /** Propose matches for every active meal against every active competitor item; never touches confirmed/dismissed rows. */
@@ -52,19 +78,19 @@ export async function rebuildSuggestions(businessId: string): Promise<number> {
 }
 
 export type NearbyCompetitor = { id: string; name: string; domain: string; platform: string | null; status: string; lastCheckedAt: Date | null; lastError: string | null; itemCount: number };
-export type NearbyMatch = { id: string; status: string; score: number; itemName: string; priceCents: number; portion: string | null; url: string | null; competitorName: string };
+export type NearbyMatch = { id: string; status: string; score: number; itemName: string; priceCents: number; portion: string | null; url: string | null; competitorName: string; estimated: boolean };
 export type NearbyRow = { mealId: string; name: string; priceCents: number; matches: NearbyMatch[]; comparison: Comparison; position: ReturnType<typeof positionLabel> };
 
 export async function loadNearbyPrices(businessId: string): Promise<{ competitors: NearbyCompetitor[]; rows: NearbyRow[]; suggestedCount: number }> {
   const [comps, meals, matches] = await Promise.all([
     db.competitor.findMany({ where: { businessId }, orderBy: { createdAt: "asc" }, select: { id: true, name: true, domain: true, platform: true, status: true, lastCheckedAt: true, lastError: true, _count: { select: { items: { where: { active: true } } } } } }),
     db.meal.findMany({ where: { businessId, active: true }, orderBy: { name: "asc" }, select: { id: true, name: true, priceCents: true } }),
-    db.competitorMatch.findMany({ where: { businessId, status: { in: ["suggested", "confirmed"] }, item: { active: true } }, select: { id: true, mealId: true, status: true, score: true, item: { select: { name: true, priceCents: true, portion: true, url: true, competitor: { select: { name: true } } } } } }),
+    db.competitorMatch.findMany({ where: { businessId, status: { in: ["suggested", "confirmed"] }, item: { active: true } }, select: { id: true, mealId: true, status: true, score: true, item: { select: { name: true, priceCents: true, portion: true, url: true, estimated: true, competitor: { select: { name: true } } } } } }),
   ]);
   const byMeal = new Map<string, NearbyMatch[]>();
   for (const m of matches) {
     const arr = byMeal.get(m.mealId) ?? [];
-    arr.push({ id: m.id, status: m.status, score: m.score, itemName: m.item.name, priceCents: m.item.priceCents, portion: m.item.portion, url: m.item.url, competitorName: m.item.competitor.name });
+    arr.push({ id: m.id, status: m.status, score: m.score, itemName: m.item.name, priceCents: m.item.priceCents, portion: m.item.portion, url: m.item.url, competitorName: m.item.competitor.name, estimated: m.item.estimated });
     byMeal.set(m.mealId, arr);
   }
   const rows: NearbyRow[] = meals.map((meal) => {

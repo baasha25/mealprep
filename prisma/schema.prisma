@@ -891,7 +891,7 @@ model Competitor {
   name          String
   domain        String   // bare host, e.g. powerkitchen.ca
   url           String   // where we fetched from
-  platform      String?  // shopify | woocommerce | unsupported
+  platform      String?  // how we read them: shopify | woocommerce | jsonld | squarespace | ai | ai-rendered | unsupported
   status        String   @default("ok") // ok | unsupported | error
   lastCheckedAt DateTime?
   lastError     String?
@@ -912,6 +912,7 @@ model CompetitorItem {
   priceCents   Int
   url          String?
   portion      String?    // e.g. "450 g" when the store publishes it
+  estimated    Boolean    @default(false) // true when read from page text by AI rather than a structured feed
   active       Boolean    @default(true) // false once it disappears from their menu
   seenAt       DateTime   @default(now())
 

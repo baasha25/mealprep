@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { MapPin, RefreshCw, Trash2, Check, X, ExternalLink, Lock, ChevronDown, ChevronUp } from "lucide-react";
 import { Card, CardTitle } from "@/components/ui";
 import { formatCents } from "@/lib/money";
+import { READ_METHOD_LABEL, isEstimatedMethod } from "@/lib/competitors";
 import { addCompetitor, refreshCompetitor, removeCompetitor, setMatchStatus } from "./competitor-actions";
 import type { NearbyCompetitor, NearbyRow } from "@/lib/competitors-data";
 
@@ -37,7 +38,7 @@ export function NearbyPrices({ competitors, rows, suggestedCount, isPro, suggest
     <Card className="mb-5">
       <CardTitle icon={<MapPin size={15} />} title="Nearby prices" note={`Public listed prices · ${competitors.length} watched${suggestedCount ? ` · ${suggestedCount} matches to confirm` : ""}`} />
       <p className="text-[12px] mb-3 -mt-2" style={{ color: "var(--muted)" }}>
-        We read competitors' public menus (names, prices, links; nothing else) once a week and suggest matches for your meals. Confirm the ones that are really the same dish; only confirmed matches count.
+        We read competitors&apos; public menus (names, prices, links; nothing else) weekly and suggest matches for your meals. Shopify, WooCommerce, Wix, Square and Squarespace stores are read exactly; other sites are read from the page by AI and marked ≈ estimated. Confirm the ones that are really the same dish; only confirmed matches count.
       </p>
 
       {/* Watched competitors */}
@@ -46,6 +47,11 @@ export function NearbyPrices({ competitors, rows, suggestedCount, isPro, suggest
           <div key={c.id} className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg border text-[12px]" style={{ borderColor: c.status === "ok" ? "var(--line)" : "var(--clay)", background: "var(--paper)" }} title={c.lastError ?? ""}>
             <span className="font-medium" style={{ color: "var(--ink)" }}>{c.name}</span>
             <span style={{ color: "var(--muted)" }}>{c.status === "ok" ? `${c.itemCount} items · ${c.lastCheckedAt ? new Date(c.lastCheckedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "—"}` : c.status === "unsupported" ? "can't read yet" : "error"}</span>
+            {c.status === "ok" && c.platform && (
+              <span className="text-[10.5px] px-1.5 py-px rounded" title={isEstimatedMethod(c.platform) ? "Prices were read from the page text by AI, not from a structured feed — treat as estimates (≈)." : `Read from their ${READ_METHOD_LABEL[c.platform] ?? c.platform} — exact listed prices.`} style={{ background: isEstimatedMethod(c.platform) ? "#f3e9c9" : "var(--sand)", color: isEstimatedMethod(c.platform) ? "#8a6d1f" : "var(--muted)" }}>
+                {isEstimatedMethod(c.platform) ? "≈ AI-read" : READ_METHOD_LABEL[c.platform] ?? c.platform}
+              </span>
+            )}
             <button type="button" onClick={() => run(() => refreshCompetitor(c.id))} disabled={pending} title="Refresh" style={{ color: "var(--muted)" }}><RefreshCw size={12} /></button>
             <button type="button" onClick={() => run(() => removeCompetitor(c.id))} disabled={pending} title="Stop watching" style={{ color: "var(--muted)" }}><Trash2 size={12} /></button>
           </div>
@@ -98,7 +104,7 @@ export function NearbyPrices({ competitors, rows, suggestedCount, isPro, suggest
                         <span className="flex-1 min-w-0 truncate" style={{ color: "var(--ink)" }}>
                           <span style={{ color: "var(--muted)" }}>{m.competitorName}: </span>{m.itemName}{m.portion ? <span style={{ color: "var(--muted)" }}> · {m.portion}</span> : null}
                         </span>
-                        <span className="tabular-nums font-medium" style={{ color: "var(--ink)" }}>{formatCents(m.priceCents)}</span>
+                        <span className="tabular-nums font-medium" style={{ color: "var(--ink)" }} title={m.estimated ? "Estimated: read from their page text by AI" : "Listed price from their structured feed"}>{m.estimated ? "≈ " : ""}{formatCents(m.priceCents)}</span>
                         {m.url && <a href={m.url} target="_blank" rel="noreferrer noopener" title="Open their listing" style={{ color: "var(--muted)" }}><ExternalLink size={12} /></a>}
                         {m.status === "suggested" ? (
                           <>
@@ -118,7 +124,7 @@ export function NearbyPrices({ competitors, rows, suggestedCount, isPro, suggest
         </div>
       )}
       <p className="text-[11px] mt-3" style={{ color: "var(--muted)" }}>
-        Listed prices as published on each competitor's site on the date shown; portions may differ, so read this as a signal, not a verdict. We never show other PrepFlow kitchens' prices.
+        Listed prices as published on each competitor&apos;s site on the date shown; ≈ marks prices read from page text by AI (check the link before acting on them). Portions may differ, so read this as a signal, not a verdict. We never show other PrepFlow kitchens&apos; prices.
       </p>
     </Card>
   );

@@ -1,5 +1,6 @@
-// Netlify Scheduled Function — Mondays 07:00 UTC: refresh watched competitors'
-// public menu prices and rebuild match suggestions.
+// Netlify Scheduled Function — daily 07:00 UTC: refresh watched competitors whose
+// prices are 6+ days old (within a time budget) and rebuild match suggestions.
+// Daily rather than weekly so slow AI reads drain across the week.
 export default async () => {
   const base = process.env.URL ?? process.env.DEPLOY_PRIME_URL ?? "";
   const secret = process.env.CRON_SECRET ?? "";
@@ -9,4 +10,4 @@ export default async () => {
   console.log(`weekly-competitors → ${res.status} ${body}`);
   return new Response(body, { status: res.status });
 };
-export const config = { schedule: "0 7 * * 1" };
+export const config = { schedule: "0 7 * * *" };
