@@ -2,9 +2,10 @@
 
 import { z } from "zod";
 import { isValidHostname } from "@/lib/custom-domains";
+import { validateZones } from "@/lib/zones";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
-import { requireBusiness, assertWritable } from "@/lib/auth";
+import { requireBusiness, requireOwner, assertWritable } from "@/lib/auth";
 import { dollarsToCents, percentToBps } from "@/lib/money";
 import { TIERS } from "@/lib/tiers";
 import { TIMEZONE_VALUES, DEFAULT_TIMEZONE } from "@/lib/cutoff";
@@ -272,4 +273,33 @@ export async function signLogoUpload(): Promise<UploadSignature> {
   const signature = signCloudinaryParams({ folder, timestamp });
   const { cloudName, apiKey } = cloudinaryPublicConfig();
   return { ok: true, cloudName, apiKey, timestamp, signature, folder };
+}
+
+/* ----------------------------- Delivery zones ---------------------------- */
+
+export type ZonesActionState = { ok: boolean; message: string } | null;
+
+/** Replace the kitchen's delivery zones with the edited set (owner only). */
+export async function saveDeliveryZones(_prev: ZonesActionState, formData: FormData): Promise<ZonesActionState> {
+  const { business } = await requireOwner();
+  await assertWritable(business);
+  let rows: { name: string; prefixes: string; days: Record<string, boolean>; feeDollars: string }[] = [];
+  try {
+    const parsed = JSON.parse(String(formData.get("zones") ?? "[]"));
+    if (!Array.isArray(parsed) || parsed.length > 40) return { ok: false, message: "Up to 40 zones." };
+    rows = parsed.map((r) => ({ name: String(r?.name ?? ""), prefixes: String(r?.prefixes ?? ""), days: typeof r?.days === "object" && r.days ? r.days : {}, feeDollars: String(r?.feeDollars ?? "") }));
+  } catch {
+    return { ok: false, message: "Couldn't read the zones." };
+  }
+  const v = validateZones(rows);
+  if (!v.ok) return { ok: false, message: v.message };
+  await db.$transaction([
+    db.deliveryZone.deleteMany({ where: { businessId: business.id } }),
+    ...(v.zones.length
+      ? [db.deliveryZone.createMany({ data: v.zones.map((z, i) => ({ businessId: business.id, name: z.name, postalPrefixes: z.postalPrefixes, deliveryDays: z.deliveryDays, deliveryFeeCents: z.deliveryFeeCents, sortOrder: i })) })]
+      : []),
+  ]);
+  revalidatePath("/dashboard/settings");
+  if (business.slug) revalidatePath(`/store/${business.slug}`);
+  return { ok: true, message: v.zones.length ? `${v.zones.length} zone${v.zones.length === 1 ? "" : "s"} saved. Your storefront now places customers by postal code.` : "Zones cleared — back to one flat fee and your delivery days." };
 }

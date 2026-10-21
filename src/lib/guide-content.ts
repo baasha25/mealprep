@@ -486,7 +486,7 @@ export const GUIDE: GuideArea[] = [
         img: "17-routes.png",
         does: "Groups the day's deliveries by area/zone so you (or a driver) can run an efficient route, and gives you a Dispatch checklist to tick every bag out the door so nothing is missed. Uses each order's delivery address and zone.",
         numbers: [
-          ["Zone / area", "Deliveries grouped by the area you assigned (North, East, West, etc.)."],
+          ["Zone / area", "Deliveries grouped by delivery zone. With Delivery zones set up (Settings → Delivery zones), the zone comes from the customer's postal code automatically; otherwise it's whatever area label the order carries, or 'Unzoned'."],
           ["Stops", "Each delivery address on the route, with the customer and order."],
           ["Dispatch checklist", "The last check before bags leave: each zone shows 'X of Y stops' with a progress bar. Expand a zone and tap each stop as it goes out (big targets, works on a tablet at the pass), or 'Mark zone done' in one go. Ticks are kept for the day so a refresh doesn't lose your place; a new day starts clean."],
         ],
@@ -558,6 +558,7 @@ export const GUIDE: GuideArea[] = [
           ["Meal pages", "Every meal name links to its own page — photo, description, price, calories/protein/carbs/fat, allergens, verified reviews, and an Add-to-order button that drops it straight into the cart. These pages are what Google indexes, so a search like \"high protein meal prep Whitby\" can land on your dish, not a competitor's."],
           ["Google & link previews", "Your storefront and meal pages carry a search title, description, canonical address, link-preview image and schema.org data (kitchen, menu, prices, nutrition, ratings). Set your Service area, Tagline and Search description in Settings → Brand; leave the description blank and we write one from your menu and delivery days. Demo kitchens and account/checkout pages are kept out of search."],
           ["Catering & large orders link", "Shown under the storefront heading when catering is on (Settings → Catering). It opens the request page: date, time, headcount, delivery or pickup, meals with quantities (or a description), and contact details. No payment is taken on this page."],
+          ["Postal code & delivery zone", "When you've set up Delivery zones, a delivery order starts with the postal code. It tells the customer their zone, delivery day(s) and fee before they pick a date; a code outside your zones gets a clear 'we don't deliver there yet' and the option to pick up instead."],
           ["Delivery day (one-time orders)", "When you run more than one delivery day, a one-time customer picks a day at checkout — and can tick \"Split my order across two delivery days\" to receive some meals on each day, assigning each meal itself. On a split order, the packing slip shows which meals go on which day, flagged \"Split delivery.\""],
         ],
         tips: [
@@ -673,6 +674,7 @@ export const GUIDE: GuideArea[] = [
           ["Subscription discount", "An automatic discount for subscribers vs one-time buyers."],
           ["Points per $1", "How many loyalty points customers earn per dollar spent."],
           ["Brand color", "Your storefront's accent color."],
+          ["Delivery zones", "Split your delivery area by postal code prefix (L4C, L4E, M5V). Each zone has its own delivery day(s) and fee; leave the days blank to use all your delivery days, leave the fee blank for your default fee, or 0 for free delivery. Customers are placed by the postal code they type at checkout: they see only their zone's days and fee, a postal code outside every zone can't check out for delivery (pickup still works), and subscribers' day choices on their account are limited to their zone. Delivery Routes groups the day's drops by zone."],
           ["Catering & large orders", "Turn storefront catering requests on/off, set the minimum notice in days and the minimum meals, and write the intro shown on the catering page. See Sales → Catering for how quotes work."],
           ["Search & link previews", "Service area (city/region — goes into your page title so local searches find you), Tagline (one line under your name on the storefront), and Search description (the sentence under your link in Google and shared links; blank = written automatically from your menu, delivery days and area)."],
         ],

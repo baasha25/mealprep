@@ -4,6 +4,7 @@ import { z } from "zod";
 import { resolveSelections } from "@/lib/meal-options";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
+import { zoneForPostal, zoneDays, type ZoneLike } from "@/lib/zones";
 import { stripe, STRIPE_ENABLED } from "@/lib/stripe";
 import { getCustomerContext } from "@/lib/customer-auth";
 import { advanceDeliveryDate, canModifyNextDelivery, canPause, canResume } from "@/lib/subscriptions";
@@ -235,10 +236,16 @@ export async function updateDeliveryDays(input: {
 
   const settings = await db.businessSettings.findUnique({ where: { businessId: sub.businessId } });
   const tz = settings?.timezone || DEFAULT_TIMEZONE;
-  const enabled = enabledDeliveryDays((settings?.deliveryDays ?? {}) as Record<string, boolean>);
+  // The customer's zone (from their saved postal code) narrows the days on offer.
+  const [addr, zoneRows] = await Promise.all([
+    db.address.findFirst({ where: { customerId: sub.customerId }, orderBy: { id: "asc" }, select: { postalCode: true } }),
+    db.deliveryZone.findMany({ where: { businessId: sub.businessId, active: true } }),
+  ]);
+  const zone: ZoneLike | null = zoneForPostal(addr?.postalCode, zoneRows.map((z) => ({ ...z, deliveryDays: (z.deliveryDays ?? {}) as Record<string, boolean> })));
+  const enabled = enabledDeliveryDays(zoneDays(zone, (settings?.deliveryDays ?? {}) as Record<string, boolean>));
   const chosen = sanitizePreferredDays(parsed.data.days, enabled);
   if (chosen.length === 0) {
-    return { ok: false, message: "Those days aren't available for this kitchen." };
+    return { ok: false, message: zone ? `Your area (${zone.name}) is delivered on other days — pick from those.` : "Those days aren't available for this kitchen." };
   }
 
   // Realign the next delivery to the soonest chosen day, after the next cut-off.
@@ -293,12 +300,19 @@ export async function saveDeliveryAddress(input: {
   if (!parsed.success) {
     return { ok: false, message: parsed.error.issues[0]?.message ?? "Invalid address." };
   }
+  // Zone from the postal code (null when the kitchen has no zones or none match).
+  const zoneRows = await db.deliveryZone.findMany({ where: { businessId: ctx.customer.businessId, active: true } });
+  const zone = zoneForPostal(parsed.data.postalCode, zoneRows.map((z) => ({ ...z, deliveryDays: (z.deliveryDays ?? {}) as Record<string, boolean> })));
+  if (zoneRows.length && parsed.data.postalCode && !zone) {
+    return { ok: false, message: `Sorry, ${parsed.data.postalCode.toUpperCase()} is outside the delivery area right now.` };
+  }
   const data = {
     label: "Delivery",
     line1: parsed.data.line1,
     city: parsed.data.city || null,
     region: parsed.data.region || null,
     postalCode: parsed.data.postalCode || null,
+    zone: zone?.name ?? null,
   };
   const existing = await db.address.findFirst({
     where: { customerId: ctx.customer.id },

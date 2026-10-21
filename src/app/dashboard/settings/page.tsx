@@ -4,6 +4,8 @@ import { Page, Head } from "@/components/ui";
 import { bpsToPercent, centsToDollars } from "@/lib/money";
 import { effectiveTier, type TierKey } from "@/lib/tiers";
 import { SettingsForm, type SettingsInitial } from "./settings-form";
+import { DeliveryZonesCard, type ZoneRow } from "./zones-editor";
+import { enabledDeliveryDays } from "@/lib/delivery-days";
 
 export default async function SettingsPage() {
   const { business } = await requireOwner();
@@ -19,6 +21,13 @@ export default async function SettingsPage() {
   });
 
   const dd = (settings.deliveryDays ?? {}) as Record<string, boolean>;
+  const zones = await db.deliveryZone.findMany({ where: { businessId: business.id, active: true }, orderBy: { sortOrder: "asc" } });
+  const zoneRows: ZoneRow[] = zones.map((z) => ({
+    name: z.name,
+    prefixes: z.postalPrefixes.join(", "),
+    days: (z.deliveryDays ?? {}) as Record<string, boolean>,
+    feeDollars: z.deliveryFeeCents == null ? "" : centsToDollars(z.deliveryFeeCents).toFixed(2),
+  }));
 
   const initial: SettingsInitial = {
     name: business.name,
@@ -74,6 +83,7 @@ export default async function SettingsPage() {
         sub="Fees, taxes, cut-off, and fulfillment — the rules your storefront and billing run on."
       />
       <SettingsForm initial={initial} />
+      <DeliveryZonesCard initial={zoneRows} kitchenDays={enabledDeliveryDays(dd)} defaultFeeDollars={centsToDollars(settings.deliveryFeeCents)} />
     </Page>
   );
 }

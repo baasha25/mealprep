@@ -13,6 +13,7 @@ import { sendOrderConfirmation, sendOwnerNewOrder } from "@/lib/email";
 import { computeOrder, type AppliedCoupon } from "@/lib/pricing";
 import { nextCutoffAt, upcomingDeliveries, DEFAULT_TIMEZONE } from "@/lib/cutoff";
 import { enabledDeliveryDays } from "@/lib/delivery-days";
+import { zoneForPostal, zoneDays, zoneFeeCents, type ZoneLike } from "@/lib/zones";
 import {
   pointsForOrder,
   resolveRedemption,
@@ -127,6 +128,7 @@ const PlaceOrderInput = z.object({
     phone: z.string().trim().max(40).optional().default(""),
     address: z.string().trim().max(200).optional().default(""),
     zone: z.string().trim().max(60).optional().default(""),
+    postalCode: z.string().trim().max(20).optional().default(""),
   }),
 });
 
@@ -196,9 +198,20 @@ export async function placeOrder(input: PlaceOrderInputT): Promise<PlaceOrderRes
   // kitchen's upcoming delivery days (never trust an arbitrary date).
   let deliveryDate: Date | null = null;
   const itemDates: (Date | null)[] = data.items.map(() => null);
+  // Zone-based delivery: when the kitchen has zones, the postal code must land in
+  // one; that zone's days and fee apply. No zones = kitchen defaults as before.
+  let zone: ZoneLike | null = null;
+  if (data.fulfillment === "delivery") {
+    const zoneRows = await db.deliveryZone.findMany({ where: { businessId: business.id, active: true } });
+    if (zoneRows.length) {
+      zone = zoneForPostal(data.customer.postalCode, zoneRows.map((z) => ({ ...z, deliveryDays: (z.deliveryDays ?? {}) as Record<string, boolean> })));
+      if (!zone) return { ok: false, message: data.customer.postalCode ? `We don't deliver to ${data.customer.postalCode.toUpperCase()} yet.` : "Enter your postal code so we can find your delivery day." };
+    }
+  }
+  const pricing = { ...s, deliveryFeeCents: data.fulfillment === "delivery" ? zoneFeeCents(zone, s.deliveryFeeCents) : s.deliveryFeeCents };
   if (data.fulfillment === "delivery") {
     const tz = s.timezone || DEFAULT_TIMEZONE;
-    const enabled = enabledDeliveryDays((s.deliveryDays ?? {}) as Record<string, boolean>);
+    const enabled = enabledDeliveryDays(zoneDays(zone, (s.deliveryDays ?? {}) as Record<string, boolean>));
     const anchor = nextCutoffAt(s.cutoff, tz) ?? new Date();
     const options = upcomingDeliveries(enabled, anchor, tz, 8, "weekly");
     const resolve = (iso?: string): Date | null => {
@@ -250,7 +263,7 @@ export async function placeOrder(input: PlaceOrderInputT): Promise<PlaceOrderRes
   // Base totals (pre-redemption) to know how much loyalty can offset.
   const base = computeOrder({
     lines: lineItems.map((li) => ({ priceCents: li.unitPriceCentsSnapshot, qty: li.qty })),
-    settings: s,
+    settings: pricing,
     subscribe: data.subscribe,
     coupon: appliedCoupon,
   });
@@ -274,7 +287,7 @@ export async function placeOrder(input: PlaceOrderInputT): Promise<PlaceOrderRes
 
   const totals = computeOrder({
     lines: lineItems.map((li) => ({ priceCents: li.unitPriceCentsSnapshot, qty: li.qty })),
-    settings: s,
+    settings: pricing,
     subscribe: data.subscribe,
     coupon: appliedCoupon,
     redeemCents: redemption.cents,
@@ -327,7 +340,8 @@ export async function placeOrder(input: PlaceOrderInputT): Promise<PlaceOrderRes
       fulfillment: data.fulfillment,
       deliveryDate,
       address: data.customer.address || null,
-      zone: data.customer.zone || null,
+      zone: zone?.name ?? (data.customer.zone || null),
+      postalCode: data.customer.postalCode || null,
       subtotalCents: totals.subtotalCents,
       taxCents: totals.taxCents,
       feesCents: totals.feesCents,

@@ -168,6 +168,26 @@ model Business {
   referredByPartner   Partner? @relation("PartnerReferrals", fields: [referredByPartnerId], references: [id])
   partnerCommissions  PartnerCommission[]
   cateringRequests    CateringRequest[]
+  deliveryZones       DeliveryZone[]
+}
+
+/// Zone-based delivery: a named area defined by postal-code prefixes (e.g. L4C,
+/// L4E, M5V), with its own delivery day(s) and fee. Customers are placed in a
+/// zone automatically from the postal code they type at checkout or save on
+/// their account; Routes groups the day's drops by zone.
+model DeliveryZone {
+  id               String   @id @default(cuid())
+  businessId       String
+  business         Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  name             String
+  postalPrefixes   String[] @default([]) // upper-case, no spaces; longest match wins
+  deliveryDays     Json     @default("{}") // {"Mon":true,...}; empty = kitchen's delivery days
+  deliveryFeeCents Int?     // null = kitchen's default delivery fee
+  sortOrder        Int      @default(0)
+  active           Boolean  @default(true)
+  createdAt        DateTime @default(now())
+
+  @@index([businessId])
 }
 
 // ─── Partner Program ────────────────────────────────────────────────────────
@@ -717,6 +737,7 @@ model Order {
   fulfillment           Fulfillment   @default(delivery)
   address               String?
   zone                  String?
+  postalCode            String?       // as typed at checkout; the zone was derived from it
   deliveryDate          DateTime?
   subtotalCents         Int           @default(0)
   taxCents              Int           @default(0)

@@ -16,7 +16,8 @@ import {
 import { enabledDeliveryDays, describeDeliveryDays } from "@/lib/delivery-days";
 import { CutoffBanner } from "./cutoff-banner";
 import { PlanCards } from "./plan-cards";
-import { Storefront, type StoreMeal, type StoreReview, type StoreSettings } from "./storefront";
+import { Storefront, type StoreMeal, type StoreReview, type StoreSettings, type StoreZone } from "./storefront";
+import { zoneDays } from "@/lib/zones";
 
 export const dynamic = "force-dynamic";
 
@@ -174,6 +175,22 @@ export default async function StorePage({
     label: formatDeliveryLabel(d, tz),
   }));
 
+  // Delivery zones: each gets its own upcoming dates (its days) and fee.
+  const zoneRows = await db.deliveryZone.findMany({ where: { businessId: business.id, active: true }, orderBy: { sortOrder: "asc" } });
+  const zones: StoreZone[] = zoneRows.map((z) => {
+    const zDays = enabledDeliveryDays(zoneDays({ ...z, deliveryDays: (z.deliveryDays ?? {}) as Record<string, boolean> }, (s.deliveryDays ?? {}) as Record<string, boolean>));
+    return {
+      id: z.id,
+      name: z.name,
+      postalPrefixes: z.postalPrefixes,
+      deliveryDays: (z.deliveryDays ?? {}) as Record<string, boolean>,
+      deliveryFeeCents: z.deliveryFeeCents,
+      dateOptions: upcomingDeliveries(zDays, deliveryAnchor, tz, 8, "weekly").map((d) => ({ value: d.toISOString(), label: formatDeliveryLabel(d, tz) })),
+      daysLabel: describeDeliveryDays(zDays),
+      singleDay: zDays.length === 1,
+    };
+  });
+
   const settings: StoreSettings = {
     subDiscountBps: s.subDiscountBps,
     taxRateBps: s.taxRateBps,
@@ -186,6 +203,7 @@ export default async function StorePage({
     deliveryDateOptions,
     deliveryDaysLabel: describeDeliveryDays(enabledDays),
     singleDeliveryDay: enabledDays.length === 1,
+    zones,
   };
 
   const cutoffISO = cutoffInstant?.toISOString() ?? null;

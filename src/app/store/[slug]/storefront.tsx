@@ -21,6 +21,7 @@ import {
 import { formatCents } from "@/lib/money";
 import { resolveSelections, optionsKeyOf, nameWithOptions } from "@/lib/meal-options";
 import { computeOrder, type PricingSettings } from "@/lib/pricing";
+import { zoneForPostal, postalLooksComplete } from "@/lib/zones";
 import {
   lookupCoupon,
   lookupGiftCard,
@@ -61,6 +62,17 @@ export type StoreMeal = {
   optionGroups: StoreOptionGroup[];
 };
 
+export type StoreZone = {
+  id: string;
+  name: string;
+  postalPrefixes: string[];
+  deliveryDays: Record<string, boolean>;
+  deliveryFeeCents: number | null;
+  dateOptions: { value: string; label: string }[];
+  daysLabel: string;
+  singleDay: boolean;
+};
+
 export type StoreSettings = PricingSettings & {
   fulfillment: string; // "delivery" | "pickup" | "both"
   pickupLocations: string[];
@@ -69,6 +81,8 @@ export type StoreSettings = PricingSettings & {
   deliveryDateOptions: { value: string; label: string }[];
   deliveryDaysLabel: string; // e.g. "Mondays" or "Mondays & Thursdays"
   singleDeliveryDay: boolean; // kitchen runs exactly one delivery weekday
+  // Zone-based delivery (empty = off): postal code → zone → that zone's days + fee.
+  zones: StoreZone[];
 };
 
 /** The option chooser's starting state for a build-your-own meal: its defaults ticked. */
@@ -160,19 +174,31 @@ export function Storefront({
     settings.fulfillment === "pickup" ? "pickup" : "delivery",
   );
   // Chosen delivery date for a one-time order — defaults to the soonest.
-  const [deliveryDate, setDeliveryDate] = useState<string>(
+  const [pickedDate, setDeliveryDate] = useState<string>(
     settings.deliveryDateOptions[0]?.value ?? "",
   );
   // Optional: split the order across two delivery days, assigning each meal.
-  const canSplit = !settings.singleDeliveryDay && settings.deliveryDateOptions.length >= 2;
   const [splitDelivery, setSplitDelivery] = useState(false);
-  const [dayB, setDayB] = useState<string>(settings.deliveryDateOptions[1]?.value ?? "");
+  const [pickedDayB, setDayB] = useState<string>(settings.deliveryDateOptions[1]?.value ?? "");
+  const [form, setForm] = useState({ name: "", email: "", phone: "", address: "", zone: "", postal: "" });
+  // Zone-based delivery: the postal code picks the zone, the zone picks the
+  // dates and the fee. Outside every zone = no delivery (pickup may still work).
+  const zonesOn = settings.zones.length > 0;
+  const zone = zonesOn ? zoneForPostal(form.postal, settings.zones) : null;
+  const outsideZones = zonesOn && postalLooksComplete(form.postal) && !zone;
+  const dateOptions = zone ? zone.dateOptions : settings.deliveryDateOptions;
+  const singleDeliveryDay = zone ? zone.singleDay : settings.singleDeliveryDay;
+  const deliveryDaysLabel = zone ? zone.daysLabel : settings.deliveryDaysLabel;
+  const canSplit = !singleDeliveryDay && dateOptions.length >= 2;
+  // The picked dates only count if they exist for the active zone; else the soonest.
+  const deliveryDate = dateOptions.some((o) => o.value === pickedDate) ? pickedDate : dateOptions[0]?.value ?? "";
+  const dayB = dateOptions.some((o) => o.value === pickedDayB && o.value !== deliveryDate) ? pickedDayB : dateOptions.find((o) => o.value !== deliveryDate)?.value ?? "";
+  const pricingSettings: StoreSettings = zone && zone.deliveryFeeCents != null ? { ...settings, deliveryFeeCents: zone.deliveryFeeCents } : settings;
   const [itemDay, setItemDay] = useState<Record<string, "A" | "B">>({});
   const dateOf = (mealId: string) =>
     splitDelivery && itemDay[mealId] === "B" ? dayB : deliveryDate;
   const labelFor = (v: string) =>
-    settings.deliveryDateOptions.find((o) => o.value === v)?.label ?? v;
-  const [form, setForm] = useState({ name: "", email: "", phone: "", address: "", zone: "" });
+    dateOptions.find((o) => o.value === v)?.label ?? v;
   const [loyalty, setLoyalty] = useState<LoyaltyLookup | null>(null);
   const [applyLoyalty, setApplyLoyalty] = useState(false);
   const [referralInput, setReferralInput] = useState("");
@@ -208,7 +234,7 @@ export function Storefront({
   const appliedCoupon =
     coupon && coupon.valid ? { type: coupon.type, value: coupon.value } : null;
   const redeemCents = applyLoyalty && loyalty?.found ? loyalty.valueCents : 0;
-  const totals = computeOrder({ lines, settings, subscribe, coupon: appliedCoupon, redeemCents });
+  const totals = computeOrder({ lines, settings: pricingSettings, subscribe, coupon: appliedCoupon, redeemCents });
   // Gift card is stored-value tender applied to the final total.
   const giftAppliedCents = giftCard?.valid ? Math.min(giftCard.balanceCents, totals.totalCents) : 0;
   const amountDueCents = Math.max(0, totals.totalCents - giftAppliedCents);
@@ -258,7 +284,7 @@ export function Storefront({
         referralCode: referralInput.trim() || undefined,
         fulfillment,
         deliveryDate: fulfillment === "delivery" && deliveryDate ? deliveryDate : undefined,
-        customer: form,
+        customer: { ...form, postalCode: form.postal },
       });
       if (result.ok) {
         // Balance due → hand off to Stripe Checkout.
@@ -285,7 +311,7 @@ export function Storefront({
   const subPercent = Math.round(settings.subDiscountBps / 100);
   const canDelivery = settings.fulfillment !== "pickup";
   const canPickup = settings.fulfillment !== "delivery";
-  const formValid = form.name.trim() && /\S+@\S+\.\S+/.test(form.email);
+  const formValid = (form.name.trim() && /\S+@\S+\.\S+/.test(form.email)) && !(fulfillment === "delivery" && zonesOn && !zone);
 
   if (placed) {
     return (
@@ -310,7 +336,7 @@ export function Storefront({
         <button
           onClick={() => {
             setPlaced(null);
-            setForm({ name: "", email: "", phone: "", address: "", zone: "" });
+            setForm({ name: "", email: "", phone: "", address: "", zone: "", postal: "" });
           }}
           className="mt-6 px-4 py-2 rounded-lg text-[13px] font-medium"
           style={{ background: "var(--pine)", color: "#f4f2ec" }}
@@ -795,17 +821,45 @@ export function Storefront({
               )}
 
               {/* Delivery day — the kitchen's delivery days as concrete dates */}
-              {fulfillment === "delivery" && settings.deliveryDateOptions.length > 0 && (
+              {fulfillment === "delivery" && zonesOn && (
+                <div className="mb-3">
+                  <label className="text-[12px] font-medium block mb-1.5" style={{ color: "var(--ink)" }}>
+                    Postal code
+                  </label>
+                  <input
+                    value={form.postal}
+                    onChange={(e) => setForm({ ...form, postal: e.target.value })}
+                    placeholder="L4C 1A2"
+                    autoComplete="postal-code"
+                    className="w-full px-3 py-2 rounded-md border text-[13px] outline-none"
+                    style={inputStyle}
+                  />
+                  {zone ? (
+                    <p className="text-[12px] mt-1.5" style={{ color: "var(--pine)" }}>
+                      {zone.name}: delivered {zone.daysLabel}
+                      {zone.deliveryFeeCents != null ? ` · ${zone.deliveryFeeCents === 0 ? "free delivery" : `${formatCents(zone.deliveryFeeCents)} delivery`}` : ""}
+                    </p>
+                  ) : outsideZones ? (
+                    <p className="text-[12px] mt-1.5" style={{ color: "var(--clay)" }}>
+                      We don&apos;t deliver to {form.postal.trim().toUpperCase()} yet.{canPickup ? " Pickup is available." : ""}
+                    </p>
+                  ) : (
+                    <p className="text-[11.5px] mt-1.5" style={{ color: "var(--muted)" }}>Your postal code sets your delivery day and fee.</p>
+                  )}
+                </div>
+              )}
+
+              {fulfillment === "delivery" && (!zonesOn || zone) && dateOptions.length > 0 && (
                 <div className="mb-3">
                   <label className="text-[12px] font-medium block mb-1.5" style={{ color: "var(--ink)" }}>
                     Delivery day
                   </label>
-                  {settings.singleDeliveryDay ? (
+                  {singleDeliveryDay ? (
                     // One delivery weekday: nothing to choose between — show it, and
                     // pick the soonest date (still editable if several are upcoming).
                     <>
                       <p className="text-[12px] mb-1.5" style={{ color: "var(--muted)" }}>
-                        {businessName} delivers on {settings.deliveryDaysLabel}.
+                        {businessName} delivers on {deliveryDaysLabel}.
                       </p>
                       <select
                         value={deliveryDate}
@@ -813,7 +867,7 @@ export function Storefront({
                         className="w-full px-3 py-2 rounded-md border text-[13px] outline-none"
                         style={inputStyle}
                       >
-                        {settings.deliveryDateOptions.map((o) => (
+                        {dateOptions.map((o) => (
                           <option key={o.value} value={o.value}>
                             {o.label}
                           </option>
@@ -828,14 +882,14 @@ export function Storefront({
                         className="w-full px-3 py-2 rounded-md border text-[13px] outline-none"
                         style={inputStyle}
                       >
-                        {settings.deliveryDateOptions.map((o) => (
+                        {dateOptions.map((o) => (
                           <option key={o.value} value={o.value}>
                             {o.label}
                           </option>
                         ))}
                       </select>
                       <p className="text-[11.5px] mt-1" style={{ color: "var(--muted)" }}>
-                        We deliver on {settings.deliveryDaysLabel}.
+                        We deliver on {deliveryDaysLabel}.
                       </p>
                     </>
                   )}
@@ -862,7 +916,7 @@ export function Storefront({
                             className="w-full px-3 py-2 rounded-md border text-[13px] outline-none mb-2.5"
                             style={inputStyle}
                           >
-                            {settings.deliveryDateOptions
+                            {dateOptions
                               .filter((o) => o.value !== deliveryDate)
                               .map((o) => (
                                 <option key={o.value} value={o.value}>
