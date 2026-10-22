@@ -29,7 +29,7 @@ function layout(opts: {
   bodyHtml: string;
 }): string {
   const pine = opts.brandColor || "#2f4536";
-  return `<!doctype html><html><body style="margin:0;background:#f4f2ec;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;">
+  return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(opts.businessName)}</title></head><body style="margin:0;background:#f4f2ec;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;">
     <div style="max-width:520px;margin:0 auto;padding:32px 20px;">
       <div style="background:#ffffff;border:1px solid ${LINE};border-radius:14px;overflow:hidden;">
         <div style="background:${pine};padding:20px 24px;">
@@ -71,6 +71,17 @@ async function send(opts: {
       /* not in a request scope (cron/background) — send as normal */
     }
     const html = layout(opts);
+    // Dev/preview: EMAIL_PREVIEW_DIR writes the rendered email to disk instead of
+    // sending, so templates can be eyeballed exactly as a customer sees them.
+    if (process.env.EMAIL_PREVIEW_DIR && process.env.NODE_ENV !== "production") {
+      const { writeFile, mkdir } = await import("node:fs/promises");
+      const path = await import("node:path");
+      await mkdir(process.env.EMAIL_PREVIEW_DIR, { recursive: true });
+      const name = opts.subject.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 60) || "email";
+      await writeFile(path.join(process.env.EMAIL_PREVIEW_DIR, `${name}.html`), html);
+      console.log(`[email:preview] wrote ${name}.html`);
+      return;
+    }
     if (!resend) {
       console.log(`[email:disabled] would send "${opts.subject}" to ${opts.to}`);
       return;
@@ -145,8 +156,10 @@ export async function sendSupportRequest(opts: {
 type OrderRow = {
   id: string;
   businessId: string;
+  type: string;
   fulfillment: string;
   address: string | null;
+  deliveryDate: Date | null;
   subtotalCents: number;
   taxCents: number;
   feesCents: number;
@@ -202,15 +215,22 @@ export async function sendOrderConfirmation(orderId: string): Promise<void> {
   const code = o.id.slice(-6).toUpperCase();
   const firstName = o.customer.name?.split(" ")[0] ?? "there";
   const fulfil = o.fulfillment === "pickup" ? "Pickup" : "Delivery";
+  const when = o.deliveryDate ? new Intl.DateTimeFormat("en-US", { weekday: "long", month: "long", day: "numeric" }).format(o.deliveryDate) : null;
+  const closing =
+    o.type === "catering"
+      ? `Your catering order is confirmed${when ? ` for ${when}` : ""}. We'll be in touch if we need anything before then.`
+      : when
+        ? `We'll have your meals ready for ${o.fulfillment === "pickup" ? "pickup" : "delivery"} on ${when}.`
+        : `We'll have your meals ready for your next ${o.fulfillment === "pickup" ? "pickup" : "delivery"}.`;
   await send({
     to: o.customer.email,
     subject: `Your ${o.business.name} order is confirmed`,
     businessName: o.business.name,
     brandColor: o.business.brandColor,
     heading: `Thanks, ${escapeHtml(firstName)} — your order is confirmed`,
-    subheading: `Order #${code} · ${fulfil}${o.address ? ` · ${escapeHtml(o.address)}` : ""}`,
+    subheading: `Order #${code} · ${fulfil}${when ? ` · ${when}` : ""}${o.address ? ` · ${escapeHtml(o.address)}` : ""}`,
     bodyHtml: `${itemsTable(o.items)}${totalsTable(o, "Total charged")}
-      <p style="margin:20px 0 0;color:${SOFT};font-size:13px;">We'll have your meals ready for your next ${o.fulfillment === "pickup" ? "pickup" : "delivery"}. Questions? Just reply to this email.</p>`,
+      <p style="margin:20px 0 0;color:${SOFT};font-size:13px;">${closing} Questions? Just reply to this email.</p>`,
   });
 }
 
@@ -225,7 +245,7 @@ export async function sendOwnerNewOrder(orderId: string): Promise<void> {
   if (!owner?.email) return;
 
   const code = o.id.slice(-6).toUpperCase();
-  const fulfil = o.fulfillment === "pickup" ? "Pickup" : "Delivery";
+  const fulfil = `${o.fulfillment === "pickup" ? "Pickup" : "Delivery"}${o.deliveryDate ? ` · ${new Intl.DateTimeFormat("en-US", { weekday: "short", month: "short", day: "numeric" }).format(o.deliveryDate)}` : ""}${o.type === "catering" ? " · Catering" : ""}`;
   const contact = o.customer
     ? `${escapeHtml(o.customer.name)} · ${escapeHtml(o.customer.email)}${o.customer.phone ? ` · ${escapeHtml(o.customer.phone)}` : ""}`
     : "—";
