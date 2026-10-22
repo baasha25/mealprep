@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { normalizePostal, parsePrefixes, zoneForPostal, zoneDays, zoneFeeCents, validateZones, postalLooksComplete, type ZoneLike } from "./zones";
+import { normalizePostal, parsePrefixes, zoneForPostal, zoneDays, zoneFeeCents, validateZones, postalLooksComplete, kitchenDaysWithZones, type ZoneLike } from "./zones";
 
 const zones: ZoneLike[] = [
   { id: "n", name: "North", postalPrefixes: ["L4C", "L4E"], deliveryDays: { Mon: true }, deliveryFeeCents: 499 },
@@ -57,5 +57,13 @@ describe("validateZones", () => {
     expect(validateZones([{ name: "A", prefixes: "x", days: {}, feeDollars: "" }]).ok).toBe(false);
     expect(validateZones([{ name: "A", prefixes: "L4C", days: {}, feeDollars: "" }, { name: "B", prefixes: "L4C", days: {}, feeDollars: "" }]).ok).toBe(false);
     expect(validateZones([{ name: "A", prefixes: "L4C", days: {}, feeDollars: "abc" }]).ok).toBe(false);
+  });
+});
+
+describe("kitchenDaysWithZones", () => {
+  it("keeps ticked kitchen days; otherwise unions the zones' days; empty when neither", () => {
+    expect(kitchenDaysWithZones({ Mon: true, Wed: false }, zones)).toEqual({ Mon: true, Wed: false });
+    expect(kitchenDaysWithZones({ Mon: false }, zones)).toEqual({ Mon: true, Wed: true, Fri: true });
+    expect(kitchenDaysWithZones({}, [])).toEqual({});
   });
 });

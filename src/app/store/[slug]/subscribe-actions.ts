@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import { stripe, STRIPE_ENABLED, PLATFORM_CURRENCY } from "@/lib/stripe";
 import { getStorefrontBusiness } from "@/lib/storefront";
 import { enabledDeliveryDays, sanitizePreferredDays } from "@/lib/delivery-days";
+import { kitchenDaysWithZones } from "@/lib/zones";
 
 const Input = z.object({
   slug: z.string().min(1),
@@ -39,8 +40,9 @@ export async function startPlanSubscription(input: unknown): Promise<SubscribeRe
   if (!business) return { ok: false, message: "Store unavailable." };
 
   // Only keep delivery days the kitchen actually delivers on.
+  const zoneRows = await db.deliveryZone.findMany({ where: { businessId: business.id, active: true }, select: { deliveryDays: true } });
   const enabled = enabledDeliveryDays(
-    (business.settings?.deliveryDays ?? {}) as Record<string, boolean>,
+    kitchenDaysWithZones((business.settings?.deliveryDays ?? {}) as Record<string, boolean>, zoneRows.map((z) => ({ deliveryDays: (z.deliveryDays ?? {}) as Record<string, boolean> }))),
   );
   const chosenDays = sanitizePreferredDays(parsed.data.deliveryDays, enabled);
 

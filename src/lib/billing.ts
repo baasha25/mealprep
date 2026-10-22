@@ -5,6 +5,7 @@ import { appUrl } from "@/lib/app-url";
 import { sendSubscriptionConfirmation } from "@/lib/email";
 import { nextCutoffAt, upcomingDeliveries, DEFAULT_TIMEZONE } from "@/lib/cutoff";
 import { enabledDeliveryDays, sanitizePreferredDays } from "@/lib/delivery-days";
+import { kitchenDaysWithZones } from "@/lib/zones";
 
 /**
  * Create our Subscription row from a completed subscription-mode Checkout
@@ -53,7 +54,8 @@ export async function ensureSubscriptionFromCheckout(
   // account page can split the plan across them.
   const settingsRow = await db.businessSettings.findUnique({ where: { businessId } });
   const tz = settingsRow?.timezone || DEFAULT_TIMEZONE;
-  const enabled = enabledDeliveryDays((settingsRow?.deliveryDays ?? {}) as Record<string, boolean>);
+  const zoneRows = await db.deliveryZone.findMany({ where: { businessId, active: true }, select: { deliveryDays: true } });
+  const enabled = enabledDeliveryDays(kitchenDaysWithZones((settingsRow?.deliveryDays ?? {}) as Record<string, boolean>, zoneRows.map((z) => ({ deliveryDays: (z.deliveryDays ?? {}) as Record<string, boolean> }))));
   const chosen = sanitizePreferredDays(
     (session.metadata?.deliveryDays ?? "")
       .split(",")

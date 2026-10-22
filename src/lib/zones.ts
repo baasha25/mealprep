@@ -80,3 +80,15 @@ export function validateZones(rows: { name: string; prefixes: string; days: Reco
   }
   return { ok: true, zones };
 }
+
+/**
+ * The kitchen's delivery days for subscriptions and defaults. When the owner
+ * ticked none but defined zones (Gaia Kitchen did exactly this), the zones'
+ * days are the kitchen's days: a plan must still land on a real delivery day.
+ */
+export function kitchenDaysWithZones(kitchenDays: Record<string, boolean>, zones: Pick<ZoneLike, "deliveryDays">[]): Record<string, boolean> {
+  if (Object.values(kitchenDays ?? {}).some(Boolean) || !zones.length) return kitchenDays ?? {};
+  const union: Record<string, boolean> = {};
+  for (const z of zones) for (const [d, on] of Object.entries(z.deliveryDays ?? {})) if (on) union[d] = true;
+  return union;
+}

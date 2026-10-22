@@ -17,7 +17,7 @@ import { enabledDeliveryDays, describeDeliveryDays } from "@/lib/delivery-days";
 import { CutoffBanner } from "./cutoff-banner";
 import { PlanCards } from "./plan-cards";
 import { Storefront, type StoreMeal, type StoreReview, type StoreSettings, type StoreZone } from "./storefront";
-import { zoneDays } from "@/lib/zones";
+import { zoneDays, kitchenDaysWithZones } from "@/lib/zones";
 
 export const dynamic = "force-dynamic";
 
@@ -167,8 +167,11 @@ export default async function StorePage({
   const cutoffInstant = nextCutoffAt(s.cutoff, tz);
 
   // Upcoming delivery dates a one-time order can pick from — the kitchen's
-  // enabled delivery days, resolved to concrete dates after the next cut-off.
-  const enabledDays = enabledDeliveryDays((s.deliveryDays ?? {}) as Record<string, boolean>);
+  // enabled delivery days (or, if none are ticked, the union of its zones'
+  // days), resolved to concrete dates after the next cut-off.
+  const zoneRows = await db.deliveryZone.findMany({ where: { businessId: business.id, active: true }, orderBy: { sortOrder: "asc" } });
+  const kitchenDayMap = kitchenDaysWithZones((s.deliveryDays ?? {}) as Record<string, boolean>, zoneRows.map((z) => ({ deliveryDays: (z.deliveryDays ?? {}) as Record<string, boolean> })));
+  const enabledDays = enabledDeliveryDays(kitchenDayMap);
   const deliveryAnchor = cutoffInstant ?? new Date();
   const deliveryDateOptions = upcomingDeliveries(enabledDays, deliveryAnchor, tz, 8, "weekly").map((d) => ({
     value: d.toISOString(),
@@ -176,9 +179,8 @@ export default async function StorePage({
   }));
 
   // Delivery zones: each gets its own upcoming dates (its days) and fee.
-  const zoneRows = await db.deliveryZone.findMany({ where: { businessId: business.id, active: true }, orderBy: { sortOrder: "asc" } });
   const zones: StoreZone[] = zoneRows.map((z) => {
-    const zDays = enabledDeliveryDays(zoneDays({ ...z, deliveryDays: (z.deliveryDays ?? {}) as Record<string, boolean> }, (s.deliveryDays ?? {}) as Record<string, boolean>));
+    const zDays = enabledDeliveryDays(zoneDays({ ...z, deliveryDays: (z.deliveryDays ?? {}) as Record<string, boolean> }, kitchenDayMap));
     return {
       id: z.id,
       name: z.name,
@@ -208,7 +210,7 @@ export default async function StorePage({
 
   const cutoffISO = cutoffInstant?.toISOString() ?? null;
   const deliveryInstant = cutoffInstant
-    ? nextDeliveryAfter((s.deliveryDays ?? {}) as Record<string, boolean>, cutoffInstant, tz)
+    ? nextDeliveryAfter(kitchenDayMap, cutoffInstant, tz)
     : null;
   const deliveryLabel = deliveryInstant ? formatDeliveryLabel(deliveryInstant, tz) : null;
 
@@ -253,7 +255,7 @@ export default async function StorePage({
               perMealPriceCents: p.perMealPriceCents,
             }))}
             subDiscountPct={Math.round(s.subDiscountBps / 100)}
-            deliveryDays={enabledDeliveryDays((s.deliveryDays ?? {}) as Record<string, boolean>)}
+            deliveryDays={enabledDays}
           />
         )}
 
