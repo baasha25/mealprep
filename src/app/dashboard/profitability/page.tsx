@@ -22,7 +22,8 @@ import { MenuBoard, CLASS_STYLE } from "./menu-board";
 import { NearbyPrices } from "./nearby-prices";
 import { loadNearbyPrices } from "@/lib/competitors-data";
 import { effectiveTier, type TierKey } from "@/lib/tiers";
-import ontarioKitchens from "@/data/ontario-kitchens.json";
+import kitchensList from "@/data/kitchens.json";
+import { regionForKitchen, type KitchenEntry } from "@/lib/regions";
 import {
   plateCostFromRecipe,
   mealEconomics,
@@ -176,6 +177,13 @@ export default async function ProfitabilityPage({
   // Nearby prices (Pro): watched competitors + per-meal comparison.
   const isPro = effectiveTier({ tier: business.tier as TierKey, trialEndsAt: business.trialEndsAt }) === "pro";
   const nearby = isPro ? await loadNearbyPrices(business.id) : { competitors: [], rows: [], planRows: [], suggestedCount: 0 };
+  // "Kitchens near you" opens on the kitchen's own region: its delivery-zone
+  // postal prefixes first, then the service area it typed, then the first list.
+  const [zonePrefixes, brandSettings] = await Promise.all([
+    db.deliveryZone.findMany({ where: { businessId: business.id, active: true }, select: { postalPrefixes: true } }),
+    db.businessSettings.findUnique({ where: { businessId: business.id }, select: { serviceArea: true } }),
+  ]);
+  const defaultRegion = regionForKitchen({ postalPrefixes: zonePrefixes.flatMap((z) => z.postalPrefixes), serviceArea: brandSettings?.serviceArea }, kitchensList as KitchenEntry[]) ?? "GTA";
 
   // Rows the Dashboard sent the owner here to look at (same thresholds as the panel).
   const focusedRows =
@@ -406,7 +414,7 @@ export default async function ProfitabilityPage({
       </div>
 
       <div id="nearby-prices" className="scroll-mt-6">
-        <NearbyPrices competitors={nearby.competitors} rows={nearby.rows} planRows={nearby.planRows} suggestedCount={nearby.suggestedCount} isPro={isPro} suggestions={ontarioKitchens as { name: string; domain: string; city: string; region: string; platform: string }[]} />
+        <NearbyPrices competitors={nearby.competitors} rows={nearby.rows} planRows={nearby.planRows} suggestedCount={nearby.suggestedCount} isPro={isPro} suggestions={kitchensList as KitchenEntry[]} defaultRegion={defaultRegion} />
       </div>
 
       <div className="mb-5 scroll-mt-6" id="simulator">

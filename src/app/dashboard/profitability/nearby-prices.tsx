@@ -14,15 +14,15 @@ const NATIONAL: { name: string; domain: string }[] = [
   { name: "Goodfood", domain: "makegoodfood.ca" },
 ];
 
-type Suggestion = { name: string; domain: string; city: string; region: string; platform: string };
+type Suggestion = { name: string; domain: string; city: string; region: string; platform: string; province?: string };
 
-export function NearbyPrices({ competitors, rows, planRows, suggestedCount, isPro, suggestions }: { competitors: NearbyCompetitor[]; rows: NearbyRow[]; planRows: PlanRow[]; suggestedCount: number; isPro: boolean; suggestions: Suggestion[] }) {
+export function NearbyPrices({ competitors, rows, planRows, suggestedCount, isPro, suggestions, defaultRegion }: { competitors: NearbyCompetitor[]; rows: NearbyRow[]; planRows: PlanRow[]; suggestedCount: number; isPro: boolean; suggestions: Suggestion[]; defaultRegion: string }) {
   const [openPlan, setOpenPlan] = useState<Record<string, boolean>>({});
   const [url, setUrl] = useState("");
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [pending, start] = useTransition();
   const [open, setOpen] = useState<Record<string, boolean>>({});
-  const [region, setRegion] = useState("GTA");
+  const [region, setRegion] = useState(defaultRegion);
   const watched = new Set(competitors.map((c) => c.domain));
   const regions = [...new Set(suggestions.map((s) => s.region))];
   const nearby = suggestions.filter((s) => s.region === region && !watched.has(s.domain)).slice(0, 8);

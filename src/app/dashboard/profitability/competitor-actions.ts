@@ -7,7 +7,7 @@ import { effectiveTier, type TierKey } from "@/lib/tiers";
 import { rateLimit } from "@/lib/ratelimit";
 import { normalizeDomain } from "@/lib/competitors";
 import { refreshCompetitorData, MAX_COMPETITORS } from "@/lib/competitors-data";
-import ontario from "@/data/ontario-kitchens.json";
+import kitchens from "@/data/kitchens.json";
 
 export type CompResult = { ok: boolean; message: string };
 
@@ -26,7 +26,7 @@ export async function addCompetitor(input: { url: string; name?: string }): Prom
   if (!domain) return { ok: false, message: "Enter the competitor's website, e.g. powerkitchen.ca." };
   const count = await db.competitor.count({ where: { businessId: business.id } });
   if (count >= MAX_COMPETITORS) return { ok: false, message: `You can watch up to ${MAX_COMPETITORS} competitors. Remove one to add another.` };
-  const known = (ontario as { name: string; domain: string }[]).find((k) => k.domain === domain);
+  const known = (kitchens as { name: string; domain: string }[]).find((k) => k.domain === domain);
   const name = (input.name || known?.name || domain.replace(/\.(ca|com|co|net|org)$/, "").replace(/[-.]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())).slice(0, 80);
   let comp;
   try {

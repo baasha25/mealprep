@@ -1,0 +1,682 @@
+[
+  {
+    "name": "Aiyana Nutrition",
+    "domain": "aiyananutrition.com",
+    "city": "Toronto",
+    "region": "GTA",
+    "platform": "Shopify",
+    "province": "ON"
+  },
+  {
+    "name": "Balance Kitchen",
+    "domain": "balancekitchen.ca",
+    "city": "Toronto",
+    "region": "GTA",
+    "platform": "Shopify",
+    "province": "ON"
+  },
+  {
+    "name": "Blessed Foods Mealprep",
+    "domain": "blessedfoodsmealprep.com",
+    "city": "Toronto",
+    "region": "GTA",
+    "platform": "Shopify",
+    "province": "ON"
+  },
+  {
+    "name": "Charlie Meals",
+    "domain": "charliemeals.ca",
+    "city": "Whitby",
+    "region": "GTA",
+    "platform": "Shopify",
+    "province": "ON"
+  },
+  {
+    "name": "Clean Meals",
+    "domain": "cleanmeals.ca",
+    "city": "North York",
+    "region": "GTA",
+    "platform": "Shopify",
+    "province": "ON"
+  },
+  {
+    "name": "Delectable by Zarla Jane",
+    "domain": "delectablebyzarlajane.com",
+    "city": "Toronto",
+    "region": "GTA",
+    "platform": "Shopify",
+    "province": "ON"
+  },
+  {
+    "name": "Easy Mealz",
+    "domain": "easymealz.ca",
+    "city": "East York",
+    "region": "GTA",
+    "platform": "Shopify",
+    "province": "ON"
+  },
+  {
+    "name": "Ever Gourmet",
+    "domain": "evergourmet.ca",
+    "city": "Toronto",
+    "region": "GTA",
+    "platform": "Shopify",
+    "province": "ON"
+  },
+  {
+    "name": "Fit Meal Canada",
+    "domain": "fitmeal.ca",
+    "city": "GTA",
+    "region": "GTA",
+    "platform": "Shopify",
+    "province": "ON"
+  },
+  {
+    "name": "Fit Organix",
+    "domain": "fitorganix.com",
+    "city": "Hamilton / Halton",
+    "region": "GTA",
+    "platform": "Shopify",
+    "province": "ON"
+  },
+  {
+    "name": "FitCurryBox",
+    "domain": "fitcurrybox.com",
+    "city": "Toronto",
+    "region": "GTA",
+    "platform": "Shopify",
+    "province": "ON"
+  },
+  {
+    "name": "Geary Market",
+    "domain": "gearymarket.com",
+    "city": "Toronto",
+    "region": "GTA",
+    "platform": "Shopify",
+    "province": "ON"
+  },
+  {
+    "name": "GoFoodie",
+    "domain": "gofoodie.ca",
+    "city": "Toronto",
+    "region": "GTA",
+    "platform": "Shopify",
+    "province": "ON"
+  },
+  {
+    "name": "Green Zebra Kitchen",
+    "domain": "greenzebrakitchen.com",
+    "city": "Toronto",
+    "region": "GTA",
+    "platform": "Shopify",
+    "province": "ON"
+  },
+  {
+    "name": "Healthy7 Meals",
+    "domain": "healthy7.ca",
+    "city": "Scarborough",
+    "region": "GTA",
+    "platform": "Shopify",
+    "province": "ON"
+  },
+  {
+    "name": "Honey Bee Meals",
+    "domain": "honeybeemeals.com",
+    "city": "Toronto",
+    "region": "GTA",
+    "platform": "Shopify",
+    "province": "ON"
+  },
+  {
+    "name": "HouseCook",
+    "domain": "housecook.ca",
+    "city": "Toronto",
+    "region": "GTA",
+    "platform": "Shopify",
+    "province": "ON"
+  },
+  {
+    "name": "Inspired Go",
+    "domain": "inspiredgo.ca",
+    "city": "Brampton / GTA",
+    "region": "GTA",
+    "platform": "Shopify",
+    "province": "ON"
+  },
+  {
+    "name": "Meal Project (The Catering Lab)",
+    "domain": "mealproject.ca",
+    "city": "Toronto",
+    "region": "GTA",
+    "platform": "Shopify",
+    "province": "ON"
+  },
+  {
+    "name": "Mi BOWL Meal",
+    "domain": "mibowlmeal.com",
+    "city": "Toronto",
+    "region": "GTA",
+    "platform": "Shopify",
+    "province": "ON"
+  },
+  {
+    "name": "Nutrition Balance (n+b)",
+    "domain": "nutritionbalance.ca",
+    "city": "Toronto",
+    "region": "GTA",
+    "platform": "Shopify",
+    "province": "ON"
+  },
+  {
+    "name": "On The Run Meals",
+    "domain": "otrmeals.com",
+    "city": "Scarborough",
+    "region": "GTA",
+    "platform": "Shopify",
+    "province": "ON"
+  },
+  {
+    "name": "Power Kitchen",
+    "domain": "powerkitchen.ca",
+    "city": "Toronto",
+    "region": "GTA",
+    "platform": "Shopify",
+    "province": "ON"
+  },
+  {
+    "name": "Protein Chefs",
+    "domain": "proteinchefs.com",
+    "city": "Toronto",
+    "region": "GTA",
+    "platform": "Shopify",
+    "province": "ON"
+  },
+  {
+    "name": "Protein Pals",
+    "domain": "proteinpals.ca",
+    "city": "Toronto",
+    "region": "GTA",
+    "platform": "Shopify",
+    "province": "ON"
+  },
+  {
+    "name": "Savor Living",
+    "domain": "savorliving.ca",
+    "city": "Toronto",
+    "region": "GTA",
+    "platform": "Shopify",
+    "province": "ON"
+  },
+  {
+    "name": "Tita Flips Meal Prep",
+    "domain": "titaflipsprep.com",
+    "city": "Toronto",
+    "region": "GTA",
+    "platform": "Shopify",
+    "province": "ON"
+  },
+  {
+    "name": "Transcend by Chef Jex",
+    "domain": "transcendmealprep.ca",
+    "city": "Toronto",
+    "region": "GTA",
+    "platform": "Shopify",
+    "province": "ON"
+  },
+  {
+    "name": "Athlete's Kitchen",
+    "domain": "athleteskitchen.ca",
+    "city": "Toronto",
+    "region": "GTA",
+    "platform": "WooCommerce",
+    "province": "ON"
+  },
+  {
+    "name": "Dawat Halal Meals",
+    "domain": "dawathalalmeals.com",
+    "city": "Toronto",
+    "region": "GTA",
+    "platform": "WooCommerce",
+    "province": "ON"
+  },
+  {
+    "name": "Essential Meal Delivery",
+    "domain": "essentialmealdelivery.com",
+    "city": "Etobicoke",
+    "region": "GTA",
+    "platform": "WooCommerce",
+    "province": "ON"
+  },
+  {
+    "name": "Feed Me Fine Foods",
+    "domain": "feedmefinefoods.ca",
+    "city": "Newmarket",
+    "region": "GTA",
+    "platform": "WooCommerce",
+    "province": "ON"
+  },
+  {
+    "name": "Healthy Alternative",
+    "domain": "healthyalternative.ca",
+    "city": "Richmond Hill",
+    "region": "GTA",
+    "platform": "WooCommerce",
+    "province": "ON"
+  },
+  {
+    "name": "HealthyNow",
+    "domain": "healthynow.ca",
+    "city": "Newmarket",
+    "region": "GTA",
+    "platform": "WooCommerce",
+    "province": "ON"
+  },
+  {
+    "name": "One Life Meals",
+    "domain": "onelifemeals.com",
+    "city": "Scarborough",
+    "region": "GTA",
+    "platform": "WooCommerce",
+    "province": "ON"
+  },
+  {
+    "name": "Prep Success Meals",
+    "domain": "prepsuccessmeals.com",
+    "city": "GTA",
+    "region": "GTA",
+    "platform": "WooCommerce",
+    "province": "ON"
+  },
+  {
+    "name": "Cacio Pepe Meals",
+    "domain": "caciopepemeals.com",
+    "city": "Niagara-on-the-Lake",
+    "region": "Hamilton / Niagara / Brantford",
+    "platform": "Shopify",
+    "province": "ON"
+  },
+  {
+    "name": "FuelBox Meals",
+    "domain": "fuelboxmeals.com",
+    "city": "Hamilton",
+    "region": "Hamilton / Niagara / Brantford",
+    "platform": "Shopify",
+    "province": "ON"
+  },
+  {
+    "name": "Niagara Fresh Market",
+    "domain": "niagarafresh.ca",
+    "city": "St. Catharines",
+    "region": "Hamilton / Niagara / Brantford",
+    "platform": "Shopify",
+    "province": "ON"
+  },
+  {
+    "name": "The New Food Box",
+    "domain": "thenewfoodbox.ca",
+    "city": "Niagara Falls",
+    "region": "Hamilton / Niagara / Brantford",
+    "platform": "Shopify",
+    "province": "ON"
+  },
+  {
+    "name": "Sally's Easy Eats",
+    "domain": "sallyseasyeats.ca",
+    "city": "St. Catharines",
+    "region": "Hamilton / Niagara / Brantford",
+    "platform": "WooCommerce",
+    "province": "ON"
+  },
+  {
+    "name": "Canadian Meal Prep",
+    "domain": "canadianmealprep.com",
+    "city": "Windsor",
+    "region": "Southwest / Central",
+    "platform": "Shopify",
+    "province": "ON"
+  },
+  {
+    "name": "Clean Cravings (Ketolibriyum)",
+    "domain": "ketolibriyum.ca",
+    "city": "Oakville / London",
+    "region": "Southwest / Central",
+    "platform": "Shopify",
+    "province": "ON"
+  },
+  {
+    "name": "Delicious Direct",
+    "domain": "deliciousdirect.ca",
+    "city": "Guelph",
+    "region": "Southwest / Central",
+    "platform": "Shopify",
+    "province": "ON"
+  },
+  {
+    "name": "Lady Sara's Bounty",
+    "domain": "ladysarasbounty.com",
+    "city": "Guelph",
+    "region": "Southwest / Central",
+    "platform": "Shopify",
+    "province": "ON"
+  },
+  {
+    "name": "Meal In A Jar",
+    "domain": "mealinajar.com",
+    "city": "Waterloo",
+    "region": "Southwest / Central",
+    "platform": "Shopify",
+    "province": "ON"
+  },
+  {
+    "name": "The Conscious Farm Kitchen",
+    "domain": "theconsciousfarmkitchen.com",
+    "city": "Owen Sound",
+    "region": "Southwest / Central",
+    "platform": "Shopify",
+    "province": "ON"
+  },
+  {
+    "name": "Gourmet at Home",
+    "domain": "gourmetathome.ca",
+    "city": "Niagara Falls",
+    "region": "Southwest / Central",
+    "platform": "WooCommerce",
+    "province": "ON"
+  },
+  {
+    "name": "Set The Table Kitchen",
+    "domain": "setthetable.ca",
+    "city": "Hamilton",
+    "region": "Southwest / Central",
+    "platform": "WooCommerce",
+    "province": "ON"
+  },
+  {
+    "name": "Tiffin Planet Meals (tiffin)",
+    "domain": "tiffinplanet.ca",
+    "city": "London",
+    "region": "Southwest / Central",
+    "platform": "WooCommerce",
+    "province": "ON"
+  },
+  {
+    "name": "Epicuria Food Shop and Catering",
+    "domain": "epicuria.ca",
+    "city": "Ottawa",
+    "region": "East / North",
+    "platform": "Shopify",
+    "province": "ON"
+  },
+  {
+    "name": "Les Flavoureux",
+    "domain": "flavoureux.com",
+    "city": "Gatineau QC (serves Ottawa)",
+    "region": "East / North",
+    "platform": "Shopify",
+    "province": "ON"
+  },
+  {
+    "name": "Meal Prep Ottawa",
+    "domain": "mealprepottawa.com",
+    "city": "Ottawa",
+    "region": "East / North",
+    "platform": "Shopify",
+    "province": "ON"
+  },
+  {
+    "name": "Ouichef",
+    "domain": "ouichefservice.com",
+    "city": "Ottawa",
+    "region": "East / North",
+    "platform": "Shopify",
+    "province": "ON"
+  },
+  {
+    "name": "Take Another Bite",
+    "domain": "takeanotherbite.com",
+    "city": "Manotick (Ottawa)",
+    "region": "East / North",
+    "platform": "Shopify",
+    "province": "ON"
+  },
+  {
+    "name": "The Prep Kitchen",
+    "domain": "theprepkitchen.ca",
+    "city": "Nepean (Ottawa)",
+    "region": "East / North",
+    "platform": "Shopify",
+    "province": "ON"
+  },
+  {
+    "name": "The Red Apron",
+    "domain": "redapron.ca",
+    "city": "Ottawa",
+    "region": "East / North",
+    "platform": "Shopify",
+    "province": "ON"
+  },
+  {
+    "name": "Thyme & Again",
+    "domain": "thymeandagain.ca",
+    "city": "Ottawa",
+    "region": "East / North",
+    "platform": "Shopify",
+    "province": "ON"
+  },
+  {
+    "name": "Urban Element",
+    "domain": "theurbanelement.ca",
+    "city": "Ottawa",
+    "region": "East / North",
+    "platform": "Shopify",
+    "province": "ON"
+  },
+  {
+    "name": "Executive Nutrition",
+    "domain": "executivenutrition.ca",
+    "city": "Kingston",
+    "region": "East / North",
+    "platform": "WooCommerce",
+    "province": "ON"
+  },
+  {
+    "name": "FlavaDaddy",
+    "domain": "flavadaddy.com",
+    "city": "Ottawa",
+    "region": "East / North",
+    "platform": "WooCommerce",
+    "province": "ON"
+  },
+  {
+    "name": "Knifey Spooney",
+    "domain": "knifeyspooney.com",
+    "city": "Kingston",
+    "region": "East / North",
+    "platform": "WooCommerce",
+    "province": "ON"
+  },
+  {
+    "name": "Le Traiteur 1973",
+    "domain": "traiteur1973.com",
+    "city": "Gatineau QC (serves Ottawa)",
+    "region": "East / North",
+    "platform": "WooCommerce",
+    "province": "ON"
+  },
+  {
+    "name": "Marvellous Makings",
+    "domain": "marvellousmakings.ca",
+    "city": "Thunder Bay",
+    "region": "East / North",
+    "platform": "WooCommerce",
+    "province": "ON"
+  },
+  {
+    "name": "MmmChef",
+    "domain": "bymmmchef.com",
+    "city": "Ottawa",
+    "region": "East / North",
+    "platform": "WooCommerce",
+    "province": "ON"
+  },
+  {
+    "name": "Royal Meals To Go",
+    "domain": "royalmealstogo.ca",
+    "city": "Napanee",
+    "region": "East / North",
+    "platform": "WooCommerce",
+    "province": "ON"
+  },
+  {
+    "name": "Vitaly Foods",
+    "domain": "vitalyfoods.ca",
+    "city": "Ottawa",
+    "region": "East / North",
+    "platform": "WooCommerce",
+    "province": "ON"
+  },
+  {
+    "name": "2 Guys With Knives",
+    "domain": "2guyswithknives.com",
+    "city": "Vancouver",
+    "region": "Vancouver / Lower Mainland",
+    "platform": "WooCommerce",
+    "province": "BC"
+  },
+  {
+    "name": "Premium Meals",
+    "domain": "premiummeals.ca",
+    "city": "Vancouver",
+    "region": "Vancouver / Lower Mainland",
+    "platform": "Shopify",
+    "province": "BC"
+  },
+  {
+    "name": "Fresh In Your Fridge",
+    "domain": "freshinyourfridge.com",
+    "city": "Vancouver",
+    "region": "Vancouver / Lower Mainland",
+    "platform": "WooCommerce",
+    "province": "BC"
+  },
+  {
+    "name": "Planted Meals",
+    "domain": "plantedmeals.ca",
+    "city": "Vancouver",
+    "region": "Vancouver / Lower Mainland",
+    "platform": "Custom ordering app",
+    "province": "BC"
+  },
+  {
+    "name": "All Your Meals",
+    "domain": "allyourmealsyvr.com",
+    "city": "Vancouver",
+    "region": "Vancouver / Lower Mainland",
+    "platform": "Custom-built",
+    "province": "BC"
+  },
+  {
+    "name": "Revive Meals",
+    "domain": "revivemeals.ca",
+    "city": "Langley",
+    "region": "Vancouver / Lower Mainland",
+    "platform": "Custom-built",
+    "province": "BC"
+  },
+  {
+    "name": "The Whole Bowl",
+    "domain": "mealprep.thewholebowl.ca",
+    "city": "Surrey",
+    "region": "Vancouver / Lower Mainland",
+    "platform": "WooCommerce",
+    "province": "BC"
+  },
+  {
+    "name": "Better Meals",
+    "domain": "bettermeals.ca",
+    "city": "Burnaby",
+    "region": "Vancouver / Lower Mainland",
+    "platform": "WooCommerce",
+    "province": "BC"
+  },
+  {
+    "name": "Crave Healthy",
+    "domain": "order.cravehealthy.ca",
+    "city": "Vancouver",
+    "region": "Vancouver / Lower Mainland",
+    "platform": "GoPrep",
+    "province": "BC"
+  },
+  {
+    "name": "Simply Foods",
+    "domain": "simplyfoods.ca",
+    "city": "Vancouver",
+    "region": "Vancouver / Lower Mainland",
+    "platform": "Orderspace",
+    "province": "BC"
+  },
+  {
+    "name": "Terracotta Tummy",
+    "domain": "terracottatummy.com",
+    "city": "Vancouver",
+    "region": "Vancouver / Lower Mainland",
+    "platform": "Shopify",
+    "province": "BC"
+  },
+  {
+    "name": "Nutrition Box",
+    "domain": "nutritionbox.ca",
+    "city": "Vancouver",
+    "region": "Vancouver / Lower Mainland",
+    "platform": "WooCommerce",
+    "province": "BC"
+  },
+  {
+    "name": "Meals-A-Weight",
+    "domain": "mealsaweight.com",
+    "city": "Vancouver",
+    "region": "Vancouver / Lower Mainland",
+    "platform": "Webflow",
+    "province": "BC"
+  },
+  {
+    "name": "Fed",
+    "domain": "fedfedfed.com",
+    "city": "Vancouver",
+    "region": "Vancouver / Lower Mainland",
+    "platform": "Custom-built",
+    "province": "BC"
+  },
+  {
+    "name": "Legends Haul",
+    "domain": "legendshaul.com",
+    "city": "Vancouver",
+    "region": "Vancouver / Lower Mainland",
+    "platform": "WordPress",
+    "province": "BC"
+  },
+  {
+    "name": "Tractor at Home",
+    "domain": "tractorathome.com",
+    "city": "Vancouver",
+    "region": "Vancouver / Lower Mainland",
+    "platform": "Custom-built",
+    "province": "BC"
+  },
+  {
+    "name": "Movement Food",
+    "domain": "movementfood.com",
+    "city": "Vancouver",
+    "region": "Vancouver / Lower Mainland",
+    "platform": "Custom-built",
+    "province": "BC"
+  },
+  {
+    "name": "Inspired Go",
+    "domain": "inspiredgo.ca",
+    "city": "Metro Vancouver (ships from Calgary)",
+    "region": "Vancouver / Lower Mainland",
+    "platform": "Shopify",
+    "province": "BC"
+  }
+]
