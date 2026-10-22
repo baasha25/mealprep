@@ -603,7 +603,7 @@ export const GUIDE: GuideArea[] = [
         img: "20-billing.png",
         does: "Your PrepFlow subscription — which plan you're on (Starter / Growth / Pro), what it includes, and your trial status. This is what YOU pay PrepFlow, separate from the money your customers pay you.",
         numbers: [
-          ["Current plan", "Starter, Growth, or Pro — sets your monthly fee, order limit, and platform fee %."],
+          ["Current plan", "Starter, Growth, or Pro — sets your monthly fee, order limit, and platform fee %. The fee is the same number in your own currency: CAD for Canadian kitchens, USD for US kitchens (set from where you signed up)."],
           ["Trial", "During your 30-day free trial you get full Pro-level access to everything, on any plan."],
           ["Order limit", "How many orders your plan includes per month (Growth and Pro are unlimited)."],
         ],

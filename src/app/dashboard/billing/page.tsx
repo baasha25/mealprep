@@ -41,7 +41,7 @@ export default async function BillingPage({
       case "comped":
         return { icon: <Gift size={18} />, fg: "var(--pine)", title: "Founding customer", body: `${business.name} has complimentary access — you won't be charged.` };
       case "subscribed":
-        return { icon: <CheckCircle2 size={18} />, fg: "var(--pine)", title: `Subscribed — ${planName}`, body: `$${Math.round(TIERS[tier].priceCents / 100)}/mo, billed monthly. Thanks for being on PrepFlow.` };
+        return { icon: <CheckCircle2 size={18} />, fg: "var(--pine)", title: `Subscribed — ${planName}`, body: `$${Math.round(TIERS[tier].priceCents / 100)}/mo ${business.currency}, billed monthly. Thanks for being on PrepFlow.` };
       case "past_due":
         return { icon: <AlertTriangle size={18} />, fg: "var(--clay)", title: "Payment past due", body: "Your last charge didn't go through. Update your card to avoid losing access — we'll retry automatically." };
       case "trialing":

@@ -16,19 +16,30 @@ const PRICE_IDS: Record<TierKey, string | undefined> = {
   growth: process.env.STRIPE_PRICE_GROWTH,
   pro: process.env.STRIPE_PRICE_PRO,
 };
+// USD prices (parity numbers) for US kitchens. Optional: until they're set, a
+// USD kitchen is billed on the CAD price so billing never blocks.
+const PRICE_IDS_USD: Record<TierKey, string | undefined> = {
+  starter: process.env.STRIPE_PRICE_STARTER_USD,
+  growth: process.env.STRIPE_PRICE_GROWTH_USD,
+  pro: process.env.STRIPE_PRICE_PRO_USD,
+};
 
 /** True once the platform prices are configured — kitchen billing is chargeable. */
 export const KITCHEN_BILLING_ENABLED =
   STRIPE_ENABLED && Object.values(PRICE_IDS).every((p) => typeof p === "string" && p.length > 0);
 
-export function tierPriceId(tier: TierKey): string | undefined {
+/** True once USD prices exist too (US kitchens are then billed in USD). */
+export const USD_BILLING_ENABLED = Object.values(PRICE_IDS_USD).every((p) => typeof p === "string" && p.length > 0);
+
+export function tierPriceId(tier: TierKey, currency: string = "CAD"): string | undefined {
+  if (currency === "USD" && USD_BILLING_ENABLED) return PRICE_IDS_USD[tier];
   return PRICE_IDS[tier];
 }
 
-/** Reverse-lookup a tier from a Stripe price id (webhook: subscription → tier). */
+/** Reverse-lookup a tier from a Stripe price id (webhook: subscription → tier), either currency. */
 export function tierFromPriceId(priceId: string | null | undefined): TierKey | null {
   if (!priceId) return null;
-  const entry = (Object.entries(PRICE_IDS) as [TierKey, string | undefined][]).find(([, id]) => id === priceId);
+  const entry = ([...Object.entries(PRICE_IDS), ...Object.entries(PRICE_IDS_USD)] as [TierKey, string | undefined][]).find(([, id]) => id === priceId);
   return entry ? entry[0] : null;
 }
 

@@ -3,6 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import type { NextFetchEvent } from "next/server";
 import { parseDomainMap, rewritePathForHost } from "@/lib/custom-domains";
 import { AUTH_MISCONFIGURED, AUTH_MISCONFIGURED_MESSAGE } from "@/lib/auth-mode";
+import { COUNTRY_COOKIE, countryFromHeaders, normalizeCountry } from "@/lib/geo";
 
 /**
  * Route protection. Clerk activates only when CLERK_SECRET_KEY is set; until
@@ -45,7 +46,20 @@ const clerkHandler = process.env.CLERK_SECRET_KEY
 // comes from env (edge-safe, no DB); see src/lib/custom-domains.ts.
 const DOMAIN_MAP = parseDomainMap(process.env.CUSTOM_DOMAINS);
 
-export default function middleware(req: NextRequest, event: NextFetchEvent) {
+// Public pages where pricing is shown: remember the visitor's country (from the
+// edge's geo header, or a ?country=XX override) so the page can price in USD
+// for US visitors. Country code only; one cookie; nothing else recorded.
+const PRICED_PATHS = new Set(["/", "/sign-up", "/sign-in", "/audit", "/calculator", "/onboarding"]);
+
+function withCountryCookie(req: NextRequest, res: Response | undefined): Response | undefined {
+  if (!res || !(res instanceof NextResponse) || !PRICED_PATHS.has(req.nextUrl.pathname)) return res;
+  const override = normalizeCountry(req.nextUrl.searchParams.get("country"));
+  const country = override ?? (req.cookies.get(COUNTRY_COOKIE)?.value ? null : countryFromHeaders((n) => req.headers.get(n)));
+  if (country) res.cookies.set(COUNTRY_COOKIE, country, { path: "/", maxAge: 60 * 60 * 24 * 365, sameSite: "lax" });
+  return res;
+}
+
+export default async function middleware(req: NextRequest, event: NextFetchEvent) {
   if (DOMAIN_MAP.size > 0) {
     const target = rewritePathForHost(req.headers.get("host"), req.nextUrl.pathname, DOMAIN_MAP);
     if (target) {
@@ -54,13 +68,16 @@ export default function middleware(req: NextRequest, event: NextFetchEvent) {
       return NextResponse.rewrite(url);
     }
   }
-  if (clerkHandler) return clerkHandler(req, event);
+  if (clerkHandler) {
+    const res = await clerkHandler(req, event);
+    return withCountryCookie(req, res ?? NextResponse.next());
+  }
   // No Clerk and no explicit dev stub: refuse protected routes outright. Public
   // pages (marketing, storefronts) keep working; nobody gets owner/admin access.
   if (AUTH_MISCONFIGURED && isProtected(req)) {
     return new NextResponse(AUTH_MISCONFIGURED_MESSAGE, { status: 503, headers: { "content-type": "text/plain" } });
   }
-  return NextResponse.next();
+  return withCountryCookie(req, NextResponse.next());
 }
 
 export const config = {

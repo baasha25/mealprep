@@ -29,7 +29,7 @@ export async function startKitchenSubscription(tier: string): Promise<BillingAct
   if (business.isDemo) return { ok: false, message: "This is a demo — claim your kitchen to set up billing." };
   if (!KITCHEN_BILLING_ENABLED) return { ok: false, message: "Billing isn't switched on yet." };
   if (!isTierKey(tier)) return { ok: false, message: "Unknown plan." };
-  const price = tierPriceId(tier);
+  const price = tierPriceId(tier, business.currency); // USD for US kitchens once USD prices exist
   if (!price) return { ok: false, message: "That plan isn't available." };
 
   // Already subscribed → send them to the portal to switch plans instead.

@@ -1,3 +1,4 @@
+import { TierPrice, CurrencyNote } from "@/components/pricing-currency";
 import Link from "next/link";
 import {
   ArrowRight,
@@ -283,7 +284,7 @@ function Pricing() {
   const tiers = [
     {
       name: "Starter",
-      price: "$79",
+      priceCents: 7900,
       orders: "Up to 150 orders / mo",
       fee: "1.5% platform fee",
       blurb: "For new & small kitchens finding their feet.",
@@ -298,7 +299,7 @@ function Pricing() {
     },
     {
       name: "Growth",
-      price: "$199",
+      priceCents: 19900,
       orders: "Unlimited orders",
       fee: "1.25% platform fee",
       blurb: "For kitchens scaling past the early days.",
@@ -313,7 +314,7 @@ function Pricing() {
     },
     {
       name: "Pro",
-      price: "$349",
+      priceCents: 34900,
       orders: "Unlimited orders",
       fee: "1.0% platform fee",
       blurb: "For high-volume & multi-location kitchens.",
@@ -356,7 +357,7 @@ function Pricing() {
             <div className="text-[15px] font-semibold mb-1" style={{ color: t.highlight ? "#f4f2ec" : "var(--ink)" }}>{t.name}</div>
             <div className="text-[12.5px] mb-4" style={{ color: t.highlight ? "#ffffffb0" : "var(--muted)" }}>{t.blurb}</div>
             <div className="flex items-end gap-1 mb-1">
-              <span className="disp text-[40px] font-medium leading-none" style={{ color: t.highlight ? "#f4f2ec" : "var(--ink)" }}>{t.price}</span>
+              <TierPrice cents={t.priceCents} className="disp text-[40px] font-medium leading-none" style={{ color: t.highlight ? "#f4f2ec" : "var(--ink)" }} />
               <span className="text-[13px] mb-1" style={{ color: t.highlight ? "#ffffffb0" : "var(--muted)" }}>/ month</span>
             </div>
             <div className="text-[12.5px] mb-5" style={{ color: t.highlight ? "#ffffffcc" : "var(--ink-soft)" }}>
@@ -382,7 +383,7 @@ function Pricing() {
       </div>
 
       <p className="text-center text-[12.5px] mt-8" style={{ color: "var(--muted)" }}>
-        Annual billing saves about two months. 30-day free trial — no card required. Prices in CAD.
+        Annual billing saves about two months. 30-day free trial — no card required. <CurrencyNote />
       </p>
     </section>
   );

@@ -8,6 +8,7 @@ import { slugify } from "@/lib/slug";
 import { TIERS } from "@/lib/tiers";
 import { trialEndFrom } from "@/lib/trial";
 import { ATTRIB_COOKIE, parseAttributionCookie } from "@/lib/attribution";
+import { COUNTRY_COOKIE, currencyForCountry, normalizeCountry } from "@/lib/geo";
 
 const Input = z.object({
   name: z.string().trim().min(2, "Enter your kitchen's name").max(80),
@@ -76,12 +77,17 @@ export async function createKitchen(
     });
     if (partner && partner.status === "active") referredByPartnerId = partner.id;
   }
+  // Country from the visitor cookie middleware set on the marketing/sign-up
+  // pages → the currency this kitchen is quoted and billed in (parity numbers).
+  const country = normalizeCountry((await cookies()).get(COUNTRY_COOKIE)?.value);
   await db.business.create({
     data: {
       name: parsed.data.name,
       slug,
       brandColor,
       tier,
+      country,
+      currency: currencyForCountry(country),
       // Every kitchen starts a 30-day free trial (informational until billing).
       trialEndsAt: trialEndFrom(),
       acqSource: attrib?.source ?? null,
