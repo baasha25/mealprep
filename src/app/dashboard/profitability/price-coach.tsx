@@ -116,7 +116,7 @@ export function PriceCoach({ meals }: { meals: CoachMeal[] }) {
             </div>
           ))}
           <p className="text-[11px] mt-1" style={{ color: "var(--muted)" }}>
-            Suggestions are a starting point — "Try it" opens the price in the What-if simulator below so you can see the effect on this period\u2019s contribution before you change anything. Edit prices in Menu.
+            Suggestions are a starting point — "Try it" opens the price in the What-if simulator below so you can see the effect on this period&apos;s contribution before you change anything. Edit prices in Menu.
           </p>
         </div>
       )}
