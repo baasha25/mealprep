@@ -4,7 +4,8 @@ import { z } from "zod";
 import { resolveSelections } from "@/lib/meal-options";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
-import { zoneForPostal, zoneDays, type ZoneLike } from "@/lib/zones";
+import { zoneForPostal, zoneDays, kitchenDaysWithZones, type ZoneLike } from "@/lib/zones";
+import { rezoneCustomerSubscriptions } from "@/lib/subscription-zone";
 import { stripe, STRIPE_ENABLED } from "@/lib/stripe";
 import { getCustomerContext } from "@/lib/customer-auth";
 import { advanceDeliveryDate, canModifyNextDelivery, canPause, canResume } from "@/lib/subscriptions";
@@ -133,9 +134,13 @@ async function editableDeliveryDates(sub: {
   preferredDeliveryDays: string[];
 }): Promise<Date[]> {
   if (!sub.nextDeliveryDate) return [];
-  const settings = await db.businessSettings.findUnique({ where: { businessId: sub.businessId } });
+  const [settings, zoneRows] = await Promise.all([
+    db.businessSettings.findUnique({ where: { businessId: sub.businessId } }),
+    db.deliveryZone.findMany({ where: { businessId: sub.businessId, active: true } }),
+  ]);
   const tz = settings?.timezone || DEFAULT_TIMEZONE;
-  const enabled = enabledDeliveryDays((settings?.deliveryDays ?? {}) as Record<string, boolean>);
+  const zones: ZoneLike[] = zoneRows.map((z) => ({ ...z, deliveryDays: (z.deliveryDays ?? {}) as Record<string, boolean> }));
+  const enabled = enabledDeliveryDays(kitchenDaysWithZones((settings?.deliveryDays ?? {}) as Record<string, boolean>, zones));
   const chosen = sanitizePreferredDays(sub.preferredDeliveryDays, enabled);
   return currentCycleDeliveries(chosen, sub.nextDeliveryDate, tz);
 }
@@ -241,8 +246,9 @@ export async function updateDeliveryDays(input: {
     db.address.findFirst({ where: { customerId: sub.customerId }, orderBy: { id: "asc" }, select: { postalCode: true } }),
     db.deliveryZone.findMany({ where: { businessId: sub.businessId, active: true } }),
   ]);
-  const zone: ZoneLike | null = zoneForPostal(addr?.postalCode, zoneRows.map((z) => ({ ...z, deliveryDays: (z.deliveryDays ?? {}) as Record<string, boolean> })));
-  const enabled = enabledDeliveryDays(zoneDays(zone, (settings?.deliveryDays ?? {}) as Record<string, boolean>));
+  const zones: ZoneLike[] = zoneRows.map((z) => ({ ...z, deliveryDays: (z.deliveryDays ?? {}) as Record<string, boolean> }));
+  const zone: ZoneLike | null = zoneForPostal(sub.postalCode ?? addr?.postalCode, zones);
+  const enabled = enabledDeliveryDays(zoneDays(zone, kitchenDaysWithZones((settings?.deliveryDays ?? {}) as Record<string, boolean>, zones)));
   const chosen = sanitizePreferredDays(parsed.data.days, enabled);
   if (chosen.length === 0) {
     return { ok: false, message: zone ? `Your area (${zone.name}) is delivered on other days — pick from those.` : "Those days aren't available for this kitchen." };
@@ -324,6 +330,12 @@ export async function saveDeliveryAddress(input: {
   } else {
     await db.address.create({ data: { customerId: ctx.customer.id, ...data } });
   }
+  // A move to another zone re-places the subscription: its days, fee and Stripe line.
+  let note = "";
+  if (zone) {
+    const moved = (await rezoneCustomerSubscriptions(ctx.customer.id, parsed.data.postalCode)).find((r) => r.changed);
+    if (moved) note = ` Your plan now delivers in ${moved.zone}${moved.feeCents > 0 ? ` (${(moved.feeCents / 100).toLocaleString("en-CA", { style: "currency", currency: "CAD" })} delivery each week)` : " (free delivery)"}.`;
+  }
   revalidatePath("/store/[slug]/account", "page");
-  return { ok: true, message: "Delivery address saved." };
+  return { ok: true, message: `Delivery address saved.${note}` };
 }

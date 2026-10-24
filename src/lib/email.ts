@@ -477,6 +477,8 @@ export async function sendSubscriptionConfirmation(opts: {
   planName: string;
   nextDeliveryLabel: string;
   accountUrl: string;
+  /** e.g. "Vancouver + North Shore · Sundays · $7.00 delivery each week" (zone kitchens). */
+  deliveryLine?: string | null;
 }): Promise<void> {
   await send({
     to: opts.to,
@@ -487,6 +489,7 @@ export async function sendSubscriptionConfirmation(opts: {
     subheading: `${escapeHtml(opts.planName)} · first delivery ${escapeHtml(opts.nextDeliveryLabel)}`,
     bodyHtml: `
       <p style="margin:0 0 14px;color:${INK};font-size:14px;">Hi ${escapeHtml(opts.customerName)}, thanks for subscribing to ${escapeHtml(opts.businessName)}! Your <strong>${escapeHtml(opts.planName)}</strong> plan is active and your first delivery is set for ${escapeHtml(opts.nextDeliveryLabel)}.</p>
+      ${opts.deliveryLine ? `<p style="margin:0 0 14px;color:${INK};font-size:13px;"><strong>Delivery:</strong> ${escapeHtml(opts.deliveryLine)}</p>` : ""}
       <p style="margin:0 0 16px;color:${SOFT};font-size:13px;">Head to your account to pick your meals for each delivery — you can skip, pause, or cancel anytime before the cut-off.</p>
       <a href="${opts.accountUrl}" style="display:inline-block;background:${opts.brandColor || "#2f4536"};color:#f4f2ec;text-decoration:none;font-size:14px;font-weight:500;padding:10px 18px;border-radius:8px;">Pick my meals</a>`,
   });

@@ -49,6 +49,8 @@ export default async function SettingsPage() {
     timezone: settings.timezone,
     fulfillment: settings.fulfillment as "delivery" | "pickup" | "both",
     deliveryDays: dd,
+    subscriptionsOnly: settings.subscriptionsOnly,
+    subNoPick: settings.subNoPick === "chef_choice" ? "chef_choice" : "skip",
     pickupLocations: settings.pickupLocations,
     loyaltyEnabled: settings.loyaltyEnabled,
     autoApproveReviews: settings.autoApproveReviews,

@@ -6,6 +6,7 @@ import { Page, Head } from "@/components/ui";
 import { ListSearch } from "@/components/list-search";
 import { formatCents } from "@/lib/money";
 import { ORDER_TYPE_LABEL } from "@/lib/order-status";
+import { ensureSubscriptionOrders } from "@/lib/subscription-orders-run";
 import { StatusControl } from "./status-control";
 import { updateOrderStatus } from "./actions";
 
@@ -17,6 +18,8 @@ export default async function OrdersPage({
   searchParams: Promise<{ q?: string; page?: string }>;
 }) {
   const { business, role } = await requireBusiness();
+  // Subscriber deliveries past their cut-off show up here as paid orders.
+  await ensureSubscriptionOrders(business.id);
   const isStaff = role !== "owner";
   const sp = await searchParams;
   const term = (sp.q ?? "").trim();

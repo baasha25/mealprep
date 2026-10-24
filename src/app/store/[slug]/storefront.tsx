@@ -74,6 +74,9 @@ export type StoreZone = {
 };
 
 export type StoreSettings = PricingSettings & {
+  // Plans-only kitchens: the menu is what subscribers pick from each week; there
+  // is no one-time cart (no Add buttons, no checkout panel).
+  subscriptionsOnly?: boolean;
   fulfillment: string; // "delivery" | "pickup" | "both"
   pickupLocations: string[];
   // Upcoming delivery dates a one-time order can choose from (kitchen's enabled
@@ -347,9 +350,20 @@ export function Storefront({
     );
   }
 
+  const plansOnly = Boolean(settings.subscriptionsOnly);
+
   return (
-    <div className="grid lg:grid-cols-[1fr_356px] gap-6">
+    <div className={plansOnly ? "" : "grid lg:grid-cols-[1fr_356px] gap-6"}>
       <div>
+        {plansOnly && (
+          <div className="mb-4">
+            <h2 className="text-[15px] font-semibold" style={{ color: "var(--ink)" }}>This week&apos;s menu</h2>
+            <p className="text-[12.5px] mt-0.5" style={{ color: "var(--muted)" }}>
+              Subscribers choose their meals from this menu each week in their account.{" "}
+              <a href="#plans" className="font-medium" style={{ color: "var(--pine)" }}>Choose a plan</a> to get started.
+            </p>
+          </div>
+        )}
         <div className="flex gap-1.5 mb-5 flex-wrap">
           {diets.map((d) => (
             <button
@@ -537,9 +551,11 @@ export function Storefront({
                   )}
                   <div className="flex items-center justify-between mt-auto">
                     <span className="disp text-[17px] font-medium" style={{ color: "var(--ink)" }}>
-                      {formatCents(m.priceCents)}
+                      {plansOnly ? "" : formatCents(m.priceCents)}
                     </span>
-                    {hasOptions ? (
+                    {plansOnly ? (
+                      <span className="text-[11.5px]" style={{ color: "var(--muted)" }}>Pick it in your account</span>
+                    ) : hasOptions ? (
                       <button
                         onClick={() => openChooser(m)}
                         className="flex items-center gap-1 px-3 py-1.5 rounded-md text-[13px] font-medium"
@@ -580,7 +596,7 @@ export function Storefront({
       </div>
 
       {/* Cart + checkout */}
-      <aside className="lg:sticky lg:top-6 h-fit">
+      {!plansOnly && <aside className="lg:sticky lg:top-6 h-fit">
         <div className="rounded-xl border p-5" style={cardStyle}>
           <div className="flex items-center gap-2 mb-4">
             <ShoppingBag size={16} style={{ color: "var(--pine)" }} />
@@ -1058,7 +1074,7 @@ export function Storefront({
           <a href="/terms" target="_blank" rel="noreferrer" className="underline">Terms</a> ·{" "}
           <a href="/privacy" target="_blank" rel="noreferrer" className="underline">Privacy</a>
         </p>
-      </aside>
+      </aside>}
     </div>
   );
 }

@@ -3,16 +3,19 @@ import { requireBusiness } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { Page, Head, Kpi, Card } from "@/components/ui";
 import { DispatchCheck, type DispatchRoute } from "./dispatch-check";
+import { ensureSubscriptionOrders } from "@/lib/subscription-orders-run";
 
 // Orders that are headed out for delivery (paid through packed/out-for-delivery).
 const ROUTABLE = ["paid", "in_production", "packed", "out_for_delivery"] as const;
 
 export default async function RoutesPage() {
   const { business } = await requireBusiness();
+  // Subscriber deliveries past their cut-off are orders too — make sure they're here.
+  await ensureSubscriptionOrders(business.id);
 
   const orders = await db.order.findMany({
     where: { businessId: business.id, fulfillment: "delivery", status: { in: [...ROUTABLE] } },
-    orderBy: { createdAt: "asc" },
+    orderBy: [{ deliveryDate: "asc" }, { createdAt: "asc" }],
     include: {
       customer: { select: { name: true } },
       _count: { select: { items: true } },
@@ -34,6 +37,7 @@ export default async function RoutesPage() {
     stops: stops.map((o) => ({ id: o.id, name: o.customer?.name ?? "Guest", address: o.address ?? null, items: o._count.items })),
   }));
   const dateKey = new Date().toISOString().slice(0, 10);
+  const dayFmt = new Intl.DateTimeFormat("en-US", { weekday: "short", month: "short", day: "numeric" });
 
   return (
     <Page>
@@ -80,7 +84,9 @@ export default async function RoutesPage() {
                       <div className="text-[13.5px] font-medium" style={{ color: "var(--ink)" }}>{o.customer?.name ?? "Guest"}</div>
                       <div className="text-[12px] truncate" style={{ color: "var(--muted)" }}>{o.address ?? "No address on file"}</div>
                     </div>
-                    <span className="text-[12px] shrink-0" style={{ color: "var(--ink-soft)" }}>{o._count.items} meals · #{o.id.slice(-6)}</span>
+                    <span className="text-[12px] shrink-0" style={{ color: "var(--ink-soft)" }}>
+                      {o.deliveryDate ? `${dayFmt.format(o.deliveryDate)} · ` : ""}{o._count.items} meals · #{o.id.slice(-6)}
+                    </span>
                   </div>
                 ))}
               </div>

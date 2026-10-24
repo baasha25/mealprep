@@ -316,6 +316,9 @@ model BusinessSettings {
   serviceArea      String? // city/region for local search, e.g. "Mississauga & Oakville"
 
   // Fulfillment
+  subscriptionsOnly Boolean @default(false) // storefront sells meal plans only; the menu shows what subscribers pick from each week
+  subNoPick         String  @default("skip") // "skip" | "chef_choice" — what to make for a subscriber who hasn't picked by the cut-off
+
   cutoff          String   @default("Sat 8:00 PM")
   timezone        String   @default("America/Toronto") // IANA tz the cutoff time is in; powers the storefront countdown
   fulfillment     String   @default("both") // "delivery" | "pickup" | "both"
@@ -688,6 +691,14 @@ model Subscription {
   // to the kitchen's soonest delivery day. Multiple days split the plan across
   // drops (same price), not a bigger charge.
   preferredDeliveryDays String[]    @default([])
+  // Zone-based delivery: set from the postal code typed at plan sign-up and
+  // refreshed when the subscriber saves a new address. The zone's fee is per
+  // delivery week and is charged as its own recurring Stripe line item
+  // (stripeFeeItemId) so a move between zones re-prices the plan.
+  postalCode           String?
+  zone                 String?
+  deliveryFeeCents     Int          @default(0)
+  stripeFeeItemId      String?
   stripeSubscriptionId String?
   createdAt            DateTime     @default(now())
   updatedAt            DateTime     @updatedAt
@@ -755,6 +766,9 @@ model Order {
   delivery Delivery?
   cateringRequest CateringRequest?
 
+  // A subscription's weekly delivery is materialized as exactly one order per
+  // delivery date (see src/lib/subscription-orders.ts) — the cron can rerun safely.
+  @@unique([subscriptionId, deliveryDate])
   @@index([businessId])
   @@index([customerId])
 }

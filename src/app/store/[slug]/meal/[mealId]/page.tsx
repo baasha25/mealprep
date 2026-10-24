@@ -101,7 +101,8 @@ export default async function MealPage({ params }: { params: Promise<{ slug: str
   });
 
   const jsonLd = mealProductJsonLd(meal, { name: business.name, serviceArea: s.serviceArea }, urls.meal(meal.id));
-  const addHref = `/store/${slug}?add=${meal.id}`;
+  const plansOnly = Boolean(business.settings?.subscriptionsOnly);
+  const addHref = plansOnly ? `/store/${slug}#plans` : `/store/${slug}?add=${meal.id}`;
   const macros: [string, string][] = [
     ["Calories", String(meal.calories)],
     ["Protein", `${meal.proteinG} g`],
@@ -192,7 +193,7 @@ export default async function MealPage({ params }: { params: Promise<{ slug: str
               className="mt-6 inline-flex items-center justify-center gap-2 w-full sm:w-auto px-6 py-3 rounded-lg text-[15px] font-medium"
               style={{ background: "var(--pine)", color: "#f4f2ec" }}
             >
-              <Plus size={16} /> {meal.optionCount ? "Customize & add to order" : "Add to order"}
+              <Plus size={16} /> {plansOnly ? "Choose a plan" : meal.optionCount ? "Customize & add to order" : "Add to order"}
             </Link>
             <p className="text-[12px] mt-2" style={{ color: "var(--muted)" }}>
               Order one-time or as part of a weekly plan from {business.name}

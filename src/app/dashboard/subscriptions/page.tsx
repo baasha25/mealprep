@@ -27,16 +27,21 @@ function statusBadge(status: string) {
 
 export default async function SubscriptionsPage() {
   const { business } = await requireOwner();
+  const nowDate = new Date();
   const subs = await db.subscription.findMany({
     where: { businessId: business.id },
     orderBy: { createdAt: "desc" },
     include: {
       customer: { select: { name: true, email: true } },
       plan: { select: { name: true, mealsPerWeek: true, perMealPriceCents: true } },
+      // Has the subscriber picked meals for their next delivery yet?
+      selections: { where: { deliveryDate: { gte: new Date(nowDate.getTime() - 86_400_000) } }, select: { deliveryDate: true, _count: { select: { items: true } } } },
     },
   });
+  const picked = (s: (typeof subs)[number]) =>
+    Boolean(s.nextDeliveryDate && s.selections.some((x) => x._count.items > 0 && x.deliveryDate.getTime() === s.nextDeliveryDate!.getTime()));
 
-  const now = Date.now();
+  const now = nowDate.getTime();
   const active = subs.filter((s) => s.status === "active");
   const mrrCents = active.reduce((sum, s) => sum + monthly(s.plan), 0);
   const upcoming7 = active.filter(
@@ -114,6 +119,7 @@ export default async function SubscriptionsPage() {
                   <th className="py-2 font-medium">Plan</th>
                   <th className="py-2 font-medium">Frequency</th>
                   <th className="py-2 font-medium">Status</th>
+                  <th className="py-2 font-medium">Zone</th>
                   <th className="py-2 font-medium">Next delivery</th>
                   <th className="py-2 font-medium text-right">Monthly</th>
                 </tr>
@@ -131,7 +137,16 @@ export default async function SubscriptionsPage() {
                     </td>
                     <td className="py-2.5">{statusBadge(s.status)}</td>
                     <td className="py-2.5" style={{ color: "var(--ink-soft)" }}>
+                      {s.zone ?? "—"}
+                      {s.deliveryFeeCents > 0 && <span className="text-[11px]" style={{ color: "var(--muted)" }}> · {formatCents(s.deliveryFeeCents)}/wk</span>}
+                    </td>
+                    <td className="py-2.5" style={{ color: "var(--ink-soft)" }}>
                       {s.status === "canceled" ? "—" : s.nextDeliveryDate ? dateFmt.format(s.nextDeliveryDate) : "—"}
+                      {s.status === "active" && s.nextDeliveryDate && (
+                        <span className="ml-1.5 text-[10.5px] px-1.5 py-px rounded-full font-medium" style={picked(s) ? { background: "color-mix(in srgb, var(--pine) 12%, transparent)", color: "var(--pine)" } : { background: "var(--sand)", color: "var(--muted)" }}>
+                          {picked(s) ? "Picked" : "Not picked yet"}
+                        </span>
+                      )}
                     </td>
                     <td className="py-2.5 text-right" style={{ color: "var(--ink)" }}>
                       {s.status === "active" ? formatCents(monthly(s.plan)) : "—"}

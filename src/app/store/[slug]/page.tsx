@@ -15,9 +15,9 @@ import {
 } from "@/lib/cutoff";
 import { enabledDeliveryDays, describeDeliveryDays } from "@/lib/delivery-days";
 import { CutoffBanner } from "./cutoff-banner";
-import { PlanCards } from "./plan-cards";
+import { PlanCards, type PlanZone } from "./plan-cards";
 import { Storefront, type StoreMeal, type StoreReview, type StoreSettings, type StoreZone } from "./storefront";
-import { zoneDays, kitchenDaysWithZones } from "@/lib/zones";
+import { zoneDays, kitchenDaysWithZones, zoneFeeCents } from "@/lib/zones";
 
 export const dynamic = "force-dynamic";
 
@@ -193,7 +193,22 @@ export default async function StorePage({
     };
   });
 
+  // The same zones for the plan picker: days on offer + the weekly fee.
+  const planZones: PlanZone[] = zoneRows.map((z) => {
+    const zl = { ...z, deliveryDays: (z.deliveryDays ?? {}) as Record<string, boolean> };
+    return {
+      id: z.id,
+      name: z.name,
+      postalPrefixes: z.postalPrefixes,
+      deliveryDays: zl.deliveryDays,
+      deliveryFeeCents: z.deliveryFeeCents,
+      days: enabledDeliveryDays(zoneDays(zl, kitchenDayMap)),
+      feeCents: zoneFeeCents(zl, s.deliveryFeeCents),
+    };
+  });
+
   const settings: StoreSettings = {
+    subscriptionsOnly: s.subscriptionsOnly,
     subDiscountBps: s.subDiscountBps,
     taxRateBps: s.taxRateBps,
     deliveryFeeCents: s.deliveryFeeCents,
@@ -236,7 +251,7 @@ export default async function StorePage({
             Order Fresh Meals{s.serviceArea ? <span style={{ color: "var(--ink-soft)" }}> · {s.serviceArea}</span> : null}
           </h1>
           <p className="text-[13.5px] mt-2.5" style={{ color: "var(--ink-soft)" }}>
-            {s.storeTagline || "Browse the menu, build your order, and subscribe to save every week."}
+            {s.storeTagline || (s.subscriptionsOnly ? "Choose a plan, then pick your meals each week from the menu below." : "Browse the menu, build your order, and subscribe to save every week.")}
           </p>
           {s.cateringEnabled && (
             <Link href={`/store/${slug}/catering`} className="inline-flex items-center gap-1.5 mt-3 text-[13px] font-medium" style={{ color: "var(--pine)" }}>
@@ -256,6 +271,7 @@ export default async function StorePage({
             }))}
             subDiscountPct={Math.round(s.subDiscountBps / 100)}
             deliveryDays={enabledDays}
+            zones={planZones}
           />
         )}
 

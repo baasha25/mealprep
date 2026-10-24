@@ -13,7 +13,9 @@ import {
   formatDeliveryLabel,
   DEFAULT_TIMEZONE,
 } from "@/lib/cutoff";
-import { enabledDeliveryDays, sanitizePreferredDays } from "@/lib/delivery-days";
+import { enabledDeliveryDays, sanitizePreferredDays, describeDeliveryDays } from "@/lib/delivery-days";
+import { zoneForPostal, zoneDays, kitchenDaysWithZones, type ZoneLike } from "@/lib/zones";
+import { formatCents } from "@/lib/money";
 import { SubscriptionManager, type ManagerMeal, type DeliverySlot } from "@/app/account/subscription-manager";
 import { RateMeals, type ReviewableMeal } from "@/app/account/rate-meals";
 import { DeliveryAddress } from "@/app/account/delivery-address";
@@ -147,7 +149,18 @@ export default async function KitchenAccountPage({
 
   // Cut-off countdown target + the delivery days/dates for the account UI.
   const tz = business.settings?.timezone || DEFAULT_TIMEZONE;
-  const enabledDays = enabledDeliveryDays((business.settings?.deliveryDays ?? {}) as Record<string, boolean>);
+  // Zone kitchens: the subscriber's zone (postal code from sign-up, else their
+  // saved address) decides which days they can choose and what delivery costs.
+  const zoneRows = await db.deliveryZone.findMany({ where: { businessId: business.id, active: true } });
+  const zones: ZoneLike[] = zoneRows.map((z) => ({ ...z, deliveryDays: (z.deliveryDays ?? {}) as Record<string, boolean> }));
+  const kitchenDayMap = kitchenDaysWithZones((business.settings?.deliveryDays ?? {}) as Record<string, boolean>, zones);
+  const zone = zoneForPostal(subscription?.postalCode ?? address?.postalCode, zones);
+  const enabledDays = enabledDeliveryDays(zoneDays(zone, kitchenDayMap));
+  const zoneLine = zone
+    ? `${zone.name} · ${describeDeliveryDays(enabledDays)} · ${(subscription?.deliveryFeeCents ?? 0) > 0 ? `${formatCents(subscription!.deliveryFeeCents)} delivery each week` : "free delivery"}`
+    : zones.length && subscription
+      ? "Save your delivery address below so we can place you in a delivery zone."
+      : null;
   const nextDate = subscription?.nextDeliveryDate ?? null;
   const cutoffISO = nextDate ? cutoffAt(nextDate).toISOString() : null;
   const chosenDays = subscription
@@ -260,6 +273,7 @@ export default async function KitchenAccountPage({
           deliveries={deliveries}
           chosenDays={chosenDays}
           allDeliveryDays={enabledDays}
+          zoneLine={zoneLine}
           meals={managerMeals}
         />
       )}

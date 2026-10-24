@@ -4,6 +4,7 @@ import { requireBusiness } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { Page, Head, Kpi, Card } from "@/components/ui";
 import { picksFromSnapshot, nameWithOptions } from "@/lib/meal-options";
+import { ensureSubscriptionOrders } from "@/lib/subscription-orders-run";
 
 // Diet -> kitchen station (ported from the demo's STATION map).
 const STATION: Record<string, string> = {
@@ -27,6 +28,9 @@ type MealRoll = { name: string; qty: number; diet: string | null; swatch: string
 
 export default async function KitchenPage() {
   const { business } = await requireBusiness();
+  // Subscriber picks past their cut-off become paid orders (so they're counted
+  // once, below, as orders — not again as selections).
+  await ensureSubscriptionOrders(business.id);
 
   const now = new Date();
   const startToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -56,6 +60,8 @@ export default async function KitchenPage() {
           take: 1,
           include: { items: { include: { meal: { select: { name: true, diet: true, swatch: true } } } } },
         },
+        // Deliveries already turned into orders — those picks are in `items` above.
+        orders: { where: { deliveryDate: { gte: startToday } }, select: { deliveryDate: true } },
       },
     }),
     db.order.findMany({
@@ -89,6 +95,8 @@ export default async function KitchenPage() {
   for (const sub of subs) {
     const sel = sub.selections[0];
     if (!sel || sel.items.length === 0) continue;
+    // Once the cut-off passes this delivery is an order (counted above) — skip the preview.
+    if (sub.orders.some((o) => o.deliveryDate && o.deliveryDate.getTime() === sel.deliveryDate.getTime())) continue;
     const rows: { name: string; qty: number }[] = [];
     for (const it of sel.items) {
       const name = nameWithOptions(it.meal?.name ?? "Meal", picksFromSnapshot(it.optionsSnapshot));
@@ -232,7 +240,7 @@ export default async function KitchenPage() {
               <div className="flex items-center gap-2 mb-4">
                 <PackageCheck size={16} style={{ color: "var(--pine)" }} />
                 <h3 className="text-[15px] font-semibold" style={{ color: "var(--ink)" }}>
-                  Subscription packing ({packing.length})
+                  Upcoming subscriber picks ({packing.length})
                 </h3>
               </div>
               <div className="grid sm:grid-cols-2 gap-2.5">

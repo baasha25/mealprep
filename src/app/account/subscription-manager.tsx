@@ -49,6 +49,7 @@ export function SubscriptionManager({
   deliveries,
   chosenDays,
   allDeliveryDays,
+  zoneLine = null,
   meals,
 }: {
   subscriptionId: string;
@@ -64,6 +65,8 @@ export function SubscriptionManager({
   deliveries: DeliverySlot[];
   chosenDays: string[];
   allDeliveryDays: string[];
+  /** Zone kitchens: "North Shore · Sundays · $7.00 delivery each week". */
+  zoneLine?: string | null;
   meals: ManagerMeal[];
 }) {
   const [pending, startTransition] = useTransition();
@@ -228,6 +231,11 @@ export function SubscriptionManager({
               <div className="text-[11.5px]" style={{ color: "var(--muted)" }}>
                 Changes lock at the cut-off ({cutoffLabel})
               </div>
+              {zoneLine && (
+                <div className="text-[11.5px] mt-0.5 flex items-center gap-1" style={{ color: "var(--ink-soft)" }}>
+                  <Truck size={12} /> {zoneLine}
+                </div>
+              )}
             </div>
           </div>
           <button

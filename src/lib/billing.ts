@@ -5,7 +5,9 @@ import { appUrl } from "@/lib/app-url";
 import { sendSubscriptionConfirmation } from "@/lib/email";
 import { nextCutoffAt, upcomingDeliveries, DEFAULT_TIMEZONE } from "@/lib/cutoff";
 import { enabledDeliveryDays, sanitizePreferredDays } from "@/lib/delivery-days";
-import { kitchenDaysWithZones } from "@/lib/zones";
+import { kitchenDaysWithZones, zoneForPostal, zoneDays, type ZoneLike } from "@/lib/zones";
+import { stripe, STRIPE_ENABLED } from "@/lib/stripe";
+import { describeDeliveryDays } from "@/lib/delivery-days";
 
 /**
  * Create our Subscription row from a completed subscription-mode Checkout
@@ -54,8 +56,29 @@ export async function ensureSubscriptionFromCheckout(
   // account page can split the plan across them.
   const settingsRow = await db.businessSettings.findUnique({ where: { businessId } });
   const tz = settingsRow?.timezone || DEFAULT_TIMEZONE;
-  const zoneRows = await db.deliveryZone.findMany({ where: { businessId, active: true }, select: { deliveryDays: true } });
-  const enabled = enabledDeliveryDays(kitchenDaysWithZones((settingsRow?.deliveryDays ?? {}) as Record<string, boolean>, zoneRows.map((z) => ({ deliveryDays: (z.deliveryDays ?? {}) as Record<string, boolean> }))));
+  // Zone (from the postal code typed at sign-up): its days bound the choice,
+  // and its name/fee are kept on the subscription for Orders + Routes.
+  const zoneRows = await db.deliveryZone.findMany({ where: { businessId, active: true } });
+  const zones: ZoneLike[] = zoneRows.map((z) => ({ ...z, deliveryDays: (z.deliveryDays ?? {}) as Record<string, boolean> }));
+  const kitchenDayMap = kitchenDaysWithZones((settingsRow?.deliveryDays ?? {}) as Record<string, boolean>, zones);
+  const postalCode = (session.metadata?.postalCode ?? "").trim() || null;
+  const zone = zoneForPostal(postalCode, zones);
+  const enabled = enabledDeliveryDays(zoneDays(zone, kitchenDayMap));
+  const deliveryFeeCents = Math.max(0, parseInt(session.metadata?.deliveryFeeCents ?? "0", 10) || 0);
+  // The Stripe line that carries the fee (so a zone change can re-price it).
+  let stripeFeeItemId: string | null = null;
+  if (STRIPE_ENABLED && (zone || deliveryFeeCents > 0)) {
+    try {
+      const stripeSub = await stripe.subscriptions.retrieve(subId, { expand: ["items.data.price.product"] });
+      const feeItem = stripeSub.items.data.find((it) => {
+        const prod = it.price.product;
+        return typeof prod === "object" && prod && "metadata" in prod && prod.metadata?.kind === "delivery_fee";
+      });
+      stripeFeeItemId = feeItem?.id ?? null;
+    } catch (err) {
+      console.error("[billing] could not read subscription items:", err);
+    }
+  }
   const chosen = sanitizePreferredDays(
     (session.metadata?.deliveryDays ?? "")
       .split(",")
@@ -78,6 +101,10 @@ export async function ensureSubscriptionFromCheckout(
       frequency,
       nextDeliveryDate,
       preferredDeliveryDays: chosen,
+      postalCode,
+      zone: zone?.name ?? (session.metadata?.zone || null),
+      deliveryFeeCents,
+      stripeFeeItemId,
       stripeSubscriptionId: subId,
     },
   });
@@ -102,6 +129,9 @@ export async function ensureSubscriptionFromCheckout(
         day: "numeric",
       }),
       accountUrl: `${base}/store/${business.slug}/account`,
+      deliveryLine: zone
+        ? `${zone.name} · ${describeDeliveryDays(effectiveDays)}${deliveryFeeCents > 0 ? ` · ${(deliveryFeeCents / 100).toLocaleString("en-CA", { style: "currency", currency: "CAD" })} delivery each week` : " · free delivery"}`
+        : null,
     });
   }
 

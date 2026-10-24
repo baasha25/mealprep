@@ -29,6 +29,8 @@ export type SettingsInitial = {
   timezone: string;
   fulfillment: "delivery" | "pickup" | "both";
   deliveryDays: Record<string, boolean>;
+  subscriptionsOnly: boolean;
+  subNoPick: "skip" | "chef_choice";
   pickupLocations: string[];
   loyaltyEnabled: boolean;
   autoApproveReviews: boolean;
@@ -439,6 +441,33 @@ export function SettingsForm({ initial }: { initial: SettingsInitial }) {
             ))}
           </div>
         </Field>
+        <div id="subscriptions" className="scroll-mt-6" />
+        <div className="rounded-lg border p-3.5 mb-4" style={{ borderColor: "var(--line)", background: "var(--paper)" }}>
+          <div className="text-[13px] font-semibold mb-2" style={{ color: "var(--ink)" }}>Meal-plan subscriptions</div>
+          <label className="flex items-start gap-2.5 cursor-pointer">
+            <input type="checkbox" name="subscriptionsOnly" defaultChecked={initial.subscriptionsOnly} className="mt-0.5" />
+            <span>
+              <span className="text-[13px] font-medium block" style={{ color: "var(--ink)" }}>Sell meal plans only (no one-time orders)</span>
+              <span className="text-[12px]" style={{ color: "var(--muted)" }}>
+                Your storefront leads with your plans and shows the menu as &ldquo;This week&rsquo;s menu&rdquo; &mdash; what subscribers choose from in their account. The one-time cart and Add buttons are hidden. POS and catering are unaffected.
+              </span>
+            </span>
+          </label>
+          <div className="mt-3">
+            <div className="text-[12.5px] font-medium mb-1" style={{ color: "var(--ink)" }}>If a subscriber hasn&rsquo;t picked by the cut-off</div>
+            <div className="flex flex-wrap gap-x-5 gap-y-1.5">
+              <label className="flex items-center gap-1.5 text-[12.5px] cursor-pointer" style={{ color: "var(--ink)" }}>
+                <input type="radio" name="subNoPick" value="skip" defaultChecked={initial.subNoPick !== "chef_choice"} /> Skip them that week
+              </label>
+              <label className="flex items-center gap-1.5 text-[12.5px] cursor-pointer" style={{ color: "var(--ink)" }}>
+                <input type="radio" name="subNoPick" value="chef_choice" defaultChecked={initial.subNoPick === "chef_choice"} /> Send chef&rsquo;s choice
+              </label>
+            </div>
+            <p className="text-[11.5px] mt-1.5" style={{ color: "var(--muted)" }}>
+              Chef&rsquo;s choice repeats their last picks, or spreads the plan across your most-ordered meals. Either way, once a delivery&rsquo;s cut-off passes, each subscriber&rsquo;s meals become a paid order in Orders, Kitchen OS, Routes and Labels &mdash; grouped by zone.
+            </p>
+          </div>
+        </div>
         <Field label="Pickup locations" hint="One per line.">
           <textarea
             name="pickupLocations"
@@ -567,14 +596,14 @@ export function SettingsForm({ initial }: { initial: SettingsInitial }) {
             <input type="checkbox" name="notifyAbandoned" defaultChecked={initial.notifyAbandoned} className="mt-0.5" />
             <span>
               <span className="text-[13px] block" style={{ color: "var(--ink)" }}>Abandoned-checkout nudge</span>
-              <span className="text-[12px]" style={{ color: "var(--muted)" }}>“Your order is still waiting” — sent once, 2–48 hours after someone starts checkout but doesn't pay.</span>
+              <span className="text-[12px]" style={{ color: "var(--muted)" }}>“Your order is still waiting” — sent once, 2–48 hours after someone starts checkout but doesn&rsquo;t pay.</span>
             </span>
           </label>
           <label className="flex items-start gap-2 cursor-pointer select-none">
             <input type="checkbox" name="notifyWinBack" defaultChecked={initial.notifyWinBack} className="mt-0.5" />
             <span>
               <span className="text-[13px] block" style={{ color: "var(--ink)" }}>Win-back email</span>
-              <span className="text-[12px]" style={{ color: "var(--muted)" }}>“We've missed you” — to customers with no active plan after the quiet period below. At most once per 90 days per customer.</span>
+              <span className="text-[12px]" style={{ color: "var(--muted)" }}>“We&rsquo;ve missed you” — to customers with no active plan after the quiet period below. At most once per 90 days per customer.</span>
             </span>
           </label>
           <div className="grid sm:grid-cols-2 gap-4 mt-3">
