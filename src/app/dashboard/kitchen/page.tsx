@@ -3,6 +3,7 @@ import { ChefHat, ClipboardList, Flame, Salad, Soup, Boxes, Repeat, PackageCheck
 import { requireBusiness } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { Page, Head, Kpi, Card } from "@/components/ui";
+import { Hint } from "@/components/ui";
 import { picksFromSnapshot, nameWithOptions } from "@/lib/meal-options";
 import { ensureSubscriptionOrders } from "@/lib/subscription-orders-run";
 
@@ -142,7 +143,7 @@ export default async function KitchenPage() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 mb-5">
         <Kpi icon={<ClipboardList size={16} />} label="Meals to produce" value={totalMeals} />
         <Kpi icon={<ChefHat size={16} />} label="Orders in queue" value={distinctOrders} />
-        <Kpi icon={<Repeat size={16} />} label="Subscription meals" value={subMealCount} />
+        <Kpi icon={<Repeat size={16} />} label={<span className="inline-flex items-center gap-1">Upcoming subscriber picks <Hint text="Meals subscribers have picked for deliveries whose cut-off has not passed yet. Once it passes, those picks become paid orders and move into the counts on the left." /></span>} value={subMealCount} />
         <Kpi icon={<Boxes size={16} />} label="Distinct recipes" value={meals.length} />
       </div>
 

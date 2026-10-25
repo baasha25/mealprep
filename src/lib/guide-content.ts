@@ -37,6 +37,7 @@ export const GUIDE_INTRO = {
     ["COGS", "'Cost of goods sold' — the ingredient cost of the food you sold."],
     ["Trim %", "The share of an ingredient lost in prep (peels, fat, ends). Drives the 'over-bought' waste number."],
     ["Over-bought", "Dollars of ingredient you buy only to trim away and throw out."],
+    ["ⓘ icons", "Hover any ⓘ in the app for a one-line, plain-English explanation of that number or field — zones, picks, nearby-price position, Prime Cost and so on."],
     ["One-time vs Subscription", "A single order vs a repeating weekly/bi-weekly plan."],
     ["Platform fee", "The small % PrepFlow takes on each customer payment (separate from your monthly software fee)."],
     ["Cut-off", "The weekly deadline after which orders lock for the kitchen."],

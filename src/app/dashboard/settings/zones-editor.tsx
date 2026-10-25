@@ -3,6 +3,7 @@
 import { useActionState, useState } from "react";
 import { MapPinned, Plus, Trash2, Check } from "lucide-react";
 import { Card, CardTitle, INP } from "@/components/ui";
+import { Hint } from "@/components/ui";
 import { saveDeliveryZones, type ZonesActionState } from "./actions";
 
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
@@ -46,7 +47,7 @@ export function DeliveryZonesCard({ initial, kitchenDays, defaultFeeDollars }: {
               <input value={r.name} onChange={(e) => update(i, { name: e.target.value })} placeholder="North" className={INP} style={inputStyle} />
             </label>
             <label className="block">
-              <span className="text-[11px] font-semibold uppercase tracking-wide block mb-1" style={{ color: "var(--muted)" }}>Postal code prefixes</span>
+              <span className="text-[11px] font-semibold uppercase tracking-wide block mb-1" style={{ color: "var(--muted)" }}>Postal code prefixes <Hint text="The first characters of the postal codes in this area, e.g. L4C, L4E or V6E. Longer prefixes win when two zones overlap." /></span>
               <input value={r.prefixes} onChange={(e) => update(i, { prefixes: e.target.value })} placeholder="L4C, L4E, L4S" className={INP} style={inputStyle} />
             </label>
             <div>
@@ -71,7 +72,7 @@ export function DeliveryZonesCard({ initial, kitchenDays, defaultFeeDollars }: {
               <span className="text-[10.5px] block mt-1" style={{ color: "var(--muted)" }}>None ticked = all your delivery days</span>
             </div>
             <label className="block">
-              <span className="text-[11px] font-semibold uppercase tracking-wide block mb-1" style={{ color: "var(--muted)" }}>Fee ($)</span>
+              <span className="text-[11px] font-semibold uppercase tracking-wide block mb-1" style={{ color: "var(--muted)" }}>Fee ($) <Hint text="Delivery fee for this zone, charged per order and per subscription week. Blank = your default delivery fee; 0 = free delivery." /></span>
               <input value={r.feeDollars} onChange={(e) => update(i, { feeDollars: e.target.value })} placeholder={defaultFeeDollars.toFixed(2)} inputMode="decimal" className={INP} style={inputStyle} />
               <span className="text-[10.5px] block mt-1" style={{ color: "var(--muted)" }}>Blank = default · 0 = free</span>
             </label>

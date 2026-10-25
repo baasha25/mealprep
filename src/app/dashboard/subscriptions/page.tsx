@@ -4,6 +4,7 @@ import { RISK_LABEL } from "@/lib/insights";
 import { requireOwner } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { Page, Head, Kpi, Card, CardTitle } from "@/components/ui";
+import { Hint } from "@/components/ui";
 import { formatCents } from "@/lib/money";
 
 export const dynamic = "force-dynamic";
@@ -71,7 +72,7 @@ export default async function SubscriptionsPage() {
         <Kpi icon={<TrendingUp size={17} />} label="Monthly recurring revenue" value={formatCents(mrrCents)} />
         <Kpi icon={<Repeat size={17} />} label="Active subscriptions" value={active.length} />
         <Kpi icon={<CalendarClock size={17} />} label="Deliveries next 7 days" value={upcoming7} />
-        <Kpi icon={<AlertTriangle size={17} />} label="At risk" value={risk.length} />
+        <Kpi icon={<AlertTriangle size={17} />} label={<span className="inline-flex items-center gap-1">At risk <Hint text="Subscribers showing a churn signal: a failed payment, a delivery date that stopped advancing, a pause, or no order in a while. Reach out before they cancel." /></span>} value={risk.length} />
         <Kpi icon={<XCircle size={17} />} label="Canceled (30 days)" value={canceled30} />
       </div>
 
@@ -119,8 +120,8 @@ export default async function SubscriptionsPage() {
                   <th className="py-2 font-medium">Plan</th>
                   <th className="py-2 font-medium">Frequency</th>
                   <th className="py-2 font-medium">Status</th>
-                  <th className="py-2 font-medium">Zone</th>
-                  <th className="py-2 font-medium">Next delivery</th>
+                  <th className="py-2 font-medium"><span className="inline-flex items-center gap-1">Zone <Hint text="Their delivery zone and weekly delivery fee, set from the postal code they typed when they subscribed. Moves with them if they save an address in another zone." /></span></th>
+                  <th className="py-2 font-medium"><span className="inline-flex items-center gap-1">Next delivery <Hint text="Picked = they chose meals for this delivery. Not picked yet = nothing chosen; at the cut-off they get an auto-pick from their history (or are skipped, per Settings)." /></span></th>
                   <th className="py-2 font-medium text-right">Monthly</th>
                 </tr>
               </thead>

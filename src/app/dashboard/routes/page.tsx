@@ -2,6 +2,7 @@ import { Truck, MapPin, Navigation, Printer } from "lucide-react";
 import { requireBusiness } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { Page, Head, Kpi, Card } from "@/components/ui";
+import { Hint } from "@/components/ui";
 import { DispatchCheck, type DispatchRoute } from "./dispatch-check";
 import { ensureSubscriptionOrders } from "@/lib/subscription-orders-run";
 
@@ -54,7 +55,7 @@ export default async function RoutesPage() {
 
       <div className="grid sm:grid-cols-3 gap-3.5 mb-5">
         <Kpi icon={<Truck size={16} />} label="Stops" value={totalStops} />
-        <Kpi icon={<Navigation size={16} />} label="Routes (zones)" value={routes.length} />
+        <Kpi icon={<Navigation size={16} />} label={<span className="inline-flex items-center gap-1">Routes (zones) <Hint text="One route per delivery zone. Orders are placed in a zone by the customer's postal code (Settings → Delivery zones); the rest land in Unzoned." /></span>} value={routes.length} />
         <Kpi icon={<MapPin size={16} />} label="Meals out" value={orders.reduce((s, o) => s + o._count.items, 0)} />
       </div>
 

@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { MapPin, RefreshCw, Trash2, Check, X, ExternalLink, Lock, ChevronDown, ChevronUp } from "lucide-react";
 import { Card, CardTitle } from "@/components/ui";
+import { Hint } from "@/components/ui";
 import { formatCents } from "@/lib/money";
 import { READ_METHOD_LABEL, isEstimatedMethod } from "@/lib/competitors";
 import { addCompetitor, refreshCompetitor, removeCompetitor, setMatchStatus } from "./competitor-actions";
@@ -97,7 +98,7 @@ export function NearbyPrices({ competitors, rows, planRows, suggestedCount, isPr
       {competitors.length > 0 && (
         <div className="rounded-lg border overflow-hidden" style={{ borderColor: "var(--line)" }}>
           <div className="hidden sm:grid grid-cols-[1.5fr_80px_90px_150px_1fr_28px] gap-3 px-3 py-2 text-[10.5px] font-semibold uppercase tracking-wide" style={{ color: "var(--muted)", background: "var(--paper)" }}>
-            <span>Your meal</span><span className="text-right">You</span><span className="text-right">Matches</span><span className="text-right">Nearby range · median</span><span>Position</span><span />
+            <span>Your meal</span><span className="text-right">You</span><span className="text-right inline-flex items-center justify-end gap-1">Matches <Hint text="Competitor dishes you confirmed are the same dish. Only confirmed matches count toward the range." /></span><span className="text-right inline-flex items-center justify-end gap-1">Nearby range · median <Hint text="Lowest–highest confirmed nearby price, and the middle value. ≈ marks a price read from page text by AI." /></span><span className="inline-flex items-center gap-1">Position <Hint text="Where your price sits against the nearby median: in line (within about 5%), under, or over. A signal, not a verdict — portions differ." /></span><span />
           </div>
           {rows.map((r) => {
             const sug = r.matches.filter((m) => m.status === "suggested").length;
@@ -147,7 +148,7 @@ export function NearbyPrices({ competitors, rows, planRows, suggestedCount, isPr
           </div>
           <div className="rounded-lg overflow-hidden" style={{ border: "1px solid var(--line)" }}>
             <div className="grid grid-cols-[1.4fr_90px_1fr_1.4fr_110px_20px] gap-2 px-3 py-1.5 text-[10.5px] font-semibold uppercase tracking-wide" style={{ color: "var(--muted)", borderBottom: "1px solid var(--line)", background: "var(--paper)" }}>
-              <div>Your plan</div><div className="text-right">You / meal</div><div className="text-right">Plans found</div><div className="text-right">Nearby range · median</div><div>Position</div><div />
+              <div>Your plan</div><div className="text-right">You / meal</div><div className="text-right inline-flex items-center justify-end gap-1">Plans found <Hint text="Competitors publishing a plan of this size. The nearest size within two meals is used when there is no exact match, and flagged." /></div><div className="text-right">Nearby range · median</div><div className="inline-flex items-center gap-1">Position <Hint text="Your per-meal plan price against the nearby median at the same plan size." /></div><div />
             </div>
             {planRows.map((r) => {
               const isOpen = openPlan[r.plan.id];
