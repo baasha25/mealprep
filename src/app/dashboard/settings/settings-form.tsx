@@ -457,14 +457,14 @@ export function SettingsForm({ initial }: { initial: SettingsInitial }) {
             <div className="text-[12.5px] font-medium mb-1" style={{ color: "var(--ink)" }}>If a subscriber hasn&rsquo;t picked by the cut-off</div>
             <div className="flex flex-wrap gap-x-5 gap-y-1.5">
               <label className="flex items-center gap-1.5 text-[12.5px] cursor-pointer" style={{ color: "var(--ink)" }}>
-                <input type="radio" name="subNoPick" value="skip" defaultChecked={initial.subNoPick !== "chef_choice"} /> Skip them that week
+                <input type="radio" name="subNoPick" value="chef_choice" defaultChecked={initial.subNoPick !== "skip"} /> Auto-pick from their order history
               </label>
               <label className="flex items-center gap-1.5 text-[12.5px] cursor-pointer" style={{ color: "var(--ink)" }}>
-                <input type="radio" name="subNoPick" value="chef_choice" defaultChecked={initial.subNoPick === "chef_choice"} /> Send chef&rsquo;s choice
+                <input type="radio" name="subNoPick" value="skip" defaultChecked={initial.subNoPick === "skip"} /> Skip them that week
               </label>
             </div>
             <p className="text-[11.5px] mt-1.5" style={{ color: "var(--muted)" }}>
-              Chef&rsquo;s choice repeats their last picks, or spreads the plan across your most-ordered meals. Either way, once a delivery&rsquo;s cut-off passes, each subscriber&rsquo;s meals become a paid order in Orders, Kitchen OS, Routes and Labels &mdash; grouped by zone.
+              Auto-pick builds a random mix of meals they&rsquo;ve had before (favourites come up more often), filling exactly their plan &mdash; never extras. A brand-new subscriber with no history gets your most-ordered meals. Either way, once a delivery&rsquo;s cut-off passes, picks are locked and each subscriber&rsquo;s meals become a paid order in Orders, Kitchen OS, Routes and Labels &mdash; grouped by zone.
             </p>
           </div>
         </div>

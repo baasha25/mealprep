@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { dueDeliveryDates, chefChoiceItems, subscriptionOrderTotals, subscriptionWeeklyCharge, parseNoPick, extrasForDelivery, capItems } from "./subscription-orders";
+import { dueDeliveryDates, autoPickItems, subscriptionOrderTotals, subscriptionWeeklyCharge, parseNoPick, extrasForDelivery, capItems } from "./subscription-orders";
 
 const TZ = "America/Vancouver";
 // Local noon in Vancouver after DST ends (PST, UTC-8) = 20:00 UTC.
@@ -28,24 +28,34 @@ describe("dueDeliveryDates", () => {
   });
 });
 
-describe("chefChoiceItems", () => {
-  it("repeats the subscriber's last picks when there are any, capped at the plan", () => {
-    const last = [{ mealId: "a", qty: 6 }, { mealId: "b", qty: 4, optionsKey: "x" }];
-    expect(chefChoiceItems({ mealsPerWeek: 10, lastItems: last, fallbackMealIds: ["z"] })).toEqual(last);
-    // Last week they added 3 extras; chef's choice sends the plan only.
-    expect(chefChoiceItems({ mealsPerWeek: 7, lastItems: last, fallbackMealIds: [] })).toEqual([{ mealId: "a", qty: 6 }, { mealId: "b", qty: 1, optionsKey: "x" }]);
+describe("autoPickItems", () => {
+  // Deterministic rng: a fixed sequence so shuffles are reproducible.
+  const seq = [0.1, 0.9, 0.3, 0.7, 0.5, 0.2, 0.8, 0.4, 0.6, 0.05];
+  const rng = () => { const v = seq[i++ % seq.length]; return v; };
+  let i = 0;
+  it("draws the plan's count from the subscriber's history, weighted by what they had", () => {
+    i = 0;
+    const history = [{ mealId: "a", qty: 6 }, { mealId: "b", qty: 3 }, { mealId: "c", qty: 1, optionsKey: "x" }];
+    const picks = autoPickItems({ mealsPerWeek: 5, history, fallbackMealIds: [], rng });
+    expect(picks.reduce((s, p) => s + p.qty, 0)).toBe(5);
+    expect(picks.every((p) => ["a", "b", "c"].includes(p.mealId))).toBe(true);
+    // Over many draws, the 6-ticket meal shows up most.
+    const tally: Record<string, number> = {};
+    for (let k = 0; k < 40; k++) for (const p of autoPickItems({ mealsPerWeek: 5, history, fallbackMealIds: [] })) tally[p.mealId] = (tally[p.mealId] ?? 0) + p.qty;
+    expect(tally.a).toBeGreaterThan(tally.b);
+    expect(tally.b).toBeGreaterThan(tally.c ?? 0);
   });
-  it("otherwise spreads the plan across the kitchen's go-to meals", () => {
-    expect(chefChoiceItems({ mealsPerWeek: 10, lastItems: [], fallbackMealIds: ["a", "b", "c", "a"] })).toEqual([
-      { mealId: "a", qty: 4 },
-      { mealId: "b", qty: 3 },
-      { mealId: "c", qty: 3 },
-    ]);
-    expect(chefChoiceItems({ mealsPerWeek: 2, lastItems: [], fallbackMealIds: ["a", "b", "c"] })).toEqual([
-      { mealId: "a", qty: 1 },
-      { mealId: "b", qty: 1 },
-    ]);
-    expect(chefChoiceItems({ mealsPerWeek: 10, lastItems: [], fallbackMealIds: [] })).toEqual([]);
+  it("reuses a small history to fill the plan and never exceeds it", () => {
+    const picks = autoPickItems({ mealsPerWeek: 7, history: [{ mealId: "a", qty: 1 }, { mealId: "b", qty: 1 }], fallbackMealIds: [] });
+    expect(picks.reduce((s, p) => s + p.qty, 0)).toBe(7);
+    expect(new Set(picks.map((p) => p.mealId))).toEqual(new Set(["a", "b"]));
+  });
+  it("falls back to the kitchen's go-to meals when there is no history, and to nothing when there's nothing", () => {
+    const picks = autoPickItems({ mealsPerWeek: 4, history: [], fallbackMealIds: ["x", "y", "z", "x"] });
+    expect(picks.reduce((s, p) => s + p.qty, 0)).toBe(4);
+    expect(picks.every((p) => ["x", "y", "z"].includes(p.mealId))).toBe(true);
+    expect(autoPickItems({ mealsPerWeek: 4, history: [], fallbackMealIds: [] })).toEqual([]);
+    expect(autoPickItems({ mealsPerWeek: 0, history: [{ mealId: "a", qty: 2 }], fallbackMealIds: [] })).toEqual([]);
   });
 });
 

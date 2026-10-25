@@ -167,7 +167,7 @@ type OrderRow = {
   giftRedeemedCents: number;
   extrasCount?: number;
   extrasCents?: number;
-  items: { nameSnapshot: string; qty: number; unitPriceCentsSnapshot: number }[];
+  items: { nameSnapshot: string; qty: number; unitPriceCentsSnapshot: number; addedVia?: string | null }[];
   customer: { name: string; email: string; phone: string | null } | null;
   business: { name: string; brandColor: string };
 };
@@ -225,6 +225,10 @@ export async function sendOrderConfirmation(orderId: string): Promise<void> {
         ? `We'll have your meals ready for ${o.fulfillment === "pickup" ? "pickup" : "delivery"} on ${when}.`
         : `We'll have your meals ready for your next ${o.fulfillment === "pickup" ? "pickup" : "delivery"}.`;
   const isSub = o.type === "subscription";
+  const autoPicked = isSub && o.items.length > 0 && o.items.every((i) => i.addedVia === "chef_choice");
+  const autoNote = autoPicked
+    ? `<p style="margin:12px 0 0;color:${INK};font-size:13px;">The cut-off passed before you picked, so we chose these for you from meals you've enjoyed before. You can pick next week's meals any time before the cut-off.</p>`
+    : "";
   const extrasNote = isSub && (o.extrasCents ?? 0) > 0
     ? `<p style="margin:12px 0 0;color:${INK};font-size:13px;">Includes <strong>${o.extrasCount} extra meal${o.extrasCount === 1 ? "" : "s"}</strong> beyond your plan (${formatCents(o.extrasCents ?? 0)}), billed with your next plan payment. No extra delivery fee.</p>`
     : "";
@@ -233,9 +237,9 @@ export async function sendOrderConfirmation(orderId: string): Promise<void> {
     subject: isSub ? `Your ${o.business.name} meals for ${when ?? "this week"} are set` : `Your ${o.business.name} order is confirmed`,
     businessName: o.business.name,
     brandColor: o.business.brandColor,
-    heading: isSub ? `Your box is set, ${escapeHtml(firstName)}` : `Thanks, ${escapeHtml(firstName)} — your order is confirmed`,
+    heading: isSub ? (autoPicked ? `We picked your box, ${escapeHtml(firstName)}` : `Your box is set, ${escapeHtml(firstName)}`) : `Thanks, ${escapeHtml(firstName)} — your order is confirmed`,
     subheading: `Order #${code} · ${fulfil}${when ? ` · ${when}` : ""}${o.address ? ` · ${escapeHtml(o.address)}` : ""}`,
-    bodyHtml: `${itemsTable(o.items)}${totalsTable(o, isSub ? "Covered by your plan" : "Total charged")}${extrasNote}
+    bodyHtml: `${itemsTable(o.items)}${totalsTable(o, isSub ? "Covered by your plan" : "Total charged")}${autoNote}${extrasNote}
       <p style="margin:20px 0 0;color:${SOFT};font-size:13px;">${closing} Questions? Just reply to this email.</p>`,
   });
 }

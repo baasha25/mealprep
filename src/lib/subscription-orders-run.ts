@@ -4,7 +4,7 @@
 
 import { currentCycleDeliveries, DEFAULT_TIMEZONE } from "@/lib/cutoff";
 import type { ZoneLike } from "@/lib/zones";
-import { dueDeliveryDates, chefChoiceItems, subscriptionOrderTotals, extrasForDelivery, parseNoPick, type NoPickBehaviour, type PickItem } from "@/lib/subscription-orders";
+import { dueDeliveryDates, autoPickItems, subscriptionOrderTotals, extrasForDelivery, parseNoPick, type NoPickBehaviour, type PickItem } from "@/lib/subscription-orders";
 
 export type MaterializeSummary = { scanned: number; created: number; chefChoice: number; skippedNoPick: number; extrasBilled: number; errors: number };
 
@@ -56,8 +56,8 @@ export async function materializeSubscriptionOrders(opts: { now?: Date; business
   const { picksFromSnapshot, nameWithOptions } = await import("@/lib/meal-options");
 
   const summary: MaterializeSummary = { scanned: 0, created: 0, chefChoice: 0, skippedNoPick: 0, extrasBilled: 0, errors: 0 };
-  const weekAgo = new Date(now.getTime() - 7 * 86_400_000);
   const fortnightAgo = new Date(now.getTime() - 14 * 86_400_000);
+  const historyFrom = new Date(now.getTime() - 90 * 86_400_000); // auto-pick draws from this window
 
   const subs = await db.subscription.findMany({
     where: { status: "active", nextDeliveryDate: { not: null }, ...(opts.businessId ? { businessId: opts.businessId } : {}) },
@@ -65,11 +65,14 @@ export async function materializeSubscriptionOrders(opts: { now?: Date; business
       plan: { select: { mealsPerWeek: true, perMealPriceCents: true } },
       customer: { select: { id: true, name: true, email: true, stripeCustomerId: true, addresses: { orderBy: { id: "asc" }, take: 1 } } },
       selections: {
-        where: { deliveryDate: { gte: weekAgo } },
+        where: { deliveryDate: { gte: historyFrom } },
         orderBy: { deliveryDate: "asc" },
         include: { items: { include: { meal: { select: { name: true, active: true } } } } },
       },
-      orders: { where: { deliveryDate: { gte: fortnightAgo } }, select: { deliveryDate: true, extrasCount: true, items: { select: { qty: true } } } },
+      orders: {
+        where: { deliveryDate: { gte: historyFrom } },
+        select: { deliveryDate: true, extrasCount: true, items: { select: { qty: true, mealId: true, optionsSnapshot: true, optionsKey: true, meal: { select: { active: true } } } } },
+      },
     },
   });
   summary.scanned = subs.length;
@@ -153,11 +156,22 @@ export async function materializeSubscriptionOrders(opts: { now?: Date; business
             summary.skippedNoPick++;
             continue;
           }
-          const last = [...sub.selections].reverse().find((s) => s.deliveryDate.getTime() < date.getTime() && s.items.some((i) => i.meal?.active !== false));
-          items = chefChoiceItems({
+          // Their history: everything they received (orders) plus picks not yet
+          // turned into orders, active meals only. Favourites weigh more.
+          const history: PickItem[] = [];
+          for (const o of sub.orders) {
+            if (!o.deliveryDate || o.deliveryDate.getTime() >= date.getTime()) continue;
+            for (const i of o.items) if (i.mealId && i.meal?.active !== false) history.push({ mealId: i.mealId, qty: i.qty, optionsSnapshot: i.optionsSnapshot ?? undefined, optionsKey: i.optionsKey });
+          }
+          const orderedDates = new Set(sub.orders.map((o) => o.deliveryDate?.getTime()));
+          for (const sl of sub.selections) {
+            if (sl.deliveryDate.getTime() >= date.getTime() || orderedDates.has(sl.deliveryDate.getTime())) continue;
+            for (const i of sl.items) if (i.meal?.active !== false) history.push({ mealId: i.mealId, qty: i.qty, optionsSnapshot: i.optionsSnapshot ?? undefined, optionsKey: i.optionsKey });
+          }
+          items = autoPickItems({
             mealsPerWeek: sub.plan.mealsPerWeek,
-            lastItems: (last?.items ?? []).filter((i) => i.meal?.active !== false).map((i) => ({ mealId: i.mealId, qty: i.qty, optionsSnapshot: i.optionsSnapshot ?? undefined, optionsKey: i.optionsKey })),
-            fallbackMealIds: await goToFor(sub.businessId, ctx),
+            history,
+            fallbackMealIds: history.length ? [] : await goToFor(sub.businessId, ctx),
           });
           if (!items.length) {
             summary.skippedNoPick++;

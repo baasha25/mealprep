@@ -49,19 +49,44 @@ export function dueDeliveryDates(opts: {
 export type PickItem = { mealId: string; qty: number; optionsSnapshot?: unknown; optionsKey?: string | null };
 
 /**
- * What to make for a subscriber who didn't pick: their most recent picks if
- * they have any, otherwise the kitchen's go-to meals spread across the plan
- * (10 meals over 3 go-tos → 4/3/3). Nothing to go on → nothing.
+ * What to make for a subscriber who didn't pick by the cut-off: a random mix
+ * drawn from their own order history. Every past meal they received is one
+ * ticket, so favourites come up more often; the plan's count is drawn without
+ * replacement (then the pool is reshuffled and reused if the history is
+ * smaller than the plan). No history → the kitchen's go-to meals, shuffled.
+ * `rng` is injectable for tests; the result is capped at the plan so an
+ * auto-pick never bills extras.
  */
-export function chefChoiceItems(opts: { mealsPerWeek: number; lastItems: readonly PickItem[]; fallbackMealIds: readonly string[] }): PickItem[] {
-  // Never bill extras the subscriber didn't ask for: chef's choice is capped at the plan.
-  if (opts.lastItems.length) return capItems(opts.lastItems.map((i) => ({ ...i })), Math.max(0, Math.floor(opts.mealsPerWeek)));
-  const ids = opts.fallbackMealIds.filter((id, i, a) => a.indexOf(id) === i);
+export function autoPickItems(opts: { mealsPerWeek: number; history: readonly PickItem[]; fallbackMealIds: readonly string[]; rng?: () => number }): PickItem[] {
+  const rng = opts.rng ?? Math.random;
   const n = Math.max(0, Math.floor(opts.mealsPerWeek));
-  if (!ids.length || n === 0) return [];
-  const out: PickItem[] = ids.slice(0, n).map((mealId) => ({ mealId, qty: 0 }));
-  for (let i = 0; i < n; i++) out[i % out.length].qty++;
-  return out.filter((i) => i.qty > 0);
+  if (n === 0) return [];
+  // One ticket per meal received (qty-weighted), keyed by meal + options.
+  const tickets: PickItem[] = [];
+  for (const h of opts.history) for (let k = 0; k < Math.max(0, Math.floor(h.qty)); k++) tickets.push({ mealId: h.mealId, qty: 1, optionsSnapshot: h.optionsSnapshot, optionsKey: h.optionsKey ?? null });
+  const pool: PickItem[] = tickets.length
+    ? tickets
+    : opts.fallbackMealIds.filter((id, i, a) => a.indexOf(id) === i).map((mealId) => ({ mealId, qty: 1, optionsKey: null }));
+  if (!pool.length) return [];
+  const shuffle = <T,>(a: T[]): T[] => {
+    const x = [...a];
+    for (let i = x.length - 1; i > 0; i--) {
+      const j = Math.floor(rng() * (i + 1));
+      [x[i], x[j]] = [x[j], x[i]];
+    }
+    return x;
+  };
+  const drawn: PickItem[] = [];
+  while (drawn.length < n) for (const t of shuffle(pool)) if (drawn.length < n) drawn.push(t);
+  // Aggregate identical meal + options into quantities.
+  const byKey = new Map<string, PickItem>();
+  for (const d of drawn) {
+    const key = `${d.mealId}|${d.optionsKey ?? ""}`;
+    const cur = byKey.get(key);
+    if (cur) cur.qty++;
+    else byKey.set(key, { ...d, qty: 1 });
+  }
+  return capItems([...byKey.values()], n);
 }
 
 /** Trim quantities from the end until the list holds at most `max` meals. */
