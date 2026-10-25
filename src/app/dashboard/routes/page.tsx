@@ -85,7 +85,7 @@ export default async function RoutesPage() {
                       <div className="text-[12px] truncate" style={{ color: "var(--muted)" }}>{o.address ?? "No address on file"}</div>
                     </div>
                     <span className="text-[12px] shrink-0" style={{ color: "var(--ink-soft)" }}>
-                      {o.deliveryDate ? `${dayFmt.format(o.deliveryDate)} · ` : ""}{o._count.items} meals · #{o.id.slice(-6)}
+                      {o.deliveryDate ? `${dayFmt.format(o.deliveryDate)} · ` : ""}{o._count.items} meal{o._count.items === 1 ? "" : "s"} · #{o.id.slice(-6)}
                     </span>
                   </div>
                 ))}

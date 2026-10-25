@@ -16,6 +16,9 @@ import {
   Megaphone,
   Trash2,
   Upload,
+  Repeat,
+  Radar,
+  Truck,
   type LucideIcon,
 } from "lucide-react";
 import { ATTRIB_COOKIE } from "@/lib/attribution";
@@ -40,28 +43,42 @@ const STEPS: Step[] = [
     kicker: "The owner's view",
     title: "Your whole kitchen on one screen",
     blurb:
-      "The moment you log in: real revenue, meals ordered, active subscriptions, and exactly how your week is tracking. No spreadsheets, no guessing.",
+      "The moment you log in: real revenue, meals ordered, active subscriptions, and what needs your attention today — act-now items first, then things to watch. No spreadsheets, no guessing.",
     points: [
       "Live revenue, orders, and average order value",
       "Active subscriptions and plan usage at a glance",
-      "Everything below rolls up from real orders",
+      "A needs-attention panel that ranks what matters this morning",
     ],
     img: "/demo/overview.png",
-    imgAlt: "PrepFlow owner dashboard showing revenue, meals ordered, and subscriptions",
+    imgAlt: "PrepFlow owner dashboard showing revenue, meals ordered, subscriptions, and the needs-attention panel",
   },
   {
     icon: Store,
     kicker: "What your customers see",
     title: "A storefront customers actually enjoy",
     blurb:
-      "Your own branded ordering page — subscription plans, one-time orders, dietary filters, macros and reviews on every meal. Customers order themselves.",
+      "Your own branded ordering page: subscription plans, one-time orders, dietary filters, macros, photos and verified reviews on every meal. Customers order themselves. Run it on your own domain, or sell plans only and hide the cart.",
     points: [
-      "Weekly or bi-weekly subscription plans, priced your way",
-      "Diet filters, calories, protein, and star reviews per meal",
-      "Stop taking orders by text and DM — it runs itself",
+      "Weekly or bi-weekly plans; the postal code sets the delivery day and fee",
+      "Diet filters, calories, protein, photos and star reviews per meal",
+      "Catering requests, gift cards and coupons — all on the same page",
     ],
-    img: "/demo/storefront.jpg",
-    imgAlt: "Branded customer storefront with subscription plans and meal cards",
+    img: "/demo/storefront.png",
+    imgAlt: "Branded customer storefront with the postal-code plan picker and meal cards",
+  },
+  {
+    icon: Repeat,
+    kicker: "Subscriptions that run themselves",
+    title: "Customers pick their meals. You don't chase them.",
+    blurb:
+      "Subscribers choose each week's meals in their account before your cut-off, skip or pause when they travel, and add extras at their plan price. Miss the cut-off? PrepFlow picks a box from what they've enjoyed before. At the cut-off every subscriber becomes a paid order, zoned and ready for the kitchen.",
+    points: [
+      "Reminder emails before the cut-off; picks lock when it passes",
+      "Extras beyond the plan ride in the same box, billed on the next payment",
+      "No picks? Auto-picked from their history — or skipped, your call",
+    ],
+    img: "/demo/subscriptions.png",
+    imgAlt: "Subscriptions screen showing each subscriber's plan, zone, next delivery and whether they've picked",
   },
   {
     icon: TrendingUp,
@@ -100,38 +117,66 @@ const STEPS: Step[] = [
     points: [
       "Buy the right quantity, calculated from what's actually ordered",
       "See the true usable cost hiding behind the invoice price",
-      "The margin number most kitchens have never seen before",
+      "Snap a supplier invoice and the prices update themselves",
     ],
     img: "/demo/purchasing.png",
     imgAlt: "Trim-aware purchasing list showing true usable-yield cost per ingredient",
+  },
+  {
+    icon: Radar,
+    kicker: "Know your market",
+    title: "What the kitchen down the road charges",
+    blurb:
+      "Watch nearby competitors and PrepFlow reads their public menu prices for you — exact where the store exposes them, estimated and marked where it has to read the page. See where each of your meals sits, and how your weekly plans compare at the same plan size.",
+    points: [
+      "Dish-by-dish: nearby range, median, and where you sit",
+      "Weekly plans vs nearby per-meal prices at the same plan size",
+      "A Price Coach that suggests a move and shows the dollars",
+    ],
+    img: "/demo/market.png",
+    imgAlt: "Nearby prices card comparing the kitchen's meals and plans with competitors",
   },
   {
     icon: ChefHat,
     kicker: "Kitchen operations",
     title: "The kitchen runs the day off it",
     blurb:
-      "The production report tells the team exactly what to make and how much, grouped by meal and station. Labels, packing, and delivery flow from the same orders.",
+      "The production report tells the team exactly what to make and how much, grouped by meal and station — one-time orders, subscriber picks and catering events together. Labels, packing slips and delivery flow from the same orders.",
     points: [
       "Production quantities pulled straight from orders",
       "Grouped by station so the line knows what to cook",
-      "One source of truth — no clipboards, no double entry",
+      "Nutrition labels and packing slips from the same list — no double entry",
     ],
     img: "/demo/kitchen.png",
     imgAlt: "Kitchen production report grouped by meal and station",
+  },
+  {
+    icon: Truck,
+    kicker: "Delivery, done right",
+    title: "Zones, routes, and every bag ticked out the door",
+    blurb:
+      "Split your area by postal code: each zone gets its own delivery day and fee, and customers land in the right one automatically — subscribers too. On delivery day, Routes groups the drops by zone with a dispatch checklist so nothing is left on the counter.",
+    points: [
+      "Delivery zones with their own days and fees, set once",
+      "Routes grouped by zone, with delivery date and meal count per stop",
+      "Dispatch checklist: tick each bag out, or print it for the driver",
+    ],
+    img: "/demo/routes.png",
+    imgAlt: "Delivery routes grouped by zone with a dispatch checklist",
   },
   {
     icon: Megaphone,
     kicker: "Grow sales",
     title: "Promotion & marketing, built in",
     blurb:
-      "Run coupons and gift cards customers redeem at checkout, and send email campaigns to bring lapsed diners back and reward your regulars — no separate tools.",
+      "Run coupons and gift cards customers redeem at checkout, and send email campaigns from ready-made templates for the week — or let PrepFlow write one in your voice. Abandoned-cart nudges, win-back and review requests run on their own.",
     points: [
       "Create coupons and gift cards",
-      "Email campaigns to all customers, lapsed, or subscribers",
-      "Add a photo and simple formatting to make it look sharp",
+      "Campaign templates for the season, or \"write it for me\"",
+      "Win-back, abandoned-checkout and review emails, automatic",
     ],
     img: "/demo/marketing.png",
-    imgAlt: "Marketing screen with coupons, gift cards, and an email campaign composer",
+    imgAlt: "Marketing screen with coupons, gift cards, and an email campaign composer with templates",
   },
   {
     icon: Trash2,
@@ -152,10 +197,10 @@ const STEPS: Step[] = [
     kicker: "Getting started",
     title: "Import in an afternoon, live in days",
     blurb:
-      "Bring your menu, customers, subscriptions, and current inventory over from a spreadsheet. Most kitchens finish the import in an afternoon and run their first guided production cycle within the week — you're not rebuilding from scratch.",
+      "Bring your menu, customers, subscriptions, and current inventory over from a spreadsheet — or photograph your printed menu and let PrepFlow read it. Most kitchens finish the import in an afternoon and run their first guided production cycle within the week.",
     points: [
       "CSV import for menu, customers, subscriptions, and stock",
-      "Keep your recipes, prices, and active subscribers",
+      "Menu from a photo, recipes and prices kept",
       "Your guide can walk you through this on the call",
     ],
     img: "/demo/import.png",
