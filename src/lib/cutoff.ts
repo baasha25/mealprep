@@ -169,3 +169,23 @@ export function formatDeliveryLabel(d: Date, tz: string): string {
     timeZone: tz, weekday: "long", month: "short", day: "numeric",
   }).format(d);
 }
+
+/**
+ * When picks for a given delivery lock: the LAST occurrence of the kitchen's
+ * weekly cut-off (weekday + time, in `tz`) strictly before the delivery. One
+ * rule for everything — the storefront banner, the account countdown, the
+ * reminder emails and the moment picks become orders. "Fri 8:00 PM" with a
+ * Sunday delivery locks Friday evening; with a Tuesday delivery it still locks
+ * the Friday before. Unparseable cut-off → `fallbackHours` before delivery.
+ */
+export function lockAtFor(deliveryDate: Date, cutoffStr: string, tz: string, fallbackHours = 48): Date {
+  const c = parseCutoff(cutoffStr);
+  if (!c) return new Date(deliveryDate.getTime() - fallbackHours * 3_600_000);
+  const p = partsInTz(deliveryDate, tz);
+  for (let back = 0; back <= 7; back++) {
+    if (((p.weekday - back) % 7 + 7) % 7 !== c.day) continue;
+    const instant = zonedWallTimeToUtc(p.year, p.month, p.day - back, c.hour, c.minute, tz);
+    if (instant.getTime() < deliveryDate.getTime()) return instant;
+  }
+  return new Date(deliveryDate.getTime() - fallbackHours * 3_600_000);
+}

@@ -4,6 +4,7 @@
 
 import { currentCycleDeliveries, DEFAULT_TIMEZONE } from "@/lib/cutoff";
 import type { ZoneLike } from "@/lib/zones";
+import { deliveryLockAt } from "@/lib/subscriptions";
 import { dueDeliveryDates, autoPickItems, subscriptionOrderTotals, extrasForDelivery, parseNoPick, type NoPickBehaviour, type PickItem } from "@/lib/subscription-orders";
 
 export type MaterializeSummary = { scanned: number; created: number; chefChoice: number; skippedNoPick: number; extrasBilled: number; errors: number };
@@ -81,6 +82,7 @@ export async function materializeSubscriptionOrders(opts: { now?: Date; business
   // Per-kitchen context, loaded once.
   type Ctx = {
     tz: string;
+    cutoff: string;
     kitchenDays: Record<string, boolean>;
     zones: ZoneLike[];
     noPick: NoPickBehaviour;
@@ -92,12 +94,13 @@ export async function materializeSubscriptionOrders(opts: { now?: Date; business
     const hit = ctxById.get(businessId);
     if (hit) return hit;
     const [settings, zoneRows] = await Promise.all([
-      db.businessSettings.findUnique({ where: { businessId }, select: { timezone: true, deliveryDays: true, subNoPick: true, fulfillment: true } }),
+      db.businessSettings.findUnique({ where: { businessId }, select: { timezone: true, cutoff: true, deliveryDays: true, subNoPick: true, fulfillment: true } }),
       db.deliveryZone.findMany({ where: { businessId, active: true } }),
     ]);
     const zones: ZoneLike[] = zoneRows.map((z) => ({ ...z, deliveryDays: (z.deliveryDays ?? {}) as Record<string, boolean> }));
     const ctx: Ctx = {
       tz: settings?.timezone || DEFAULT_TIMEZONE,
+      cutoff: settings?.cutoff ?? "",
       kitchenDays: kitchenDaysWithZones((settings?.deliveryDays ?? {}) as Record<string, boolean>, zones),
       zones,
       noPick: parseNoPick(settings?.subNoPick),
@@ -141,6 +144,7 @@ export async function materializeSubscriptionOrders(opts: { now?: Date; business
         chosenDays: days,
         tz: ctx.tz,
         existing: sub.orders.map((o) => o.deliveryDate).filter((d): d is Date => Boolean(d)),
+        lockAt: (d) => deliveryLockAt(d, { cutoff: ctx.cutoff, timezone: ctx.tz }),
       });
       if (!due.length) continue;
       const feeDate = cycle[0]?.getTime();

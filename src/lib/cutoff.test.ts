@@ -6,6 +6,7 @@ import {
   formatDeliveryLabel,
   upcomingDeliveries,
   currentCycleDeliveries,
+  lockAtFor,
 } from "./cutoff";
 
 const TZ = "America/Toronto";
@@ -117,5 +118,23 @@ describe("currentCycleDeliveries", () => {
   it("falls back to the single date when no days given", () => {
     const d = new Date("2026-08-31T16:00:00Z");
     expect(currentCycleDeliveries([], d, TZ)).toEqual([d]);
+  });
+});
+
+describe("lockAtFor", () => {
+  const TZ = "America/Vancouver"; // PST after Nov 1 2026 → local noon = 20:00 UTC
+  const noon = (d: number) => new Date(Date.UTC(2026, 10, d, 20, 0));
+  it("locks at the last weekly cut-off before the delivery, whatever the weekday", () => {
+    // Fri 8:00 PM Vancouver = Sat 04:00 UTC.
+    expect(lockAtFor(noon(8), "Fri 8:00 PM", TZ).toISOString()).toBe("2026-11-07T04:00:00.000Z"); // Sunday delivery → Friday before
+    expect(lockAtFor(noon(10), "Fri 8:00 PM", TZ).toISOString()).toBe("2026-11-07T04:00:00.000Z"); // Tuesday delivery → same Friday
+    expect(lockAtFor(noon(9), "Fri 8:00 PM", TZ).toISOString()).toBe("2026-11-07T04:00:00.000Z"); // Monday too
+  });
+  it("same weekday: a cut-off later in the day means the previous week's", () => {
+    // Saturday noon delivery with a Saturday 8 PM cut-off → the Saturday a week earlier.
+    expect(lockAtFor(noon(14), "Sat 8:00 PM", TZ).toISOString()).toBe("2026-11-08T04:00:00.000Z");
+  });
+  it("falls back to 48h when the cut-off can't be parsed", () => {
+    expect(lockAtFor(noon(8), "whenever", TZ).toISOString()).toBe("2026-11-06T20:00:00.000Z");
   });
 });

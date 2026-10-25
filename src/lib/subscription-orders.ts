@@ -33,14 +33,17 @@ export function dueDeliveryDates(opts: {
   chosenDays: readonly string[];
   tz: string;
   existing: readonly Date[];
+  /** When picks for a date lock (the kitchen's weekly cut-off); default 48h before. */
+  lockAt?: (deliveryDate: Date) => Date;
   leadHours?: number;
   graceDays?: number;
 }): Date[] {
   const lead = opts.leadHours ?? CUTOFF_LEAD_HOURS;
+  const lockAt = opts.lockAt ?? ((d: Date) => cutoffAt(d, lead));
   const grace = (opts.graceDays ?? 2) * 86_400_000;
   const have = new Set(opts.existing.map((d) => d.getTime()));
   return currentCycleDeliveries(opts.chosenDays, opts.nextDeliveryDate, opts.tz)
-    .filter((d) => cutoffAt(d, lead).getTime() <= opts.now.getTime())
+    .filter((d) => lockAt(d).getTime() <= opts.now.getTime())
     .filter((d) => d.getTime() >= opts.now.getTime() - grace)
     .filter((d) => !have.has(d.getTime()))
     .sort((a, b) => a.getTime() - b.getTime());

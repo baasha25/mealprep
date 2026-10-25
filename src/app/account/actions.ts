@@ -8,7 +8,7 @@ import { zoneForPostal, zoneDays, kitchenDaysWithZones, type ZoneLike } from "@/
 import { rezoneCustomerSubscriptions } from "@/lib/subscription-zone";
 import { stripe, STRIPE_ENABLED } from "@/lib/stripe";
 import { getCustomerContext } from "@/lib/customer-auth";
-import { advanceDeliveryDate, canModifyNextDelivery, canPause, canResume } from "@/lib/subscriptions";
+import { advanceDeliveryDate, canModifyNextDelivery, canPause, canResume, type CutoffRule } from "@/lib/subscriptions";
 import {
   currentCycleDeliveries,
   upcomingDeliveries,
@@ -39,6 +39,12 @@ async function syncStripe(
 }
 
 export type SubActionResult = { ok: boolean; message: string };
+
+/** The kitchen's cut-off rule (picks lock at the last weekly cut-off before a delivery). */
+async function cutoffRuleFor(businessId: string): Promise<CutoffRule | null> {
+  const s = await db.businessSettings.findUnique({ where: { businessId }, select: { cutoff: true, timezone: true } });
+  return s ? { cutoff: s.cutoff, timezone: s.timezone } : null;
+}
 
 // Load a subscription and confirm it belongs to the current customer.
 async function loadOwnedSubscription(subscriptionId: string) {
@@ -96,6 +102,7 @@ export async function skipNextDelivery(subscriptionId: string): Promise<SubActio
       sub.status as "active" | "paused" | "canceled",
       new Date(),
       sub.nextDeliveryDate,
+      await cutoffRuleFor(sub.businessId),
     )
   ) {
     return { ok: false, message: "Past the cut-off — this delivery is locked." };
@@ -162,6 +169,7 @@ export async function updateSelection(input: {
       sub.status as "active" | "paused" | "canceled",
       new Date(),
       sub.nextDeliveryDate,
+      await cutoffRuleFor(sub.businessId),
     )
   ) {
     return { ok: false, message: "Past the cut-off — this delivery is locked." };

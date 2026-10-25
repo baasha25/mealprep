@@ -6,7 +6,7 @@ import { SignOutButton } from "@/components/sign-out-button";
 import { db } from "@/lib/db";
 import { getStorefrontBusiness } from "@/lib/storefront";
 import { getKitchenCustomer } from "@/lib/customer-auth";
-import { canModifyNextDelivery, cutoffAt } from "@/lib/subscriptions";
+import { canModifyNextDelivery, deliveryLockAt } from "@/lib/subscriptions";
 import {
   currentCycleDeliveries,
   upcomingDeliveries,
@@ -162,7 +162,9 @@ export default async function KitchenAccountPage({
       ? "Save your delivery address below so we can place you in a delivery zone."
       : null;
   const nextDate = subscription?.nextDeliveryDate ?? null;
-  const cutoffISO = nextDate ? cutoffAt(nextDate).toISOString() : null;
+  const cutoffRule = business.settings ? { cutoff: business.settings.cutoff, timezone: business.settings.timezone } : null;
+  const lockAt = nextDate ? deliveryLockAt(nextDate, cutoffRule) : null;
+  const cutoffISO = lockAt ? lockAt.toISOString() : null;
   const chosenDays = subscription
     ? sanitizePreferredDays(subscription.preferredDeliveryDays, enabledDays)
     : [];
@@ -188,7 +190,7 @@ export default async function KitchenAccountPage({
   // Upcoming deliveries further out (both days when the customer picked two).
   const upcomingDates: string[] =
     nextDate && subscription && chosenDays.length
-      ? upcomingDeliveries(chosenDays, cutoffAt(nextDate), tz, 4, freq).map((d) => dateFmt.format(d))
+      ? upcomingDeliveries(chosenDays, lockAt!, tz, 4, freq).map((d) => dateFmt.format(d))
       : nextDate
         ? [dateFmt.format(nextDate)]
         : [];
@@ -268,6 +270,7 @@ export default async function KitchenAccountPage({
             subscription.status as "active" | "paused" | "canceled",
             new Date(),
             subscription.nextDeliveryDate,
+            cutoffRule,
           )}
           perMealPriceCents={subscription.plan.perMealPriceCents}
           planMeals={subscription.plan.mealsPerWeek}

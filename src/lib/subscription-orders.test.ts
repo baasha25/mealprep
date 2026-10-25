@@ -28,6 +28,16 @@ describe("dueDeliveryDates", () => {
   });
 });
 
+describe("dueDeliveryDates with the kitchen's cut-off rule", () => {
+  it("uses the weekly cut-off instead of 48h when given", () => {
+    // Fri 8 PM Vancouver = Sat 04:00 UTC; Tuesday delivery locks there, not 48h before.
+    const lockAt = (d: Date) => new Date(Date.UTC(2026, 10, 7, 4, 0));
+    const base = { nextDeliveryDate: TUE, chosenDays: ["Tue"], tz: TZ, existing: [] as Date[], lockAt };
+    expect(dueDeliveryDates({ ...base, now: new Date(Date.UTC(2026, 10, 7, 3, 0)) })).toEqual([]);
+    expect(dueDeliveryDates({ ...base, now: new Date(Date.UTC(2026, 10, 7, 5, 0)) }).map(Number)).toEqual([+TUE]);
+  });
+});
+
 describe("autoPickItems", () => {
   // Deterministic rng: a fixed sequence so shuffles are reproducible.
   const seq = [0.1, 0.9, 0.3, 0.7, 0.5, 0.2, 0.8, 0.4, 0.6, 0.05];

@@ -1,4 +1,4 @@
-import { cutoffAt } from "@/lib/subscriptions";
+import { cutoffAt, deliveryLockAt } from "@/lib/subscriptions";
 
 // Scheduled customer reminders. The pure decision (dueReminders) is unit-tested;
 // the runner does the DB reads + sends and is called by the daily cron route.
@@ -24,10 +24,12 @@ export function dueReminders(input: {
   notifyCutoff: boolean;
   notifyDeliveryDay: boolean;
   alreadyPicked?: boolean;
+  /** When this delivery's picks lock (the kitchen's weekly cut-off); default 48h before. */
+  lockAt?: Date;
 }): ReminderKind[] {
   const kinds: ReminderKind[] = [];
   if (input.notifyCutoff && !input.alreadyPicked) {
-    const msToCutoff = cutoffAt(input.nextDeliveryDate).getTime() - input.now.getTime();
+    const msToCutoff = (input.lockAt ?? cutoffAt(input.nextDeliveryDate)).getTime() - input.now.getTime();
     if (msToCutoff > 0 && msToCutoff <= 48 * 3_600_000) kinds.push("cutoff");
   }
   if (input.notifyDeliveryDay && isoDate(input.now) === isoDate(input.nextDeliveryDate)) {
@@ -69,7 +71,7 @@ export async function runDailyNotifications(now: Date = new Date()): Promise<Run
       name: true,
       brandColor: true,
       slug: true,
-      settings: { select: { notifyCutoff: true, notifyDeliveryDay: true } },
+      settings: { select: { notifyCutoff: true, notifyDeliveryDay: true, cutoff: true, timezone: true } },
     },
   });
   const bizById = new Map(businesses.map((b) => [b.id, b]));
@@ -100,6 +102,7 @@ export async function runDailyNotifications(now: Date = new Date()): Promise<Run
       notifyCutoff: biz.settings?.notifyCutoff ?? true,
       notifyDeliveryDay: biz.settings?.notifyDeliveryDay ?? true,
       alreadyPicked,
+      lockAt: deliveryLockAt(sub.nextDeliveryDate, biz.settings ? { cutoff: biz.settings.cutoff, timezone: biz.settings.timezone } : null),
     });
     if (kinds.length === 0) continue;
 

@@ -287,7 +287,7 @@ export const GUIDE: GuideArea[] = [
           ["Picked / Not picked yet", "Whether they've chosen meals for their next delivery. Once that delivery's cut-off passes, their picks become a paid Subscription order in Orders, Kitchen OS, Delivery Routes and Labels — grouped by zone like any other order. Picks lock at the cut-off (the countdown on their account). A subscriber who hasn't picked gets an auto-pick: a random mix of meals from their own order history, favourites more often, exactly their plan — or is skipped that week, if you chose that in Settings → Fulfillment → Meal-plan subscriptions."],
           ["Delivery days (customer's choice)", "If you run more than one delivery day (set in Settings), each subscriber picks which day(s) they want — one day, or BOTH. Choosing both splits their weekly meals across the two deliveries for freshness, at the SAME price (not a double charge). They pick this at sign-up and can change it, and assign which meals go on which day, from their account page."],
         ],
-        tips: ["Subscribers (or you) can skip, pause, or swap meals before the weekly cut-off time you set in Settings. After cut-off, that week's order is locked for the kitchen.", "To offer a choice of delivery days, tick 2+ days in Settings → Delivery days. With one day enabled there's simply nothing for the customer to choose."],
+        tips: ["Subscribers (or you) can skip, pause, or swap meals until the weekly cut-off you set in Settings → Fulfillment (the last cut-off before each delivery). After it, that delivery is locked, their picks (or an auto-pick) become a paid order, and the kitchen runs on it.", "To offer a choice of delivery days, tick 2+ days in Settings → Delivery days. With one day enabled there's simply nothing for the customer to choose."],
       },
       {
         id: "orders",
@@ -670,7 +670,7 @@ export const GUIDE: GuideArea[] = [
           ["Delivery fee", "What customers pay for delivery, added at checkout."],
           ["Processing fee", "An optional fee added per order."],
           ["Tax rate", "The sales tax applied at checkout (as a %)."],
-          ["Order cut-off", "The day/time each week after which orders lock for the kitchen (e.g. 'Sat 8:00 PM'). Customers can edit/skip before this; after it, the kitchen's list is fixed."],
+          ["Order cut-off", "A weekday and time, e.g. \"Fri 8:00 PM\", in your timezone — and it is the one rule for everything. Every delivery in the week after it locks at that moment: subscribers' picks, skips and swaps, the storefront countdown, the \"pick your meals\" reminder, and when picks turn into paid orders. Example: cut-off Friday 8 PM with Sunday, Monday and Tuesday zones — all three lock Friday evening, so you shop and prep from one list."],
           ["Delivery days", "The weekday(s) your kitchen delivers. Tick every day you run. Customers then pick which of those they want: subscribers choose one or both (and split their week across two days if they want), and one-time orders pick a delivery date from these days at checkout."],
           ["Minimum order", "The smallest order value a customer can check out with."],
           ["Share my monthly totals with your partner", "Only appears if a PrepFlow partner (a consultant or coach) referred you. With it on, that partner sees your monthly sales total and order count on their partner page, nothing else: no customers, recipes or prices. Off by default, and you can switch it off any time."],
