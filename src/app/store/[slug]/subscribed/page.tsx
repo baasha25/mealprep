@@ -13,16 +13,26 @@ export default async function SubscribedPage({
   searchParams,
 }: {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ session_id?: string }>;
+  searchParams: Promise<{ session_id?: string; demo?: string }>;
 }) {
   const { slug } = await params;
-  const { session_id } = await searchParams;
+  const { session_id, demo } = await searchParams;
   const business = await getStorefrontBusiness(slug);
 
   let ok = false;
   let planName = "";
+  let isDemo = false;
 
-  if (business && STRIPE_ENABLED && session_id) {
+  // Sales sandbox: the plan was created directly (no Stripe) — confirm from the DB.
+  if (business?.isDemo && demo === "1") {
+    const { db } = await import("@/lib/db");
+    const sub = await db.subscription.findFirst({ where: { businessId: business.id }, orderBy: { createdAt: "desc" }, include: { plan: { select: { name: true } } } });
+    if (sub) {
+      ok = true;
+      isDemo = true;
+      planName = sub.plan.name;
+    }
+  } else if (business && STRIPE_ENABLED && session_id) {
     try {
       const session = await stripe.checkout.sessions.retrieve(session_id);
       if (session.status === "complete") {
@@ -58,6 +68,11 @@ export default async function SubscribedPage({
             <p className="text-[14px] mt-2" style={{ color: "var(--ink-soft)" }}>
               Your {planName} subscription is active. Pick your meals and manage everything from your account.
             </p>
+            {isDemo && (
+              <p className="text-[12.5px] mt-3 px-3 py-2 rounded-lg inline-block" style={{ background: "color-mix(in srgb, var(--pine) 9%, transparent)", color: "var(--pine)" }}>
+                Demo kitchen: no card was charged. In a real kitchen this step is Stripe checkout.
+              </p>
+            )}
             <Link href={`/store/${slug}/account`} className="inline-block mt-7 px-5 py-2.5 rounded-lg text-[14px] font-medium" style={{ background: "var(--pine)", color: "#f4f2ec" }}>
               Go to my account
             </Link>

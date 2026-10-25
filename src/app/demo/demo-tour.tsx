@@ -19,6 +19,7 @@ import {
   Repeat,
   Radar,
   Truck,
+  ShoppingBag,
   type LucideIcon,
 } from "lucide-react";
 import { ATTRIB_COOKIE } from "@/lib/attribution";
@@ -31,6 +32,8 @@ type Step = {
   points: string[];
   img?: string;
   imgAlt?: string;
+  /** Hands the presenter into the live sandbox at this point: its storefront or its kitchen. */
+  cta?: "store" | "kitchen";
 };
 
 // The guided walkthrough. Screenshots are captured from the live app and live
@@ -65,6 +68,36 @@ const STEPS: Step[] = [
     ],
     img: "/demo/storefront.png",
     imgAlt: "Branded customer storefront with the postal-code plan picker and meal cards",
+  },
+  {
+    icon: ShoppingBag,
+    kicker: "Try it live",
+    title: "Order as a customer",
+    blurb:
+      "Open the sandbox storefront in a new tab and place an order the way a customer would: type a postal code, pick meals or a plan, fill in the demo customer and check out. Nothing is charged in the sandbox — the order is marked paid and lands in the kitchen instantly.",
+    points: [
+      "Postal code → zone, delivery day and fee, automatically",
+      "One tap fills in a demo customer; no card needed",
+      "Keep this tab open: you're about to watch the order arrive",
+    ],
+    img: "/demo/storefront.png",
+    imgAlt: "Sandbox storefront ready for a demo order",
+    cta: "store",
+  },
+  {
+    icon: ChefHat,
+    kicker: "Try it live",
+    title: "Back in the kitchen",
+    blurb:
+      "Switch to the sandbox dashboard. The order you just placed is already in Orders, on the production list in Kitchen OS, on its zone's route in Routes, and on a packing slip — no retyping, no second system.",
+    points: [
+      "Orders: paid, with the customer, zone and delivery date",
+      "Kitchen OS: the meals added to today's production counts",
+      "Routes: a new stop in the right zone, ready for the driver",
+    ],
+    img: "/demo/routes.png",
+    imgAlt: "Sandbox kitchen showing the new order on its route",
+    cta: "kitchen",
   },
   {
     icon: Repeat,
@@ -343,6 +376,18 @@ export function DemoTour({ rep, repName, enterQuery }: { rep: string | null; rep
                 </li>
               ))}
             </ul>
+
+            {step.cta && (
+              <a
+                href={step.cta === "store" ? `${enterHref}${enterQuery ? "&" : "?"}next=store` : enterHref}
+                target="_blank"
+                rel="noreferrer"
+                className="mt-6 inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-[14px] font-medium"
+                style={{ background: "var(--pine)", color: "#f4f2ec" }}
+              >
+                {step.cta === "store" ? "Open the sandbox storefront" : "Open the sandbox kitchen"} <ArrowRight size={16} />
+              </a>
+            )}
 
             <div className="mt-8 flex items-center gap-2.5">
               <button

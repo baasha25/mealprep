@@ -77,6 +77,9 @@ export type StoreSettings = PricingSettings & {
   // Plans-only kitchens: the menu is what subscribers pick from each week; there
   // is no one-time cart (no Add buttons, no checkout panel).
   subscriptionsOnly?: boolean;
+  // Sales sandbox: offer a one-tap demo customer and say plainly that nothing is charged.
+  isDemo?: boolean;
+  demoPostal?: string;
   fulfillment: string; // "delivery" | "pickup" | "both"
   pickupLocations: string[];
   // Upcoming delivery dates a one-time order can choose from (kitchen's enabled
@@ -205,7 +208,9 @@ export function Storefront({
   const [loyalty, setLoyalty] = useState<LoyaltyLookup | null>(null);
   const [applyLoyalty, setApplyLoyalty] = useState(false);
   const [referralInput, setReferralInput] = useState("");
-  const [placed, setPlaced] = useState<{ orderId: string; subscription: boolean } | null>(null);
+  const [placed, setPlaced] = useState<{ orderId: string; subscription: boolean; demo?: boolean } | null>(null);
+  const fillDemoCustomer = () =>
+    setForm({ name: "Jordan Demo", email: "jordan.demo@example.com", phone: "416 555 0142", address: "88 Harbour St, Toronto, ON", zone: "", postal: settings.demoPostal ?? "" });
   const [error, setError] = useState("");
   const [pending, startTransition] = useTransition();
 
@@ -296,7 +301,7 @@ export function Storefront({
           return;
         }
         // Fully covered by gift card / points → confirm inline.
-        setPlaced({ orderId: result.orderId, subscription: result.subscription });
+        setPlaced({ orderId: result.orderId, subscription: result.subscription, demo: result.demo });
         setCart({});
         setCoupon(null);
         setCouponInput("");
@@ -336,6 +341,11 @@ export function Storefront({
             ? " You'll be billed each cycle once payment is set up."
             : ""}
         </p>
+        {placed.demo && (
+          <p className="text-[12.5px] mt-3 px-3 py-2 rounded-lg inline-block" style={{ background: "color-mix(in srgb, var(--pine) 9%, transparent)", color: "var(--pine)" }}>
+            Demo order: no card was charged. It&apos;s now in the kitchen&apos;s Orders, Kitchen OS and Routes.
+          </p>
+        )}
         <button
           onClick={() => {
             setPlaced(null);
@@ -984,6 +994,16 @@ export function Storefront({
               )}
 
               {/* Customer details */}
+              {settings.isDemo && (
+                <button
+                  type="button"
+                  onClick={fillDemoCustomer}
+                  className="w-full mb-2 px-3 py-2 rounded-md text-[12.5px] font-medium border text-left"
+                  style={{ borderColor: "var(--pine)", color: "var(--pine)", background: "color-mix(in srgb, var(--pine) 6%, transparent)" }}
+                >
+                  Fill in as a demo customer (no card needed)
+                </button>
+              )}
               <div className="space-y-2 mb-3">
                 <input
                   value={form.name}
@@ -1064,7 +1084,7 @@ export function Storefront({
                 {pending ? "Placing…" : subscribe ? "Start subscription" : "Place order"}
               </button>
               <p className="text-[11px] mt-2 text-center" style={{ color: "var(--muted)" }}>
-                Payment is collected once Stripe is connected.
+                {settings.isDemo ? "Demo kitchen: orders are marked paid, no card is charged." : "Payment is collected once Stripe is connected."}
               </p>
             </>
           )}

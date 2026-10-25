@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { referralCodeFrom } from "@/lib/loyalty";
 import { stationFor } from "@/lib/stations";
+import { upcomingDeliveries, nextCutoffAt, DEFAULT_TIMEZONE } from "@/lib/cutoff";
 
 // Stocks a freshly-created DEMO kitchen with a lean but FULLY-COSTED sample menu
 // (recipes + ingredient costs), a few customers, and paid orders — so the money
@@ -61,6 +62,23 @@ const YIELD: Record<string, [expected: number, actual: number]> = {
   "Turkey Meatballs & Zoodles": [10, 9],
 };
 
+// Delivery zones by postal-code prefix — each with its own day and fee — so the
+// storefront's postal-code step, zoned subscriptions and Routes all show in the
+// sandbox exactly as in the guided tour.
+const ZONES = [
+  { name: "North", prefixes: ["L4C", "L4E"], day: "Mon", fee: 7.99 },
+  { name: "East", prefixes: ["L1T", "L1S"], day: "Wed", fee: 5.99 },
+  { name: "West", prefixes: ["L5B", "L5N"], day: "Fri", fee: 6.99 },
+] as const;
+const POSTAL: Record<string, string> = { North: "L4C 1A2", East: "L1T 2K9", West: "L5B 2C9" };
+
+// Two fictional nearby kitchens (never real businesses) so Nearby prices and the
+// plan comparison have something to show the moment the rep lands.
+const COMPETITORS = [
+  { name: "Fuel Kitchen", domain: "fuelkitchen.example", platform: "shopify", items: [["Grilled Chicken Quinoa Bowl", 13.5, "Grilled Chicken & Quinoa"], ["Salmon & Sweet Potato", 14.95, "Salmon & Sweet Potato"], ["Buddha Bowl", 11.5, "Vegan Buddha Bowl"], ["Steak with Roasted Veg", 16.99, "Steak & Roasted Veg"]] as const, plans: [[5, 12.99, 6.99], [10, 11.99, 0]] as const, estimated: false },
+  { name: "Prep Society", domain: "prepsociety.example", platform: "ai", items: [["Chicken & Quinoa", 12.0, "Grilled Chicken & Quinoa"], ["Honey Salmon Sweet Potato", 15.5, "Salmon & Sweet Potato"], ["Turkey Meatballs Zoodles", 12.75, "Turkey Meatballs & Zoodles"]] as const, plans: [[10, 11.25, 7.99], [14, 10.49, null]] as const, estimated: true },
+];
+
 const ORDERS = [
   { cust: "Maria Lopez", type: "subscription", items: { "Grilled Chicken & Quinoa": 3, "Vegan Buddha Bowl": 2 }, addr: "418 Cedar Ave", zone: "North" },
   { cust: "Dwayne King", type: "one_time", items: { "Steak & Roasted Veg": 4, "Salmon & Sweet Potato": 1 }, addr: "92 Birch St", zone: "North" },
@@ -106,9 +124,15 @@ export async function seedDemoKitchen(businessId: string): Promise<void> {
     planIds.set(p.name, plan.id);
   }
   const proPlanId = planIds.get("Pro")!;
-  const nextDelivery = new Date();
-  nextDelivery.setDate(nextDelivery.getDate() + 5);
-  nextDelivery.setHours(18, 0, 0, 0);
+
+  // Delivery zones (the kitchen's days = the zones' days: Mon / Wed / Fri).
+  await db.deliveryZone.createMany({
+    data: ZONES.map((z, i) => ({ businessId, name: z.name, postalPrefixes: [...z.prefixes], deliveryDays: { [z.day]: true }, deliveryFeeCents: cents(z.fee), sortOrder: i })),
+  });
+  const settingsRow = await db.businessSettings.findUnique({ where: { businessId }, select: { cutoff: true, timezone: true } });
+  const tz = settingsRow?.timezone || DEFAULT_TIMEZONE;
+  const anchor = (settingsRow ? nextCutoffAt(settingsRow.cutoff, tz) : null) ?? new Date();
+  const nextDeliveryFor = (day: string) => upcomingDeliveries([day], anchor, tz, 1, "weekly")[0] ?? new Date(Date.now() + 5 * 86_400_000);
 
   // Customers + paid orders (+ subscriptions for recurring ones).
   let idx = 0;
@@ -116,7 +140,7 @@ export async function seedDemoKitchen(businessId: string): Promise<void> {
     idx++;
     const email = `${o.cust.toLowerCase().replace(/[^a-z]+/g, ".")}@email.com`;
     const customer = await db.customer.create({
-      data: { businessId, name: o.cust, email, referralCode: referralCodeFrom(o.cust, idx), addresses: { create: [{ line1: o.addr, zone: o.zone, label: "Home" }] } },
+      data: { businessId, name: o.cust, email, referralCode: referralCodeFrom(o.cust, idx), addresses: { create: [{ line1: o.addr, city: "Toronto", region: "ON", postalCode: POSTAL[o.zone], zone: o.zone, label: "Home" }] } },
       select: { id: true },
     });
     const items = Object.entries(o.items).map(([name, qty]) => { const meal = mealIds.get(name)!; return { mealId: meal.id, qty, unitPriceCentsSnapshot: meal.priceCents, nameSnapshot: name }; });
@@ -124,11 +148,16 @@ export async function seedDemoKitchen(businessId: string): Promise<void> {
     const tax = Math.round(subtotal * 0.08);
     const fees = cents(4.99) + cents(1.5);
     const order = await db.order.create({
-      data: { businessId, customerId: customer.id, type: o.type, status: "paid", fulfillment: "delivery", address: o.addr, zone: o.zone, subtotalCents: subtotal, taxCents: tax, feesCents: fees, totalCents: subtotal + tax + fees, items: { create: items } },
+      data: { businessId, customerId: customer.id, type: o.type, status: "paid", fulfillment: "delivery", address: `${o.addr}, Toronto, ON, ${POSTAL[o.zone]}`, zone: o.zone, postalCode: POSTAL[o.zone].replace(/\s/g, ""), deliveryDate: nextDeliveryFor(ZONES.find((z) => z.name === o.zone)!.day), subtotalCents: subtotal, taxCents: tax, feesCents: fees, totalCents: subtotal + tax + fees, items: { create: items } },
       select: { id: true },
     });
     if (o.type === "subscription") {
-      const sub = await db.subscription.create({ data: { businessId, customerId: customer.id, planId: proPlanId, status: "active", frequency: "weekly", nextDeliveryDate: nextDelivery }, select: { id: true } });
+      const zone = ZONES.find((z) => z.name === o.zone)!;
+      const nextDelivery = nextDeliveryFor(zone.day);
+      const sub = await db.subscription.create({
+        data: { businessId, customerId: customer.id, planId: proPlanId, status: "active", frequency: "weekly", nextDeliveryDate: nextDelivery, preferredDeliveryDays: [zone.day], postalCode: POSTAL[o.zone].replace(/\s/g, ""), zone: o.zone, deliveryFeeCents: cents(zone.fee) },
+        select: { id: true },
+      });
       await db.subscriptionSelection.create({ data: { subscriptionId: sub.id, deliveryDate: nextDelivery, items: { create: items.map((li) => ({ mealId: li.mealId, qty: li.qty })) } } });
       await db.order.update({ where: { id: order.id }, data: { subscriptionId: sub.id } });
     }
@@ -144,6 +173,19 @@ export async function seedDemoKitchen(businessId: string): Promise<void> {
 
   // A couple of promotions so the Marketing screen isn't empty.
   await db.coupon.createMany({ data: [ { businessId, code: "FRESH10", type: "percent", value: 10 }, { businessId, code: "WELCOME5", type: "flat", value: cents(5) } ] });
+
+  // Nearby prices: two fictional competitors with confirmed matches and plans.
+  for (const c of COMPETITORS) {
+    const comp = await db.competitor.create({ data: { businessId, name: c.name, domain: c.domain, url: `https://${c.domain}`, platform: c.platform, status: "ok", lastCheckedAt: new Date(Date.now() - 2 * 86_400_000) }, select: { id: true } });
+    for (const [name, price, ours] of c.items) {
+      const item = await db.competitorItem.create({ data: { competitorId: comp.id, externalId: name.toLowerCase().replace(/[^a-z0-9]+/g, "-"), name, priceCents: cents(price), url: `https://${c.domain}/menu`, estimated: c.estimated }, select: { id: true } });
+      const meal = mealIds.get(ours);
+      if (meal) await db.competitorMatch.create({ data: { businessId, mealId: meal.id, competitorItemId: item.id, status: "confirmed", score: 90 } });
+    }
+    for (const [mealsPerWeek, perMeal, fee] of c.plans) {
+      await db.competitorPlan.create({ data: { competitorId: comp.id, mealsPerWeek, perMealCents: cents(perMeal), deliveryFeeCents: fee == null ? null : cents(fee), label: `${mealsPerWeek} meals / week`, startingFrom: fee == null, estimated: c.estimated, url: `https://${c.domain}/plans` } });
+    }
+  }
 
   // Labour + overhead so Profitability shows Prime Cost and true profit populated.
   await db.operatingCost.createMany({

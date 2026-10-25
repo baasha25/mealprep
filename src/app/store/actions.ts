@@ -135,7 +135,7 @@ const PlaceOrderInput = z.object({
 export type PlaceOrderInputT = z.infer<typeof PlaceOrderInput>;
 
 export type PlaceOrderResult =
-  | { ok: true; orderId: string; totalCents: number; giftRedeemedCents: number; amountDueCents: number; subscription: boolean; checkoutUrl?: string }
+  | { ok: true; orderId: string; totalCents: number; giftRedeemedCents: number; amountDueCents: number; subscription: boolean; checkoutUrl?: string; demo?: boolean }
   | { ok: false; message: string };
 
 export async function placeOrder(input: PlaceOrderInputT): Promise<PlaceOrderResult> {
@@ -385,6 +385,16 @@ export async function placeOrder(input: PlaceOrderInputT): Promise<PlaceOrderRes
     await db.order.update({ where: { id: order.id }, data: { status: "paid" } });
     await sendOrderConfirmation(order.id);
     await sendOwnerNewOrder(order.id);
+  }
+
+  // Sales sandbox: never touch Stripe. Mark the order paid so it lands in Orders,
+  // Kitchen OS, Routes and Labels exactly like a real one (emails are suppressed
+  // under the demo cookie).
+  if (business.isDemo && amountDueCents > 0) {
+    await db.order.update({ where: { id: order.id }, data: { status: "paid" } });
+    await sendOrderConfirmation(order.id);
+    await sendOwnerNewOrder(order.id);
+    return { ok: true, orderId: order.id, totalCents: totals.totalCents, giftRedeemedCents: giftAppliedCents, amountDueCents, subscription: data.subscribe, demo: true };
   }
 
   // Otherwise send the customer to Stripe Checkout (test mode) to pay the balance.

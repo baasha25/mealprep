@@ -138,3 +138,56 @@ export async function ensureSubscriptionFromCheckout(
 
   return { planName: plan.name };
 }
+
+/**
+ * Demo kitchens: start a plan with no Stripe at all. Creates the customer and
+ * the subscription exactly as a paid checkout would (zone, days, fee, first
+ * delivery after the next cut-off), so the sandbox account page, Kitchen OS
+ * and Routes behave like the real thing. Only ever called for isDemo tenants.
+ */
+export async function createDemoSubscription(input: {
+  businessId: string;
+  planId: string;
+  frequency: "weekly" | "biweekly";
+  deliveryDays: string[];
+  postalCode: string | null;
+  zoneName: string | null;
+  deliveryFeeCents: number;
+  email: string;
+  name: string;
+}): Promise<{ planName: string } | null> {
+  const plan = await db.plan.findFirst({ where: { id: input.planId, businessId: input.businessId } });
+  if (!plan) return null;
+  const customer = await db.customer.upsert({
+    where: { businessId_email: { businessId: input.businessId, email: input.email } },
+    create: { businessId: input.businessId, name: input.name, email: input.email, referralCode: referralCodeFrom(input.name, Date.now() % 100000) },
+    update: { name: input.name },
+  });
+  const settingsRow = await db.businessSettings.findUnique({ where: { businessId: input.businessId } });
+  const tz = settingsRow?.timezone || DEFAULT_TIMEZONE;
+  const zoneRows = await db.deliveryZone.findMany({ where: { businessId: input.businessId, active: true } });
+  const zones: ZoneLike[] = zoneRows.map((z) => ({ ...z, deliveryDays: (z.deliveryDays ?? {}) as Record<string, boolean> }));
+  const kitchenDayMap = kitchenDaysWithZones((settingsRow?.deliveryDays ?? {}) as Record<string, boolean>, zones);
+  const zone = zoneForPostal(input.postalCode, zones);
+  const enabled = enabledDeliveryDays(zoneDays(zone, kitchenDayMap));
+  const chosen = sanitizePreferredDays(input.deliveryDays, enabled);
+  const effectiveDays = chosen.length ? chosen : enabled;
+  const anchor = (settingsRow ? nextCutoffAt(settingsRow.cutoff, tz) : null) ?? new Date();
+  const nextDeliveryDate = upcomingDeliveries(effectiveDays, anchor, tz, 1, input.frequency)[0] ?? new Date(Date.now() + 5 * 86_400_000);
+  await db.subscription.create({
+    data: {
+      businessId: input.businessId,
+      customerId: customer.id,
+      planId: plan.id,
+      status: "active",
+      frequency: input.frequency,
+      nextDeliveryDate,
+      preferredDeliveryDays: chosen,
+      postalCode: input.postalCode,
+      zone: zone?.name ?? input.zoneName,
+      deliveryFeeCents: input.deliveryFeeCents,
+      stripeSubscriptionId: null,
+    },
+  });
+  return { planName: plan.name };
+}

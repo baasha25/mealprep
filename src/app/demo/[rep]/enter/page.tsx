@@ -22,7 +22,7 @@ export default async function EnterDemoPage({
   searchParams,
 }: {
   params: Promise<{ rep: string }>;
-  searchParams: Promise<{ brand?: string; color?: string; logo?: string; keep?: string }>;
+  searchParams: Promise<{ brand?: string; color?: string; logo?: string; keep?: string; next?: string }>;
 }) {
   const { rep } = await params;
   const sp = await searchParams;
@@ -53,5 +53,5 @@ export default async function EnterDemoPage({
     );
   }
 
-  return <EnterDemoForm rep={slug} repName={repDisplayName(slug)} brand={brandParams} />;
+  return <EnterDemoForm rep={slug} repName={repDisplayName(slug)} brand={brandParams} next={sp.next === "store" ? "store" : ""} />;
 }

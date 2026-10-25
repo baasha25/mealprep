@@ -94,6 +94,11 @@ export default async function DashboardLayout({
               This is a sandbox kitchen — add anything you like, nothing here is saved or charged.
             </span>
             <div className="ml-auto flex items-center gap-2">
+              {business.slug && (
+                <a href={`/store/${business.slug}`} target="_blank" rel="noreferrer" className="px-3 py-1 rounded-md text-[12.5px] font-medium" style={{ background: "#ffffff1a", color: "#f4f2ec" }}>
+                  Order as a customer ↗
+                </a>
+              )}
               <form action={exitDemo}>
                 <button
                   type="submit"

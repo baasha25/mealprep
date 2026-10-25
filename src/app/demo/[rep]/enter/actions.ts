@@ -53,6 +53,9 @@ export async function enterDemo(
   const logoRaw = String(formData.get("logo") ?? "").trim();
   const logoUrl = /^https:\/\/[^\s"'<>]{8,300}$/.test(logoRaw) ? logoRaw : null;
   const keepDays = Math.max(0, Math.min(14, Math.floor(Number(formData.get("keep") ?? 0) || 0)));
+  // Where to land: the owner dashboard (default) or the sandbox storefront, for
+  // the "order as a customer" beat of the guided tour.
+  const next = String(formData.get("next") ?? "") === "store" ? "store" : "dashboard";
   const demoKey = keepDays > 0 && brand ? `${rep || "demo"}:${brand.toLowerCase().replace(/[^a-z0-9]+/g, "-")}` : null;
 
   if (demoKey) {
@@ -65,7 +68,8 @@ export async function enterDemo(
       if (token) {
         const store = await cookies();
         store.set(DEMO_COOKIE, token, { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax", path: "/", maxAge: DEMO_SESSION_SECONDS });
-        redirect("/dashboard");
+        const ex = await db.business.findUnique({ where: { id: existing.id }, select: { slug: true } });
+        redirect(next === "store" && ex?.slug ? `/store/${ex.slug}` : "/dashboard");
       }
     }
   }
@@ -87,7 +91,7 @@ export async function enterDemo(
       trialEndsAt: trialEndFrom(),
       settings: { create: { platformFeeBps: TIERS.starter.platformFeeBps } },
     },
-    select: { id: true },
+    select: { id: true, slug: true },
   });
 
   // Stock it with a fully-costed sample menu + orders so the money features
@@ -116,7 +120,7 @@ export async function enterDemo(
     maxAge: DEMO_SESSION_SECONDS,
   });
 
-  redirect("/dashboard");
+  redirect(next === "store" && business.slug ? `/store/${business.slug}` : "/dashboard");
 }
 
 /** Leave the demo: clear the cookie. (The tenant is swept by cron.) */

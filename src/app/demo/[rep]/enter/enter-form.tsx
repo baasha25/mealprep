@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Leaf, ArrowRight, ArrowLeft, Lock } from "lucide-react";
 import { enterDemo, type EnterDemoState } from "./actions";
 
-export function EnterDemoForm({ rep, repName, brand }: { rep: string; repName: string | null; brand?: { brand: string; color: string; logo: string; keep: string } }) {
+export function EnterDemoForm({ rep, repName, brand, next = "" }: { rep: string; repName: string | null; brand?: { brand: string; color: string; logo: string; keep: string }; next?: string }) {
   const [state, action, pending] = useActionState<EnterDemoState | null, FormData>(enterDemo, null);
 
   return (
@@ -31,7 +31,7 @@ export function EnterDemoForm({ rep, repName, brand }: { rep: string; repName: s
             Open the live demo
           </h1>
           <p className="mt-1.5 text-[13.5px] leading-relaxed" style={{ color: "var(--muted)" }}>
-            Enter your team&apos;s access code to open a ready-to-explore sample kitchen — real menu, orders, and live numbers you can change on the spot.
+            Enter your team&apos;s access code to open a ready-to-explore sample kitchen — real menu, orders, and live numbers you can change on the spot.{next === "store" ? " You'll land on its storefront to order as a customer." : ""}
             {repName ? ` Guided by ${repName}.` : ""}
           </p>
           {brand?.brand && (
@@ -47,6 +47,7 @@ export function EnterDemoForm({ rep, repName, brand }: { rep: string; repName: s
             <input type="hidden" name="color" value={brand?.color ?? ""} />
             <input type="hidden" name="logo" value={brand?.logo ?? ""} />
             <input type="hidden" name="keep" value={brand?.keep ?? ""} />
+            <input type="hidden" name="next" value={next} />
             <label className="text-[12.5px] font-medium" style={{ color: "var(--ink)" }}>
               Demo access code
             </label>

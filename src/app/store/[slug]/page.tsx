@@ -209,6 +209,8 @@ export default async function StorePage({
 
   const settings: StoreSettings = {
     subscriptionsOnly: s.subscriptionsOnly,
+    isDemo: business.isDemo,
+    demoPostal: business.isDemo ? (zoneRows[0]?.postalPrefixes[0] ? `${zoneRows[0].postalPrefixes[0]} 1A2` : "") : undefined,
     subDiscountBps: s.subDiscountBps,
     taxRateBps: s.taxRateBps,
     deliveryFeeCents: s.deliveryFeeCents,

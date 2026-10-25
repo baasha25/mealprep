@@ -8,6 +8,7 @@ import { getStorefrontBusiness } from "@/lib/storefront";
 import { enabledDeliveryDays, sanitizePreferredDays } from "@/lib/delivery-days";
 import { kitchenDaysWithZones, zoneForPostal, zoneDays, zoneFeeCents, normalizePostal, type ZoneLike } from "@/lib/zones";
 import { subscriptionWeeklyCharge } from "@/lib/subscription-orders";
+import { createDemoSubscription } from "@/lib/billing";
 
 const Input = z.object({
   slug: z.string().min(1),
@@ -36,12 +37,12 @@ export async function startPlanSubscription(input: unknown): Promise<SubscribeRe
   if (!parsed.success) return { ok: false, message: "Invalid request." };
   const { slug, planId, frequency, email } = parsed.data;
 
-  if (!STRIPE_ENABLED) {
-    return { ok: false, message: "Online subscriptions aren't available yet." };
-  }
-
   const business = await getStorefrontBusiness(slug);
   if (!business) return { ok: false, message: "Store unavailable." };
+
+  if (!STRIPE_ENABLED && !business.isDemo) {
+    return { ok: false, message: "Online subscriptions aren't available yet." };
+  }
 
   // Zone from the postal code (when the kitchen runs zones): it narrows the
   // delivery days to the zone's and sets the weekly delivery fee. No zones =
@@ -71,6 +72,23 @@ export async function startPlanSubscription(input: unknown): Promise<SubscribeRe
   // zone's delivery fee for each of those weeks as its own line.
   const charge = subscriptionWeeklyCharge({ mealsPerWeek: plan.mealsPerWeek, perMealPriceCents: plan.perMealPriceCents, deliveryFeeCents, intervalCount });
   const chargeCents = charge.planCents;
+
+  // Sales sandbox: no Stripe. The plan starts immediately for a demo customer so
+  // the prospect can see the account page, picks, Kitchen OS and Routes fill in.
+  if (business.isDemo) {
+    const r = await createDemoSubscription({
+      businessId: business.id,
+      planId: plan.id,
+      frequency,
+      deliveryDays: chosenDays,
+      postalCode: postalCode || null,
+      zoneName: zone?.name ?? null,
+      deliveryFeeCents,
+      email: `demo.customer@${business.slug ?? "demo"}.prepflow.test`,
+      name: "Jordan Demo",
+    });
+    return r ? { ok: true, url: `/store/${slug}/subscribed?demo=1` } : { ok: false, message: "Couldn't start the demo plan." };
+  }
 
   const h = await headers();
   const origin = h.get("origin") ?? process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";

@@ -25,10 +25,33 @@ const USE_DEV_AUTH = DEV_STUB;
  * page to render the kitchen-branded sign-in instead of redirecting to the
  * generic owner login — so customers never fall into owner onboarding.
  */
+/**
+ * Sales sandbox: a visitor carrying the demo cookie for THIS demo kitchen is
+ * treated as its demo customer (the latest subscriber, else latest customer),
+ * so "Go to my account" works without a Clerk sign-in. Demo tenants only.
+ */
+async function demoCustomerFor(businessId?: string): Promise<Customer | null> {
+  try {
+    const { cookies } = await import("next/headers");
+    const { DEMO_COOKIE, verifyDemoToken } = await import("@/lib/demo-session");
+    const demoBusinessId = verifyDemoToken((await cookies()).get(DEMO_COOKIE)?.value);
+    if (!demoBusinessId || (businessId && businessId !== demoBusinessId)) return null;
+    const biz = await db.business.findFirst({ where: { id: demoBusinessId, isDemo: true }, select: { id: true } });
+    if (!biz) return null;
+    const sub = await db.subscription.findFirst({ where: { businessId: biz.id, status: { not: "canceled" } }, orderBy: { createdAt: "desc" }, include: { customer: true } });
+    if (sub) return sub.customer;
+    return db.customer.findFirst({ where: { businessId: biz.id }, orderBy: { createdAt: "desc" } });
+  } catch {
+    return null;
+  }
+}
+
 export async function getKitchenCustomer(
   businessId: string,
 ): Promise<{ signedIn: boolean; customer: Customer | null }> {
   assertAuthConfigured();
+  const demo = await demoCustomerFor(businessId);
+  if (demo) return { signedIn: true, customer: demo };
   if (USE_DEV_AUTH) {
     const sub = await db.subscription.findFirst({
       where: { status: { not: "canceled" }, customer: { businessId } },
@@ -64,6 +87,8 @@ export async function getKitchenCustomer(
 }
 
 export async function getCustomerContext(): Promise<{ customer: Customer } | null> {
+  const demo = await demoCustomerFor();
+  if (demo) return { customer: demo };
   if (USE_DEV_AUTH) {
     const sub = await db.subscription.findFirst({
       where: { status: { not: "canceled" } },
