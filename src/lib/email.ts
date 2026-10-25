@@ -165,6 +165,8 @@ type OrderRow = {
   feesCents: number;
   totalCents: number;
   giftRedeemedCents: number;
+  extrasCount?: number;
+  extrasCents?: number;
   items: { nameSnapshot: string; qty: number; unitPriceCentsSnapshot: number }[];
   customer: { name: string; email: string; phone: string | null } | null;
   business: { name: string; brandColor: string };
@@ -222,14 +224,18 @@ export async function sendOrderConfirmation(orderId: string): Promise<void> {
       : when
         ? `We'll have your meals ready for ${o.fulfillment === "pickup" ? "pickup" : "delivery"} on ${when}.`
         : `We'll have your meals ready for your next ${o.fulfillment === "pickup" ? "pickup" : "delivery"}.`;
+  const isSub = o.type === "subscription";
+  const extrasNote = isSub && (o.extrasCents ?? 0) > 0
+    ? `<p style="margin:12px 0 0;color:${INK};font-size:13px;">Includes <strong>${o.extrasCount} extra meal${o.extrasCount === 1 ? "" : "s"}</strong> beyond your plan (${formatCents(o.extrasCents ?? 0)}), billed with your next plan payment. No extra delivery fee.</p>`
+    : "";
   await send({
     to: o.customer.email,
-    subject: `Your ${o.business.name} order is confirmed`,
+    subject: isSub ? `Your ${o.business.name} meals for ${when ?? "this week"} are set` : `Your ${o.business.name} order is confirmed`,
     businessName: o.business.name,
     brandColor: o.business.brandColor,
-    heading: `Thanks, ${escapeHtml(firstName)} — your order is confirmed`,
+    heading: isSub ? `Your box is set, ${escapeHtml(firstName)}` : `Thanks, ${escapeHtml(firstName)} — your order is confirmed`,
     subheading: `Order #${code} · ${fulfil}${when ? ` · ${when}` : ""}${o.address ? ` · ${escapeHtml(o.address)}` : ""}`,
-    bodyHtml: `${itemsTable(o.items)}${totalsTable(o, "Total charged")}
+    bodyHtml: `${itemsTable(o.items)}${totalsTable(o, isSub ? "Covered by your plan" : "Total charged")}${extrasNote}
       <p style="margin:20px 0 0;color:${SOFT};font-size:13px;">${closing} Questions? Just reply to this email.</p>`,
   });
 }

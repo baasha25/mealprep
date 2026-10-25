@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { dueDeliveryDates, chefChoiceItems, subscriptionOrderTotals, subscriptionWeeklyCharge, parseNoPick } from "./subscription-orders";
+import { dueDeliveryDates, chefChoiceItems, subscriptionOrderTotals, subscriptionWeeklyCharge, parseNoPick, extrasForDelivery, capItems } from "./subscription-orders";
 
 const TZ = "America/Vancouver";
 // Local noon in Vancouver after DST ends (PST, UTC-8) = 20:00 UTC.
@@ -29,9 +29,11 @@ describe("dueDeliveryDates", () => {
 });
 
 describe("chefChoiceItems", () => {
-  it("repeats the subscriber's last picks when there are any", () => {
+  it("repeats the subscriber's last picks when there are any, capped at the plan", () => {
     const last = [{ mealId: "a", qty: 6 }, { mealId: "b", qty: 4, optionsKey: "x" }];
     expect(chefChoiceItems({ mealsPerWeek: 10, lastItems: last, fallbackMealIds: ["z"] })).toEqual(last);
+    // Last week they added 3 extras; chef's choice sends the plan only.
+    expect(chefChoiceItems({ mealsPerWeek: 7, lastItems: last, fallbackMealIds: [] })).toEqual([{ mealId: "a", qty: 6 }, { mealId: "b", qty: 1, optionsKey: "x" }]);
   });
   it("otherwise spreads the plan across the kitchen's go-to meals", () => {
     expect(chefChoiceItems({ mealsPerWeek: 10, lastItems: [], fallbackMealIds: ["a", "b", "c", "a"] })).toEqual([
@@ -60,5 +62,22 @@ describe("money", () => {
     expect(parseNoPick("chef_choice")).toBe("chef_choice");
     expect(parseNoPick("anything")).toBe("skip");
     expect(parseNoPick(null)).toBe("skip");
+  });
+});
+
+describe("extras", () => {
+  it("bills only the meals beyond the plan, once per cycle", () => {
+    expect(extrasForDelivery({ planMeals: 10, pickedBefore: 0, billedBefore: 0, pickedNow: 10 })).toBe(0);
+    expect(extrasForDelivery({ planMeals: 10, pickedBefore: 0, billedBefore: 0, pickedNow: 13 })).toBe(3);
+    // Two-day week: Sunday took 6 of 10, Tuesday picks 7 → 3 extras on Tuesday.
+    expect(extrasForDelivery({ planMeals: 10, pickedBefore: 6, billedBefore: 0, pickedNow: 7 })).toBe(3);
+    // Sunday already billed 2 extras (12 picked); Tuesday adds 1 more → 1.
+    expect(extrasForDelivery({ planMeals: 10, pickedBefore: 12, billedBefore: 2, pickedNow: 1 })).toBe(1);
+    // Under the plan is never negative.
+    expect(extrasForDelivery({ planMeals: 10, pickedBefore: 0, billedBefore: 0, pickedNow: 4 })).toBe(0);
+  });
+  it("capItems trims from the end", () => {
+    expect(capItems([{ mealId: "a", qty: 3 }, { mealId: "b", qty: 3 }], 4)).toEqual([{ mealId: "a", qty: 3 }, { mealId: "b", qty: 1 }]);
+    expect(capItems([{ mealId: "a", qty: 3 }], 0)).toEqual([]);
   });
 });

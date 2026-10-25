@@ -4,9 +4,9 @@
 
 import { currentCycleDeliveries, DEFAULT_TIMEZONE } from "@/lib/cutoff";
 import type { ZoneLike } from "@/lib/zones";
-import { dueDeliveryDates, chefChoiceItems, subscriptionOrderTotals, parseNoPick, type NoPickBehaviour, type PickItem } from "@/lib/subscription-orders";
+import { dueDeliveryDates, chefChoiceItems, subscriptionOrderTotals, extrasForDelivery, parseNoPick, type NoPickBehaviour, type PickItem } from "@/lib/subscription-orders";
 
-export type MaterializeSummary = { scanned: number; created: number; chefChoice: number; skippedNoPick: number; errors: number };
+export type MaterializeSummary = { scanned: number; created: number; chefChoice: number; skippedNoPick: number; extrasBilled: number; errors: number };
 
 /**
  * Create the orders for every subscription delivery whose cut-off has passed.
@@ -18,11 +18,44 @@ export async function materializeSubscriptionOrders(opts: { now?: Date; business
   // Lazy imports keep this module cheap to load from pages that rarely need it.
   const { db } = await import("@/lib/db");
   const { sendOrderConfirmation } = await import("@/lib/email");
+  const { stripe, STRIPE_ENABLED, PLATFORM_CURRENCY } = await import("@/lib/stripe");
+
+  // Bill extras on the next plan payment: one Stripe invoice item per order,
+  // idempotent on the order id. Returns the invoice item id, or null on failure
+  // (the next run retries any unbilled order — see the sweep at the end).
+  const billExtras = async (o: { id: string; extrasCount: number; extrasCents: number; deliveryDate: Date | null }, sub: { stripeSubscriptionId: string | null; customer: { stripeCustomerId: string | null } | null }): Promise<string | null> => {
+    if (!STRIPE_ENABLED || !sub.stripeSubscriptionId || o.extrasCents <= 0) return null;
+    try {
+      let customer = sub.customer?.stripeCustomerId ?? null;
+      if (!customer) {
+        const ss = await stripe.subscriptions.retrieve(sub.stripeSubscriptionId);
+        customer = typeof ss.customer === "string" ? ss.customer : ss.customer.id;
+      }
+      const when = o.deliveryDate ? o.deliveryDate.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }) : "";
+      const item = await stripe.invoiceItems.create(
+        {
+          customer,
+          subscription: sub.stripeSubscriptionId,
+          currency: PLATFORM_CURRENCY,
+          amount: o.extrasCents,
+          description: `${o.extrasCount} extra meal${o.extrasCount === 1 ? "" : "s"}${when ? ` · ${when}` : ""}`,
+          metadata: { orderId: o.id, kind: "subscription_extras" },
+        },
+        { idempotencyKey: `extras-${o.id}` },
+      );
+      await db.order.update({ where: { id: o.id }, data: { stripeInvoiceItemId: item.id } });
+      summary.extrasBilled++;
+      return item.id;
+    } catch (err) {
+      console.error(`[subscription-orders] extras billing failed for order ${o.id}:`, err);
+      return null;
+    }
+  };
   const { enabledDeliveryDays, sanitizePreferredDays } = await import("@/lib/delivery-days");
   const { zoneForPostal, zoneDays, kitchenDaysWithZones } = await import("@/lib/zones");
   const { picksFromSnapshot, nameWithOptions } = await import("@/lib/meal-options");
 
-  const summary: MaterializeSummary = { scanned: 0, created: 0, chefChoice: 0, skippedNoPick: 0, errors: 0 };
+  const summary: MaterializeSummary = { scanned: 0, created: 0, chefChoice: 0, skippedNoPick: 0, extrasBilled: 0, errors: 0 };
   const weekAgo = new Date(now.getTime() - 7 * 86_400_000);
   const fortnightAgo = new Date(now.getTime() - 14 * 86_400_000);
 
@@ -30,13 +63,13 @@ export async function materializeSubscriptionOrders(opts: { now?: Date; business
     where: { status: "active", nextDeliveryDate: { not: null }, ...(opts.businessId ? { businessId: opts.businessId } : {}) },
     include: {
       plan: { select: { mealsPerWeek: true, perMealPriceCents: true } },
-      customer: { select: { id: true, name: true, email: true, addresses: { orderBy: { id: "asc" }, take: 1 } } },
+      customer: { select: { id: true, name: true, email: true, stripeCustomerId: true, addresses: { orderBy: { id: "asc" }, take: 1 } } },
       selections: {
         where: { deliveryDate: { gte: weekAgo } },
         orderBy: { deliveryDate: "asc" },
         include: { items: { include: { meal: { select: { name: true, active: true } } } } },
       },
-      orders: { where: { deliveryDate: { gte: fortnightAgo } }, select: { deliveryDate: true } },
+      orders: { where: { deliveryDate: { gte: fortnightAgo } }, select: { deliveryDate: true, extrasCount: true, items: { select: { qty: true } } } },
     },
   });
   summary.scanned = subs.length;
@@ -141,6 +174,17 @@ export async function materializeSubscriptionOrders(opts: { now?: Date; business
           perMealPriceCents: sub.plan.perMealPriceCents,
           deliveryFeeCents: date.getTime() === feeDate ? sub.deliveryFeeCents : 0,
         });
+        // Extras beyond the plan (across this cycle's deliveries), at the plan's per-meal price.
+        const earlier = sub.orders.filter((o) => o.deliveryDate && cycle.some((c) => c.getTime() === o.deliveryDate!.getTime()) && o.deliveryDate.getTime() < date.getTime());
+        const extrasCount = chef
+          ? 0
+          : extrasForDelivery({
+              planMeals: sub.plan.mealsPerWeek,
+              pickedBefore: earlier.reduce((s, o) => s + o.items.reduce((x, i) => x + i.qty, 0), 0),
+              billedBefore: earlier.reduce((s, o) => s + o.extrasCount, 0),
+              pickedNow: itemCount,
+            });
+        const extrasCents = extrasCount * sub.plan.perMealPriceCents;
         const addressLine = addr ? [addr.line1, addr.city, addr.region, addr.postalCode].filter(Boolean).join(", ") : null;
         try {
           const order = await db.order.create({
@@ -159,6 +203,8 @@ export async function materializeSubscriptionOrders(opts: { now?: Date; business
               taxCents: totals.taxCents,
               feesCents: totals.feesCents,
               totalCents: totals.totalCents,
+              extrasCount,
+              extrasCents,
               items: {
                 create: items.map((i) => ({
                   mealId: i.mealId,
@@ -175,6 +221,7 @@ export async function materializeSubscriptionOrders(opts: { now?: Date; business
           });
           summary.created++;
           if (chef) summary.chefChoice++;
+          if (extrasCents > 0) await billExtras({ id: order.id, extrasCount, extrasCents, deliveryDate: date }, sub);
           try {
             await sendOrderConfirmation(order.id);
           } catch (err) {
@@ -190,6 +237,16 @@ export async function materializeSubscriptionOrders(opts: { now?: Date; business
       summary.errors++;
       console.error(`[subscription-orders] subscription ${sub.id} failed:`, err);
     }
+  }
+
+  // Retry extras that didn't bill (Stripe hiccup) on recent subscription orders.
+  const unbilled = await db.order.findMany({
+    where: { type: "subscription", extrasCents: { gt: 0 }, stripeInvoiceItemId: null, createdAt: { gte: fortnightAgo }, ...(opts.businessId ? { businessId: opts.businessId } : {}) },
+    select: { id: true, extrasCount: true, extrasCents: true, deliveryDate: true, subscription: { select: { stripeSubscriptionId: true, customer: { select: { stripeCustomerId: true } } } } },
+    take: 50,
+  });
+  for (const o of unbilled) {
+    if (o.subscription) await billExtras(o, o.subscription);
   }
   return summary;
 }

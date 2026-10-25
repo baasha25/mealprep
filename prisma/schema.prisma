@@ -757,6 +757,11 @@ model Order {
   feesCents             Int           @default(0)
   totalCents            Int           @default(0)
   giftRedeemedCents     Int           @default(0) // stored-value tender applied at checkout
+  // Subscription deliveries: meals picked beyond the plan's count, priced at the
+  // plan's per-meal rate and billed on the next plan payment as one invoice item.
+  extrasCount           Int           @default(0)
+  extrasCents           Int           @default(0)
+  stripeInvoiceItemId   String?       // the Stripe invoice item that bills the extras (null = not billed yet)
   stripePaymentIntentId String?
   createdAt             DateTime      @default(now())
   updatedAt             DateTime      @updatedAt

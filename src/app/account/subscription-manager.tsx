@@ -46,6 +46,7 @@ export function SubscriptionManager({
   upcomingDates,
   canModify,
   perMealPriceCents,
+  planMeals = 0,
   deliveries,
   chosenDays,
   allDeliveryDays,
@@ -62,6 +63,8 @@ export function SubscriptionManager({
   upcomingDates: string[];
   canModify: boolean;
   perMealPriceCents: number;
+  /** Meals per week the plan covers; anything picked beyond it is an extra at the plan's per-meal price. */
+  planMeals?: number;
   deliveries: DeliverySlot[];
   chosenDays: string[];
   allDeliveryDays: string[];
@@ -128,8 +131,12 @@ export function SubscriptionManager({
   };
 
   const totalMeals = Object.values(sel).reduce((a, b) => a + b, 0);
-  const cycleCents = totalMeals * perMealPriceCents;
   const weekMeals = sels.reduce((a, slot) => a + Object.values(slot).reduce((x, y) => x + y, 0), 0);
+  // Extras: picks beyond the plan this week, at the plan's per-meal price,
+  // billed with the next plan payment and delivered in the same box.
+  const extras = planMeals > 0 ? Math.max(0, weekMeals - planMeals) : 0;
+  const extrasCents = extras * perMealPriceCents;
+  const shortBy = planMeals > 0 ? Math.max(0, planMeals - weekMeals) : 0;
 
   const saveSelection = () =>
     startTransition(async () => {
@@ -325,9 +332,19 @@ export function SubscriptionManager({
               {multiDay ? "Meals for each delivery" : "Meals for your next delivery"}
             </h3>
             <span className="text-[12px]" style={{ color: "var(--muted)" }}>
-              {totalMeals} meals · {formatCents(cycleCents)}
+              {planMeals > 0 ? `${weekMeals} of ${planMeals} plan meals` : `${totalMeals} meals · ${formatCents(totalMeals * perMealPriceCents)}`}
+              {extras > 0 && <span style={{ color: "var(--pine)" }}> · +{extras} extra{extras === 1 ? "" : "s"} · {formatCents(extrasCents)}</span>}
             </span>
           </div>
+          {planMeals > 0 && (
+            <p className="text-[12px] mb-2.5" style={{ color: extras > 0 ? "var(--pine)" : "var(--muted)" }}>
+              {extras > 0
+                ? `${extras} extra meal${extras === 1 ? "" : "s"} at ${formatCents(perMealPriceCents)} each (${formatCents(extrasCents)}) will be billed with your next plan payment and delivered with this box. No extra delivery fee.`
+                : shortBy > 0
+                  ? `Pick ${shortBy} more to fill your plan. Want more? Anything beyond ${planMeals} is ${formatCents(perMealPriceCents)} a meal, billed with your next payment, same delivery.`
+                  : `Your plan is full. Add more if you like: ${formatCents(perMealPriceCents)} a meal, billed with your next payment, same delivery.`}
+            </p>
+          )}
 
           {multiDay && (
             <>

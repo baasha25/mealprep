@@ -270,6 +270,7 @@ export default async function KitchenAccountPage({
             subscription.nextDeliveryDate,
           )}
           perMealPriceCents={subscription.plan.perMealPriceCents}
+          planMeals={subscription.plan.mealsPerWeek}
           deliveries={deliveries}
           chosenDays={chosenDays}
           allDeliveryDays={enabledDays}

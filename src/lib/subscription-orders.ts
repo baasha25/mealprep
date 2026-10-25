@@ -54,13 +54,37 @@ export type PickItem = { mealId: string; qty: number; optionsSnapshot?: unknown;
  * (10 meals over 3 go-tos → 4/3/3). Nothing to go on → nothing.
  */
 export function chefChoiceItems(opts: { mealsPerWeek: number; lastItems: readonly PickItem[]; fallbackMealIds: readonly string[] }): PickItem[] {
-  if (opts.lastItems.length) return opts.lastItems.map((i) => ({ ...i }));
+  // Never bill extras the subscriber didn't ask for: chef's choice is capped at the plan.
+  if (opts.lastItems.length) return capItems(opts.lastItems.map((i) => ({ ...i })), Math.max(0, Math.floor(opts.mealsPerWeek)));
   const ids = opts.fallbackMealIds.filter((id, i, a) => a.indexOf(id) === i);
   const n = Math.max(0, Math.floor(opts.mealsPerWeek));
   if (!ids.length || n === 0) return [];
   const out: PickItem[] = ids.slice(0, n).map((mealId) => ({ mealId, qty: 0 }));
   for (let i = 0; i < n; i++) out[i % out.length].qty++;
   return out.filter((i) => i.qty > 0);
+}
+
+/** Trim quantities from the end until the list holds at most `max` meals. */
+export function capItems(items: PickItem[], max: number): PickItem[] {
+  let total = items.reduce((s, i) => s + i.qty, 0);
+  const out = items.map((i) => ({ ...i }));
+  for (let k = out.length - 1; k >= 0 && total > max; k--) {
+    const cut = Math.min(out[k].qty, total - max);
+    out[k].qty -= cut;
+    total -= cut;
+  }
+  return out.filter((i) => i.qty > 0);
+}
+
+/**
+ * Extras: meals picked beyond the plan's weekly count. The plan count spans the
+ * whole cycle (a two-day subscriber splits it), so each delivery bills only the
+ * extras not already billed by an earlier delivery in the same cycle.
+ */
+export function extrasForDelivery(opts: { planMeals: number; pickedBefore: number; billedBefore: number; pickedNow: number }): number {
+  const plan = Math.max(0, Math.floor(opts.planMeals));
+  const over = Math.max(0, opts.pickedBefore + opts.pickedNow - plan);
+  return Math.max(0, over - Math.max(0, opts.billedBefore));
 }
 
 /**

@@ -80,6 +80,9 @@ export default async function OrderDetailPage({
             )}
             <Row l="Tax" v={formatCents(order.taxCents)} />
             <Row l="Fees" v={formatCents(order.feesCents)} />
+            {order.extrasCents > 0 && (
+              <Row l={`Extras beyond plan (${order.extrasCount})${order.stripeInvoiceItemId ? " · billed with next plan payment" : " · billing pending"}`} v={formatCents(order.extrasCents)} />
+            )}
             <div
               className="flex justify-between pt-2 mt-1"
               style={{ borderTop: "1px solid var(--line)" }}
