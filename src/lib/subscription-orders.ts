@@ -116,6 +116,17 @@ export function extrasForDelivery(opts: { planMeals: number; pickedBefore: numbe
 }
 
 /**
+ * What a delivery bills beyond the plan: extra meals at the plan's per-meal
+ * price, plus option upgrades (build-your-own price deltas) on every meal in
+ * the box — the plan covers the base meal, not the upgrade. Never negative.
+ */
+export function beyondPlanCents(o: { extrasCount: number; perMealPriceCents: number; items: readonly { qty: number; deltaCents: number }[] }) {
+  const extrasCents = Math.max(0, o.extrasCount) * Math.max(0, o.perMealPriceCents);
+  const upgradesCents = o.items.reduce((s, i) => s + Math.max(0, i.qty) * i.deltaCents, 0);
+  return { extrasCents, upgradesCents, totalCents: Math.max(0, extrasCents + upgradesCents) };
+}
+
+/**
  * Order totals for a subscription delivery. Snapshot what the plan charges:
  * meals at the plan's per-meal price plus the zone's delivery fee. No tax line
  * — the recurring Stripe charge doesn't collect one, and the order must mirror

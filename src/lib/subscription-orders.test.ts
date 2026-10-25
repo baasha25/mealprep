@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { dueDeliveryDates, autoPickItems, subscriptionOrderTotals, subscriptionWeeklyCharge, parseNoPick, extrasForDelivery, capItems } from "./subscription-orders";
+import { dueDeliveryDates, autoPickItems, subscriptionOrderTotals, subscriptionWeeklyCharge, parseNoPick, extrasForDelivery, capItems, beyondPlanCents } from "./subscription-orders";
 
 const TZ = "America/Vancouver";
 // Local noon in Vancouver after DST ends (PST, UTC-8) = 20:00 UTC.
@@ -99,5 +99,12 @@ describe("extras", () => {
   it("capItems trims from the end", () => {
     expect(capItems([{ mealId: "a", qty: 3 }, { mealId: "b", qty: 3 }], 4)).toEqual([{ mealId: "a", qty: 3 }, { mealId: "b", qty: 1 }]);
     expect(capItems([{ mealId: "a", qty: 3 }], 0)).toEqual([]);
+  });
+});
+
+describe("beyondPlanCents", () => {
+  it("adds option upgrades on every meal to the extras", () => {
+    expect(beyondPlanCents({ extrasCount: 2, perMealPriceCents: 1050, items: [{ qty: 6, deltaCents: 150 }, { qty: 4, deltaCents: 0 }] })).toEqual({ extrasCents: 2100, upgradesCents: 900, totalCents: 3000 });
+    expect(beyondPlanCents({ extrasCount: 0, perMealPriceCents: 1050, items: [{ qty: 3, deltaCents: -200 }] }).totalCents).toBe(0);
   });
 });

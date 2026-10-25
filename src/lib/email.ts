@@ -245,7 +245,7 @@ export async function sendOrderConfirmation(orderId: string): Promise<void> {
     ? `<p style="margin:12px 0 0;color:${INK};font-size:13px;">The cut-off passed before you picked, so we chose these for you from meals you've enjoyed before. You can pick next week's meals any time before the cut-off.</p>`
     : "";
   const extrasNote = isSub && (o.extrasCents ?? 0) > 0
-    ? `<p style="margin:12px 0 0;color:${INK};font-size:13px;">Includes <strong>${o.extrasCount} extra meal${o.extrasCount === 1 ? "" : "s"}</strong> beyond your plan (${formatCents(o.extrasCents ?? 0)}), billed with your next plan payment. No extra delivery fee.</p>`
+    ? `<p style="margin:12px 0 0;color:${INK};font-size:13px;">Includes <strong>${o.extrasCount ? `${o.extrasCount} extra meal${o.extrasCount === 1 ? "" : "s"}` : "option upgrades"}</strong> beyond your plan (${formatCents(o.extrasCents ?? 0)}${o.extrasCount ? ", including any option upgrades" : ""}), billed with your next plan payment. No extra delivery fee.</p>`
     : "";
   await send({
     to: o.customer.email,

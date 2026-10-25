@@ -5,7 +5,7 @@
 import { currentCycleDeliveries, DEFAULT_TIMEZONE } from "@/lib/cutoff";
 import type { ZoneLike } from "@/lib/zones";
 import { deliveryLockAt } from "@/lib/subscriptions";
-import { dueDeliveryDates, autoPickItems, subscriptionOrderTotals, extrasForDelivery, parseNoPick, type NoPickBehaviour, type PickItem } from "@/lib/subscription-orders";
+import { dueDeliveryDates, autoPickItems, subscriptionOrderTotals, extrasForDelivery, beyondPlanCents, parseNoPick, type NoPickBehaviour, type PickItem } from "@/lib/subscription-orders";
 
 export type MaterializeSummary = { scanned: number; created: number; chefChoice: number; skippedNoPick: number; extrasBilled: number; errors: number };
 
@@ -24,8 +24,11 @@ export async function materializeSubscriptionOrders(opts: { now?: Date; business
   // Bill extras on the next plan payment: one Stripe invoice item per order,
   // idempotent on the order id. Returns the invoice item id, or null on failure
   // (the next run retries any unbilled order — see the sweep at the end).
-  const billExtras = async (o: { id: string; extrasCount: number; extrasCents: number; deliveryDate: Date | null }, sub: { stripeSubscriptionId: string | null; customer: { stripeCustomerId: string | null } | null }): Promise<string | null> => {
+  const billExtras = async (o: { id: string; extrasCount: number; extrasCents: number; deliveryDate: Date | null; perMealCents?: number }, sub: { stripeSubscriptionId: string | null; customer: { stripeCustomerId: string | null } | null }): Promise<string | null> => {
     if (!STRIPE_ENABLED || !sub.stripeSubscriptionId || o.extrasCents <= 0) return null;
+    const mealsPart = o.extrasCount > 0 ? `${o.extrasCount} extra meal${o.extrasCount === 1 ? "" : "s"}` : "";
+    const hasUpgrades = o.perMealCents != null ? o.extrasCents > o.extrasCount * o.perMealCents : o.extrasCount === 0;
+    const label = [mealsPart, hasUpgrades ? "option upgrades" : ""].filter(Boolean).join(" + ") || "Extras";
     try {
       let customer = sub.customer?.stripeCustomerId ?? null;
       if (!customer) {
@@ -39,7 +42,7 @@ export async function materializeSubscriptionOrders(opts: { now?: Date; business
           subscription: sub.stripeSubscriptionId,
           currency: PLATFORM_CURRENCY,
           amount: o.extrasCents,
-          description: `${o.extrasCount} extra meal${o.extrasCount === 1 ? "" : "s"}${when ? ` · ${when}` : ""}`,
+          description: `${label.charAt(0).toUpperCase()}${label.slice(1)}${when ? ` · ${when}` : ""}`,
           metadata: { orderId: o.id, kind: "subscription_extras" },
         },
         { idempotencyKey: `extras-${o.id}` },
@@ -54,7 +57,7 @@ export async function materializeSubscriptionOrders(opts: { now?: Date; business
   };
   const { enabledDeliveryDays, sanitizePreferredDays } = await import("@/lib/delivery-days");
   const { zoneForPostal, zoneDays, kitchenDaysWithZones } = await import("@/lib/zones");
-  const { picksFromSnapshot, nameWithOptions } = await import("@/lib/meal-options");
+  const { picksFromSnapshot, nameWithOptions, priceDeltaOf } = await import("@/lib/meal-options");
 
   const summary: MaterializeSummary = { scanned: 0, created: 0, chefChoice: 0, skippedNoPick: 0, extrasBilled: 0, errors: 0 };
   const fortnightAgo = new Date(now.getTime() - 14 * 86_400_000);
@@ -187,11 +190,16 @@ export async function materializeSubscriptionOrders(opts: { now?: Date; business
         const mealRows = await db.meal.findMany({ where: { id: { in: items.map((i) => i.mealId) }, businessId: sub.businessId }, select: { id: true, name: true } });
         const nameOf = new Map(mealRows.map((m) => [m.id, m.name]));
         const itemCount = items.reduce((s, i) => s + i.qty, 0);
-        const totals = subscriptionOrderTotals({
+        // Build-your-own: each line's option deltas sit on top of the plan's per-meal price.
+        const deltaOf = (i: PickItem) => priceDeltaOf(picksFromSnapshot(i.optionsSnapshot));
+        const upgradeLines = items.map((i) => ({ qty: i.qty, deltaCents: deltaOf(i) }));
+        const base = subscriptionOrderTotals({
           itemCount,
           perMealPriceCents: sub.plan.perMealPriceCents,
           deliveryFeeCents: date.getTime() === feeDate ? sub.deliveryFeeCents : 0,
         });
+        const upgradesTotal = upgradeLines.reduce((s, l) => s + l.qty * l.deltaCents, 0);
+        const totals = { ...base, subtotalCents: base.subtotalCents + upgradesTotal, totalCents: base.totalCents + upgradesTotal };
         // Extras beyond the plan (across this cycle's deliveries), at the plan's per-meal price.
         const earlier = sub.orders.filter((o) => o.deliveryDate && cycle.some((c) => c.getTime() === o.deliveryDate!.getTime()) && o.deliveryDate.getTime() < date.getTime());
         const extrasCount = chef
@@ -202,7 +210,9 @@ export async function materializeSubscriptionOrders(opts: { now?: Date; business
               billedBefore: earlier.reduce((s, o) => s + o.extrasCount, 0),
               pickedNow: itemCount,
             });
-        const extrasCents = extrasCount * sub.plan.perMealPriceCents;
+        // Billed on the next plan payment: extra meals + option upgrades (chef's choice never upgrades).
+        const beyond = beyondPlanCents({ extrasCount, perMealPriceCents: sub.plan.perMealPriceCents, items: chef ? [] : upgradeLines });
+        const extrasCents = beyond.totalCents;
         const addressLine = addr ? [addr.line1, addr.city, addr.region, addr.postalCode].filter(Boolean).join(", ") : null;
         try {
           const order = await db.order.create({
@@ -227,7 +237,7 @@ export async function materializeSubscriptionOrders(opts: { now?: Date; business
                 create: items.map((i) => ({
                   mealId: i.mealId,
                   qty: i.qty,
-                  unitPriceCentsSnapshot: sub.plan.perMealPriceCents,
+                  unitPriceCentsSnapshot: sub.plan.perMealPriceCents + deltaOf(i),
                   nameSnapshot: nameWithOptions(nameOf.get(i.mealId) ?? "Meal", picksFromSnapshot(i.optionsSnapshot)),
                   optionsSnapshot: i.optionsSnapshot === undefined ? undefined : (i.optionsSnapshot as object),
                   optionsKey: i.optionsKey ?? null,
@@ -239,7 +249,7 @@ export async function materializeSubscriptionOrders(opts: { now?: Date; business
           });
           summary.created++;
           if (chef) summary.chefChoice++;
-          if (extrasCents > 0) await billExtras({ id: order.id, extrasCount, extrasCents, deliveryDate: date }, sub);
+          if (extrasCents > 0) await billExtras({ id: order.id, extrasCount, extrasCents, deliveryDate: date, perMealCents: sub.plan.perMealPriceCents }, sub);
           try {
             await sendOrderConfirmation(order.id);
           } catch (err) {

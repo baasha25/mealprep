@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { formatCents } from "@/lib/money";
 import { dayFullName } from "@/lib/delivery-days";
+import { resolveSelections, optionsKeyOf } from "@/lib/meal-options";
 import {
   pauseSubscription,
   resumeSubscription,
@@ -25,14 +26,18 @@ import {
   updateDeliveryDays,
 } from "./actions";
 
-export type ManagerMeal = { id: string; name: string; priceCents: number; diet: string | null };
+export type ManagerOption = { id: string; name: string; priceDeltaCents: number; isDefault: boolean };
+export type ManagerOptionGroup = { id: string; name: string; minSelect: number; maxSelect: number; options: ManagerOption[] };
+export type ManagerMeal = { id: string; name: string; priceCents: number; diet: string | null; optionGroups?: ManagerOptionGroup[] };
+/** One picked line: a meal, how many, and (build-your-own) which options. */
+export type SlotItem = { mealId: string; qty: number; optionIds: string[] };
 
 /** One editable delivery in the current cycle, with the meals chosen for it. */
 export type DeliverySlot = {
   dateISO: string;
   label: string; // "Mon, Aug 31"
   fullLabel: string; // "Monday, Aug 31"
-  selection: Record<string, number>;
+  selection: SlotItem[];
 };
 
 export function SubscriptionManager({
@@ -78,11 +83,36 @@ export function SubscriptionManager({
   // Per-delivery meal picks (multi-day subscribers split their plan across days).
   const multiDay = deliveries.length > 1;
   const [active, setActive] = useState(0);
-  const [sels, setSels] = useState<Record<string, number>[]>(
-    deliveries.map((d) => ({ ...d.selection })),
+  // Lines keyed by meal + options ("mealId|optA+optB"), so the same meal can be
+  // picked twice with different options.
+  type Line = { mealId: string; qty: number; optionIds: string[] };
+  const keyOf = (mealId: string, optionIds: string[]) => `${mealId}|${optionsKeyOf(optionIds)}`;
+  const [sels, setSels] = useState<Record<string, Line>[]>(
+    deliveries.map((d) => Object.fromEntries(d.selection.map((l) => [keyOf(l.mealId, l.optionIds), { ...l }]))),
   );
   const [dirty, setDirty] = useState<boolean[]>(deliveries.map(() => false));
   const sel = sels[active] ?? {};
+  const mealById = new Map(meals.map((m) => [m.id, m]));
+  // Option price delta for a line (0 when the meal has no options or they can't resolve).
+  const deltaOf = (l: Line) => {
+    const m = mealById.get(l.mealId);
+    if (!m?.optionGroups?.length) return 0;
+    const r = resolveSelections(m.optionGroups, l.optionIds);
+    return r.ok ? r.priceDeltaCents : 0;
+  };
+  const labelOf = (l: Line) => {
+    const m = mealById.get(l.mealId);
+    if (!m?.optionGroups?.length) return m?.name ?? "Meal";
+    const r = resolveSelections(m.optionGroups, l.optionIds);
+    return r.ok && r.picks.length ? `${m.name} (${r.picks.map((p) => p.optionName).join(" · ")})` : m.name;
+  };
+  // Build-your-own chooser (modal) for meals with option groups.
+  const [chooser, setChooser] = useState<{ mealId: string; picks: Record<string, string[]>; error: string | null } | null>(null);
+  const openChooser = (m: ManagerMeal) => {
+    const picks: Record<string, string[]> = {};
+    for (const g of m.optionGroups ?? []) picks[g.id] = g.options.filter((o) => o.isDefault).slice(0, g.maxSelect).map((o) => o.id);
+    setChooser({ mealId: m.id, picks, error: null });
+  };
 
   // Live cut-off countdown (client-only; "—" until mounted to avoid hydration drift).
   const [countdown, setCountdown] = useState<string | null>(null);
@@ -116,22 +146,34 @@ export function SubscriptionManager({
   const run = (fn: () => Promise<{ ok: boolean; message: string }>) =>
     startTransition(async () => flash(await fn()));
 
-  const setQty = (id: string, delta: number) => {
+  const setQty = (mealId: string, delta: number, optionIds: string[] = []) => {
+    const key = keyOf(mealId, optionIds);
     setSels((cur) =>
       cur.map((slot, i) => {
         if (i !== active) return slot;
-        const n = Math.max(0, (slot[id] || 0) + delta);
+        const n = Math.max(0, (slot[key]?.qty || 0) + delta);
         const x = { ...slot };
-        if (n === 0) delete x[id];
-        else x[id] = n;
+        if (n === 0) delete x[key];
+        else x[key] = { mealId, qty: n, optionIds };
         return x;
       }),
     );
     setDirty((cur) => cur.map((d, i) => (i === active ? true : d)));
   };
+  const confirmChooser = () => {
+    if (!chooser) return;
+    const m = mealById.get(chooser.mealId);
+    if (!m) return;
+    const r = resolveSelections(m.optionGroups ?? [], Object.values(chooser.picks).flat());
+    if (!r.ok) return setChooser({ ...chooser, error: r.message });
+    setQty(m.id, 1, r.picks.map((p) => p.optionId));
+    setChooser(null);
+  };
+  const qtyOfMeal = (mealId: string) => Object.values(sel).filter((l) => l.mealId === mealId).reduce((a, l) => a + l.qty, 0);
 
-  const totalMeals = Object.values(sel).reduce((a, b) => a + b, 0);
-  const weekMeals = sels.reduce((a, slot) => a + Object.values(slot).reduce((x, y) => x + y, 0), 0);
+  const totalMeals = Object.values(sel).reduce((a, l) => a + l.qty, 0);
+  const weekMeals = sels.reduce((a, slot) => a + Object.values(slot).reduce((x, l) => x + l.qty, 0), 0);
+  const upgradesCents = sels.reduce((a, slot) => a + Object.values(slot).reduce((x, l) => x + l.qty * deltaOf(l), 0), 0);
   // Extras: picks beyond the plan this week, at the plan's per-meal price,
   // billed with the next plan payment and delivered in the same box.
   const extras = planMeals > 0 ? Math.max(0, weekMeals - planMeals) : 0;
@@ -144,7 +186,7 @@ export function SubscriptionManager({
       const r = await updateSelection({
         subscriptionId,
         deliveryDate: slot?.dateISO,
-        items: Object.entries(sel).map(([mealId, qty]) => ({ mealId, qty })),
+        items: Object.values(sel).map((l) => ({ mealId: l.mealId, qty: l.qty, optionIds: l.optionIds.length ? l.optionIds : undefined })),
       });
       flash(r);
       if (r.ok) setDirty((cur) => cur.map((d, i) => (i === active ? false : d)));
@@ -334,8 +376,14 @@ export function SubscriptionManager({
             <span className="text-[12px]" style={{ color: "var(--muted)" }}>
               {planMeals > 0 ? `${weekMeals} of ${planMeals} plan meals` : `${totalMeals} meals · ${formatCents(totalMeals * perMealPriceCents)}`}
               {extras > 0 && <span style={{ color: "var(--pine)" }}> · +{extras} extra{extras === 1 ? "" : "s"} · {formatCents(extrasCents)}</span>}
+              {upgradesCents > 0 && <span style={{ color: "var(--pine)" }}> · upgrades {formatCents(upgradesCents)}</span>}
             </span>
           </div>
+          {upgradesCents > 0 && (
+            <p className="text-[12px] mb-2" style={{ color: "var(--pine)" }}>
+              Option upgrades ({formatCents(upgradesCents)}) are billed with your next plan payment.
+            </p>
+          )}
           {planMeals > 0 && (
             <p className="text-[12px] mb-2.5" style={{ color: extras > 0 ? "var(--pine)" : "var(--muted)" }}>
               {extras > 0
@@ -353,7 +401,7 @@ export function SubscriptionManager({
               </p>
               <div className="inline-flex rounded-lg border p-0.5 mb-3" style={{ borderColor: "var(--line)" }}>
                 {deliveries.map((d, i) => {
-                  const count = Object.values(sels[i] ?? {}).reduce((a, b) => a + b, 0);
+                  const count = Object.values(sels[i] ?? {}).reduce((a, b) => a + b.qty, 0);
                   return (
                     <button
                       key={d.dateISO}
@@ -382,7 +430,9 @@ export function SubscriptionManager({
           )}
           <div className="grid sm:grid-cols-2 gap-2.5 mt-1">
             {meals.map((m) => {
-              const qty = sel[m.id] || 0;
+              const hasOptions = (m.optionGroups?.length ?? 0) > 0;
+              const qty = hasOptions ? qtyOfMeal(m.id) : (sel[keyOf(m.id, [])]?.qty || 0);
+              const lines = hasOptions ? Object.values(sel).filter((l) => l.mealId === m.id) : [];
               return (
                 <div
                   key={m.id}
@@ -401,7 +451,26 @@ export function SubscriptionManager({
                       {formatCents(m.priceCents)}
                     </div>
                   </div>
-                  {qty === 0 ? (
+                  {hasOptions ? (
+                    <div className="flex flex-col items-end gap-1.5">
+                      <button
+                        onClick={() => openChooser(m)}
+                        disabled={!canModify}
+                        className="flex items-center gap-1 px-2.5 py-1.5 rounded-md text-[12.5px] font-medium border disabled:opacity-40"
+                        style={{ borderColor: "var(--line)", color: "var(--ink)" }}
+                      >
+                        <Plus size={13} /> {qty > 0 ? `Add another (${qty})` : "Customize"}
+                      </button>
+                      {lines.map((l) => (
+                        <div key={keyOf(l.mealId, l.optionIds)} className="flex items-center gap-2 text-[11.5px]" style={{ color: "var(--ink-soft)" }}>
+                          <span className="truncate max-w-[180px]">{labelOf(l).replace(`${m.name} `, "")}{deltaOf(l) ? ` +${formatCents(deltaOf(l))}` : ""}</span>
+                          <button onClick={() => setQty(l.mealId, -1, l.optionIds)} disabled={!canModify} aria-label="Remove one"><Minus size={12} /></button>
+                          <span className="font-semibold w-3 text-center" style={{ color: "var(--ink)" }}>{l.qty}</span>
+                          <button onClick={() => setQty(l.mealId, 1, l.optionIds)} disabled={!canModify} aria-label="Add one"><Plus size={12} /></button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : qty === 0 ? (
                     <button
                       onClick={() => setQty(m.id, 1)}
                       disabled={!canModify}
@@ -451,6 +520,60 @@ export function SubscriptionManager({
           )}
         </div>
       )}
+
+      {/* Build-your-own chooser */}
+      {chooser && (() => {
+        const cm = mealById.get(chooser.mealId);
+        if (!cm) return null;
+        const r = resolveSelections(cm.optionGroups ?? [], Object.values(chooser.picks).flat());
+        const delta = r.ok ? r.priceDeltaCents : 0;
+        const toggle = (g: ManagerOptionGroup, optId: string) =>
+          setChooser((c) => {
+            if (!c) return c;
+            const cur = c.picks[g.id] ?? [];
+            let next: string[];
+            if (g.maxSelect <= 1) next = cur[0] === optId && g.minSelect === 0 ? [] : [optId];
+            else next = cur.includes(optId) ? cur.filter((x) => x !== optId) : cur.length < g.maxSelect ? [...cur, optId] : cur;
+            return { ...c, picks: { ...c.picks, [g.id]: next }, error: null };
+          });
+        return (
+          <div className="fixed inset-0 z-50 grid place-items-center p-4" style={{ background: "rgba(31,30,26,.45)" }} onClick={() => setChooser(null)}>
+            <div className="w-full max-w-md rounded-2xl border p-5 max-h-[90vh] overflow-auto" style={{ ...cardStyle, background: "var(--surface)" }} onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-start justify-between gap-3 mb-3">
+                <div>
+                  <h3 className="text-[16px] font-semibold" style={{ color: "var(--ink)" }}>{cm.name}</h3>
+                  <p className="text-[12px]" style={{ color: "var(--muted)" }}>Make it yours{delta ? ` · +${formatCents(delta)} billed with your next payment` : ""}</p>
+                </div>
+                <button onClick={() => setChooser(null)} aria-label="Close" className="text-[18px] leading-none px-1" style={{ color: "var(--muted)" }}>×</button>
+              </div>
+              <div className="space-y-4">
+                {(cm.optionGroups ?? []).map((g) => (
+                  <div key={g.id}>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-[12.5px] font-semibold" style={{ color: "var(--ink)" }}>{g.name}</span>
+                      <span className="text-[11px]" style={{ color: "var(--muted)" }}>{g.maxSelect <= 1 ? (g.minSelect ? "Pick one" : "Optional") : `Pick up to ${g.maxSelect}`}</span>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {g.options.map((o) => {
+                        const on = (chooser.picks[g.id] ?? []).includes(o.id);
+                        return (
+                          <button key={o.id} type="button" onClick={() => toggle(g, o.id)} aria-pressed={on} className="px-3 py-1.5 rounded-md text-[12.5px] font-medium border transition-colors" style={{ background: on ? "var(--pine)" : "transparent", color: on ? "#f4f2ec" : "var(--ink-soft)", borderColor: on ? "var(--pine)" : "var(--line)" }}>
+                            {o.name}{o.priceDeltaCents ? ` +${formatCents(o.priceDeltaCents)}` : ""}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {chooser.error && <p className="text-[12.5px] mt-3" style={{ color: "var(--clay)" }}>{chooser.error}</p>}
+              <button onClick={confirmChooser} className="w-full mt-4 py-2.5 rounded-lg text-[14px] font-medium flex items-center justify-center gap-2" style={{ background: "var(--pine)", color: "#f4f2ec" }}>
+                <Plus size={15} /> Add to my box
+              </button>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Upcoming deliveries */}
       {!paused && upcomingDates.length > 0 && (

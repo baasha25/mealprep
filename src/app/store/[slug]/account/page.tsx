@@ -16,6 +16,7 @@ import {
 import { enabledDeliveryDays, sanitizePreferredDays, describeDeliveryDays } from "@/lib/delivery-days";
 import { zoneForPostal, zoneDays, kitchenDaysWithZones, type ZoneLike } from "@/lib/zones";
 import { formatCents } from "@/lib/money";
+import { picksFromSnapshot } from "@/lib/meal-options";
 import { SubscriptionManager, type ManagerMeal, type DeliverySlot } from "@/app/account/subscription-manager";
 import { RateMeals, type ReviewableMeal } from "@/app/account/rate-meals";
 import { DeliveryAddress } from "@/app/account/delivery-address";
@@ -119,12 +120,16 @@ export default async function KitchenAccountPage({
   const meals = await db.meal.findMany({
     where: { businessId: business.id, active: true },
     orderBy: { createdAt: "asc" },
+    include: { optionGroups: { orderBy: { sortOrder: "asc" }, include: { options: { where: { active: true }, orderBy: { sortOrder: "asc" } } } } },
   });
   const managerMeals: ManagerMeal[] = meals.map((m) => ({
     id: m.id,
     name: m.name,
     priceCents: m.priceCents,
     diet: m.diet,
+    optionGroups: m.optionGroups
+      .filter((g) => g.options.length > 0)
+      .map((g) => ({ id: g.id, name: g.name, minSelect: g.minSelect, maxSelect: g.maxSelect, options: g.options.map((o) => ({ id: o.id, name: o.name, priceDeltaCents: o.priceDeltaCents, isDefault: o.isDefault })) })),
   }));
 
   const [orderedItems, myReviews] = await Promise.all([
@@ -171,10 +176,11 @@ export default async function KitchenAccountPage({
   const freq = (subscription?.frequency ?? "weekly") as "weekly" | "biweekly";
 
   // The 1–2 deliveries the customer can edit this cycle, each with its own meals.
+  // Each delivery's picks as lines (a meal can appear with different options).
   const selByDate = new Map(
     (subscription?.selections ?? []).map((s) => [
       s.deliveryDate.getTime(),
-      Object.fromEntries(s.items.map((i) => [i.mealId, i.qty])) as Record<string, number>,
+      s.items.map((i) => ({ mealId: i.mealId, qty: i.qty, optionIds: picksFromSnapshot(i.optionsSnapshot).map((p) => p.optionId) })),
     ]),
   );
   const deliveries: DeliverySlot[] =
@@ -183,7 +189,7 @@ export default async function KitchenAccountPage({
           dateISO: d.toISOString(),
           label: dateFmt.format(d),
           fullLabel: formatDeliveryLabel(d, tz),
-          selection: selByDate.get(d.getTime()) ?? {},
+          selection: selByDate.get(d.getTime()) ?? [],
         }))
       : [];
 
