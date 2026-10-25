@@ -70,6 +70,7 @@ export async function saveQuote(_prev: QuoteActionState, formData: FormData): Pr
   if (d.intent === "send") {
     const base = await appUrl();
     await sendCateringQuote({
+      businessId: business.id,
       to: r.email,
       businessName: r.business.name,
       brandColor: r.business.brandColor,
@@ -104,6 +105,7 @@ export async function declineRequest(formData: FormData): Promise<void> {
   ]);
   const base = await appUrl();
   await sendCateringDeclined({
+    businessId: business.id,
     to: r.email,
     businessName: r.business.name,
     brandColor: r.business.brandColor,

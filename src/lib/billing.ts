@@ -118,6 +118,7 @@ export async function ensureSubscriptionFromCheckout(
   if (business?.slug) {
     const base = await appUrl();
     await sendSubscriptionConfirmation({
+      businessId,
       to: email,
       customerName: customer.name,
       businessName: business.name,

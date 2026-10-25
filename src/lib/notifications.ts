@@ -115,6 +115,7 @@ export async function runDailyNotifications(now: Date = new Date()): Promise<Run
     const accountUrl = `${origin}/store/${biz.slug}/account`;
     const base = {
       to: sub.customer.email,
+      businessId: biz.id,
       customerName: sub.customer.name,
       businessName: biz.name,
       brandColor: biz.brandColor,

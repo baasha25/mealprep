@@ -127,7 +127,7 @@ export async function sendEmailCampaign(input: {
   for (let i = 0; i < unique.length; i += 5) {
     await Promise.all(
       unique.slice(i, i + 5).map(async (to) => {
-        await sendCampaignEmail({ to, businessName: business.name, brandColor: business.brandColor, subject, message, imageUrl });
+        await sendCampaignEmail({ to, businessId: business.id, businessName: business.name, brandColor: business.brandColor, subject, message, imageUrl });
         sent++;
       }),
     );
@@ -296,6 +296,7 @@ export async function createGiftCard(_prev: FormState, formData: FormData): Prom
   if (parsed.data.recipientEmail) {
     const base = await appUrl();
     await sendGiftCard({
+      businessId: business.id,
       to: parsed.data.recipientEmail,
       businessName: business.name,
       brandColor: business.brandColor,

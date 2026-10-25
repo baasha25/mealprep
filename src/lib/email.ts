@@ -1,17 +1,29 @@
-import { Resend } from "resend";
 import { db } from "@/lib/db";
+import { resend, EMAIL_ENABLED as ENABLED, PLATFORM_FROM } from "@/lib/resend-client";
+import { senderFor, type Sender } from "@/lib/sender";
 import { formatCents } from "@/lib/money";
 import { cldImage } from "@/lib/cloudinary";
 
 // Transactional email via Resend. Gated on the key so the app runs without it —
 // when disabled we log what would have been sent instead of failing.
-const key = process.env.RESEND_API_KEY ?? "";
-export const EMAIL_ENABLED = key.startsWith("re_");
-const resend = EMAIL_ENABLED ? new Resend(key) : null;
+export const EMAIL_ENABLED = ENABLED;
 
-// Until a kitchen verifies its own domain, the shared test sender works (Resend
-// restricts it to the account owner's address in test mode).
-const FROM = process.env.EMAIL_FROM || "PrepFlow <onboarding@resend.dev>";
+// Who a kitchen's mail comes from: its own verified domain, else "<Kitchen> via
+// PrepFlow" from PLATFORM_FROM. Replies always go to the kitchen (reply-to).
+const FROM = PLATFORM_FROM;
+async function resolveSender(businessId?: string): Promise<Sender> {
+  if (!businessId) return { from: FROM };
+  try {
+    const b = await db.business.findUnique({
+      where: { id: businessId },
+      select: { name: true, emailDomain: true, emailDomainStatus: true, emailFromLocal: true, emailReplyTo: true, users: { where: { role: "owner" }, select: { email: true }, take: 1 } },
+    });
+    if (!b) return { from: FROM };
+    return senderFor({ businessName: b.name, emailDomain: b.emailDomain, emailDomainStatus: b.emailDomainStatus, emailFromLocal: b.emailFromLocal, replyTo: b.emailReplyTo ?? b.users[0]?.email ?? null, fallbackFrom: FROM });
+  } catch {
+    return { from: FROM };
+  }
+}
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://mealprepsoftware.netlify.app";
 
 /* ----------------------------- Shared layout ---------------------------- */
@@ -50,6 +62,8 @@ function layout(opts: {
 async function send(opts: {
   to: string | string[];
   subject: string;
+  /** The kitchen this mail is from — picks its verified sending domain and reply-to. */
+  businessId?: string;
   businessName: string;
   brandColor?: string;
   heading: string;
@@ -86,7 +100,8 @@ async function send(opts: {
       console.log(`[email:disabled] would send "${opts.subject}" to ${opts.to}`);
       return;
     }
-    await resend.emails.send({ from: FROM, to: opts.to, subject: opts.subject, html });
+    const sender = await resolveSender(opts.businessId);
+    await resend.emails.send({ from: sender.from, to: opts.to, subject: opts.subject, html, ...(sender.replyTo ? { replyTo: sender.replyTo } : {}) });
   } catch (err) {
     console.error(`[email] send failed ("${opts.subject}"):`, err);
   }
@@ -234,6 +249,7 @@ export async function sendOrderConfirmation(orderId: string): Promise<void> {
     : "";
   await send({
     to: o.customer.email,
+    businessId: o.businessId,
     subject: isSub ? `Your ${o.business.name} meals for ${when ?? "this week"} are set` : `Your ${o.business.name} order is confirmed`,
     businessName: o.business.name,
     brandColor: o.business.brandColor,
@@ -261,6 +277,7 @@ export async function sendOwnerNewOrder(orderId: string): Promise<void> {
     : "—";
   await send({
     to: owner.email,
+    businessId: o.businessId,
     subject: `New order #${code} — ${o.business.name}`,
     businessName: o.business.name,
     brandColor: o.business.brandColor,
@@ -278,10 +295,12 @@ export async function sendOwnerNewOrder(orderId: string): Promise<void> {
 export async function sendWelcome(opts: {
   to: string;
   businessName: string;
+  businessId?: string;
   brandColor?: string;
 }): Promise<void> {
   await send({
     to: opts.to,
+    businessId: opts.businessId,
     subject: `Welcome to PrepFlow — ${opts.businessName} is live`,
     businessName: opts.businessName,
     brandColor: opts.brandColor,
@@ -386,12 +405,14 @@ export async function sendAbandonedCheckout(opts: {
   to: string;
   customerName: string;
   businessName: string;
+  businessId?: string;
   brandColor?: string;
   storeUrl: string;
   itemsSummary: string;
 }): Promise<void> {
   await send({
     to: opts.to,
+    businessId: opts.businessId,
     subject: `Your ${opts.businessName} order is still waiting`,
     businessName: opts.businessName,
     brandColor: opts.brandColor,
@@ -410,6 +431,7 @@ export async function sendWinBack(opts: {
   to: string;
   customerName: string;
   businessName: string;
+  businessId?: string;
   brandColor?: string;
   storeUrl: string;
   couponCode?: string | null;
@@ -418,6 +440,7 @@ export async function sendWinBack(opts: {
   const first = opts.customerName.split(" ")[0] || "there";
   await send({
     to: opts.to,
+    businessId: opts.businessId,
     subject: `We've missed you, ${first} — this week's menu is up`,
     businessName: opts.businessName,
     brandColor: opts.brandColor,
@@ -435,6 +458,7 @@ export async function sendReviewRequest(opts: {
   to: string;
   customerName: string;
   businessName: string;
+  businessId?: string;
   brandColor?: string;
   googleReviewUrl: string;
   storeUrl: string;
@@ -443,6 +467,7 @@ export async function sendReviewRequest(opts: {
   const first = opts.customerName.split(" ")[0] || "there";
   await send({
     to: opts.to,
+    businessId: opts.businessId,
     subject: `How was your ${opts.businessName} order, ${first}?`,
     businessName: opts.businessName,
     brandColor: opts.brandColor,
@@ -459,6 +484,7 @@ export async function sendReviewRequest(opts: {
 export async function sendSubscriptionReceipt(opts: {
   to: string;
   businessName: string;
+  businessId?: string;
   brandColor?: string;
   planName: string;
   amountCents: number;
@@ -466,6 +492,7 @@ export async function sendSubscriptionReceipt(opts: {
 }): Promise<void> {
   await send({
     to: opts.to,
+    businessId: opts.businessId,
     subject: `Your ${opts.businessName} subscription renewed`,
     businessName: opts.businessName,
     brandColor: opts.brandColor,
@@ -483,6 +510,7 @@ export async function sendSubscriptionConfirmation(opts: {
   to: string;
   customerName: string;
   businessName: string;
+  businessId?: string;
   brandColor?: string;
   planName: string;
   nextDeliveryLabel: string;
@@ -492,6 +520,7 @@ export async function sendSubscriptionConfirmation(opts: {
 }): Promise<void> {
   await send({
     to: opts.to,
+    businessId: opts.businessId,
     subject: `You're subscribed to ${opts.businessName} 🎉`,
     businessName: opts.businessName,
     brandColor: opts.brandColor,
@@ -509,12 +538,14 @@ export async function sendSubscriptionConfirmation(opts: {
 export async function sendPaymentFailed(opts: {
   to: string;
   businessName: string;
+  businessId?: string;
   brandColor?: string;
   planName: string;
   accountUrl: string;
 }): Promise<void> {
   await send({
     to: opts.to,
+    businessId: opts.businessId,
     subject: `Payment failed — ${opts.businessName}`,
     businessName: opts.businessName,
     brandColor: opts.brandColor,
@@ -531,12 +562,14 @@ export async function sendCutoffReminder(opts: {
   to: string;
   customerName: string;
   businessName: string;
+  businessId?: string;
   brandColor?: string;
   deliveryLabel: string;
   accountUrl: string;
 }): Promise<void> {
   await send({
     to: opts.to,
+    businessId: opts.businessId,
     subject: `Pick your meals for ${escapeHtml(opts.deliveryLabel)} — ${opts.businessName}`,
     businessName: opts.businessName,
     brandColor: opts.brandColor,
@@ -553,12 +586,14 @@ export async function sendDeliveryDayReminder(opts: {
   to: string;
   customerName: string;
   businessName: string;
+  businessId?: string;
   brandColor?: string;
   deliveryLabel: string;
   accountUrl: string;
 }): Promise<void> {
   await send({
     to: opts.to,
+    businessId: opts.businessId,
     subject: `Your ${opts.businessName} meals arrive today`,
     businessName: opts.businessName,
     brandColor: opts.brandColor,
@@ -574,6 +609,7 @@ export async function sendDeliveryDayReminder(opts: {
 export async function sendGiftCard(opts: {
   to: string;
   businessName: string;
+  businessId?: string;
   brandColor?: string;
   code: string;
   amountLabel: string;
@@ -581,6 +617,7 @@ export async function sendGiftCard(opts: {
 }): Promise<void> {
   await send({
     to: opts.to,
+    businessId: opts.businessId,
     subject: `You've received a ${opts.businessName} gift card 🎁`,
     businessName: opts.businessName,
     brandColor: opts.brandColor,
@@ -618,6 +655,7 @@ export async function sendStaffInvite(opts: {
 export async function sendCampaignEmail(opts: {
   to: string;
   businessName: string;
+  businessId?: string;
   brandColor?: string;
   subject: string;
   message: string;
@@ -639,6 +677,7 @@ export async function sendCampaignEmail(opts: {
       .join("");
   await send({
     to: opts.to,
+    businessId: opts.businessId,
     subject: opts.subject,
     businessName: opts.businessName,
     brandColor: opts.brandColor,
@@ -675,12 +714,13 @@ function escapeHtml(s: string): string {
 
 /* ------------------------------ Catering -------------------------------- */
 
-type CateringEmailBase = { to: string; businessName: string; brandColor?: string; code: string; eventDateLabel: string };
+type CateringEmailBase = { to: string; businessId?: string; businessName: string; brandColor?: string; code: string; eventDateLabel: string };
 
 /** Customer: "we got your request" with a link to watch its status. */
 export async function sendCateringRequestReceived(opts: CateringEmailBase & { firstName: string; statusUrl: string; summary: string; leadNote: string }): Promise<void> {
   await send({
     to: opts.to,
+    businessId: opts.businessId,
     subject: `We got your catering request — ${opts.businessName}`,
     businessName: opts.businessName,
     brandColor: opts.brandColor,
@@ -706,6 +746,7 @@ export async function sendCateringRequestOwner(opts: CateringEmailBase & { name:
     .join("");
   await send({
     to: opts.to,
+    businessId: opts.businessId,
     subject: `Catering request #${opts.code} — ${opts.eventDateLabel}`,
     businessName: opts.businessName,
     brandColor: opts.brandColor,
@@ -727,6 +768,7 @@ export async function sendCateringQuote(opts: CateringEmailBase & { firstName: s
     </tr>`;
   await send({
     to: opts.to,
+    businessId: opts.businessId,
     subject: `${opts.resend ? "Updated quote" : "Your quote"} #${opts.code} — ${opts.businessName}`,
     businessName: opts.businessName,
     brandColor: opts.brandColor,
@@ -751,6 +793,7 @@ export async function sendCateringQuote(opts: CateringEmailBase & { firstName: s
 export async function sendCateringDeclined(opts: CateringEmailBase & { firstName: string; reason: string | null; storeUrl: string }): Promise<void> {
   await send({
     to: opts.to,
+    businessId: opts.businessId,
     subject: `About your catering request #${opts.code} — ${opts.businessName}`,
     businessName: opts.businessName,
     brandColor: opts.brandColor,

@@ -99,6 +99,7 @@ export async function submitCateringRequest(input: CateringRequestInputT): Promi
   const owner = await db.user.findFirst({ where: { businessId: business.id, role: "owner" }, select: { email: true } });
   await Promise.all([
     sendCateringRequestReceived({
+      businessId: business.id,
       to: d.email,
       businessName: business.name,
       brandColor: business.brandColor,
@@ -111,6 +112,7 @@ export async function submitCateringRequest(input: CateringRequestInputT): Promi
     }),
     owner?.email
       ? sendCateringRequestOwner({
+        businessId: business.id,
           to: owner.email,
           businessName: business.name,
           brandColor: business.brandColor,

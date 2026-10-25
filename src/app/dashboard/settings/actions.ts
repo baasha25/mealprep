@@ -311,3 +311,86 @@ export async function saveDeliveryZones(_prev: ZonesActionState, formData: FormD
   if (business.slug) revalidatePath(`/store/${business.slug}`);
   return { ok: true, message: v.zones.length ? `${v.zones.length} zone${v.zones.length === 1 ? "" : "s"} saved. Your storefront now places customers by postal code.` : "Zones cleared — back to one flat fee and your delivery days." };
 }
+
+/* --------------------------- Email sending domain --------------------------- */
+
+import { Prisma } from "@/generated/prisma/client";
+import { resendAdmin as resend, EMAIL_ENABLED } from "@/lib/resend-client";
+import { normalizeDomain, isValidLocalPart, simplifyRecords } from "@/lib/sender";
+
+export type EmailDomainState = { ok: boolean; message: string } | null;
+
+const EmailPrefs = z.object({
+  fromLocal: z.string().trim().toLowerCase().max(40).refine(isValidLocalPart, "Use letters, numbers, dots or dashes, e.g. hello or orders"),
+  replyTo: z.string().trim().toLowerCase().max(200).refine((v) => v === "" || z.string().email().safeParse(v).success, "Enter a valid email address"),
+});
+
+/** Connect the kitchen's own sending domain: register it with Resend and store the DNS records to add. */
+export async function connectEmailDomain(_prev: EmailDomainState, formData: FormData): Promise<EmailDomainState> {
+  const { business } = await requireOwner();
+  await assertWritable(business);
+  if (!EMAIL_ENABLED || !resend) return { ok: false, message: "Email isn't set up on this deployment yet." };
+  const domain = normalizeDomain(String(formData.get("domain") ?? ""));
+  if (!domain) return { ok: false, message: "Enter the domain you send from, e.g. mail.yourkitchen.ca (no https:// or path)." };
+  const prefs = EmailPrefs.safeParse({ fromLocal: formData.get("fromLocal") ?? "hello", replyTo: formData.get("replyTo") ?? "" });
+  if (!prefs.success) return { ok: false, message: prefs.error.issues[0]?.message ?? "Check the from address." };
+  if (business.emailDomainId) return { ok: false, message: "Remove the current domain before connecting another." };
+  const taken = await db.business.findFirst({ where: { emailDomain: domain, NOT: { id: business.id } }, select: { id: true } });
+  if (taken) return { ok: false, message: "That domain is already connected to another PrepFlow kitchen." };
+  const res = await resend.domains.create({ name: domain, region: "us-east-1" });
+  if (res.error || !res.data) {
+    console.error("[email-domain] create failed:", res.error);
+    if (res.error?.name === "restricted_api_key") return { ok: false, message: "Domain setup isn't switched on for this PrepFlow deployment yet. Tell us and we'll enable it — your emails keep going out via PrepFlow meanwhile." };
+    return { ok: false, message: res.error?.message?.includes("already") ? "That domain is already registered with our email provider. Contact support and we'll move it over." : "Couldn't register the domain. Try again in a minute." };
+  }
+  await db.business.update({
+    where: { id: business.id },
+    data: { emailDomain: domain, emailDomainId: res.data.id, emailDomainStatus: res.data.status ?? "not_started", emailDomainRecords: simplifyRecords(res.data.records), emailFromLocal: prefs.data.fromLocal, emailReplyTo: prefs.data.replyTo || null },
+  });
+  revalidatePath("/dashboard/settings");
+  return { ok: true, message: "Domain registered. Add the DNS records below at your domain provider, then check." };
+}
+
+/** Ask Resend to (re)verify the DNS and refresh the stored status + records. */
+export async function checkEmailDomain(): Promise<EmailDomainState> {
+  const { business } = await requireOwner();
+  if (!EMAIL_ENABLED || !resend || !business.emailDomainId) return { ok: false, message: "No domain to check." };
+  try {
+    await resend.domains.verify(business.emailDomainId);
+  } catch (err) {
+    console.error("[email-domain] verify failed:", err);
+  }
+  const got = await resend.domains.get(business.emailDomainId);
+  if (got.error || !got.data) return { ok: false, message: "Couldn't read the domain status. Try again in a minute." };
+  await db.business.update({ where: { id: business.id }, data: { emailDomainStatus: got.data.status, emailDomainRecords: simplifyRecords(got.data.records) } });
+  revalidatePath("/dashboard/settings");
+  const verified = got.data.status === "verified";
+  return { ok: true, message: verified ? "Verified — your customer emails now come from your own domain." : `Status: ${got.data.status.replace(/_/g, " ")}. DNS changes can take up to an hour to show; check again later.` };
+}
+
+/** Stop sending from the kitchen's domain (back to "via PrepFlow"); removes it from Resend. */
+export async function disconnectEmailDomain(): Promise<EmailDomainState> {
+  const { business } = await requireOwner();
+  await assertWritable(business);
+  if (business.emailDomainId && resend) {
+    try {
+      await resend.domains.remove(business.emailDomainId);
+    } catch (err) {
+      console.error("[email-domain] remove failed:", err);
+    }
+  }
+  await db.business.update({ where: { id: business.id }, data: { emailDomain: null, emailDomainId: null, emailDomainStatus: null, emailDomainRecords: Prisma.DbNull } });
+  revalidatePath("/dashboard/settings");
+  return { ok: true, message: "Domain removed. Emails go out via PrepFlow again, with replies to you." };
+}
+
+/** From-address local part + reply-to (works with or without a connected domain). */
+export async function saveEmailSender(_prev: EmailDomainState, formData: FormData): Promise<EmailDomainState> {
+  const { business } = await requireOwner();
+  await assertWritable(business);
+  const prefs = EmailPrefs.safeParse({ fromLocal: formData.get("fromLocal") ?? "hello", replyTo: formData.get("replyTo") ?? "" });
+  if (!prefs.success) return { ok: false, message: prefs.error.issues[0]?.message ?? "Check the from address." };
+  await db.business.update({ where: { id: business.id }, data: { emailFromLocal: prefs.data.fromLocal, emailReplyTo: prefs.data.replyTo || null } });
+  revalidatePath("/dashboard/settings");
+  return { ok: true, message: "Sender details saved." };
+}

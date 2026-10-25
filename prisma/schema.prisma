@@ -127,6 +127,14 @@ model Business {
   name            String
   slug            String?  @unique // public storefront URL segment: /store/<slug>
   customDomain    String?  @unique // white-label: serve the storefront on the kitchen's own domain
+  // Own sending domain for customer email (Resend). Until verified, mail goes out
+  // as "<Kitchen> via PrepFlow" from PrepFlow's address with reply-to the kitchen.
+  emailDomain        String?  // e.g. gaiakitchen.ca
+  emailDomainId      String?  // Resend domain id
+  emailDomainStatus  String?  // Resend status: not_started | pending | verified | failed | …
+  emailDomainRecords Json?    // the DNS records Resend asked for, shown in Settings
+  emailFromLocal     String   @default("hello") // local part of the from address once verified
+  emailReplyTo       String?  // where customer replies land (default: the owner's login email)
   brandColor      String   @default("#2f4536")
   logoUrl         String?  // merchant logo (Cloudinary secure URL); shown on the storefront header + dashboard. null = leaf + brandColor fallback
   isDemo          Boolean  @default(false) // throwaway sales-demo tenant: read-write but isolated, no real emails/charges, auto-deleted, hidden from /admin + store index

@@ -109,6 +109,7 @@ export async function POST(req: NextRequest) {
               await db.subscription.update({ where: { id: sub.id }, data: { nextDeliveryDate: nextDate } });
               if (sub.customer?.email && business) {
                 await sendSubscriptionReceipt({
+                  businessId: sub.businessId,
                   to: sub.customer.email,
                   businessName: business.name,
                   brandColor: business.brandColor,
@@ -159,6 +160,7 @@ export async function POST(req: NextRequest) {
             const business = await db.business.findUnique({ where: { id: sub.businessId } });
             if (business) {
               await sendPaymentFailed({
+                businessId: sub.businessId,
                 to: sub.customer.email,
                 businessName: business.name,
                 brandColor: business.brandColor,

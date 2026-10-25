@@ -5,6 +5,9 @@ import { bpsToPercent, centsToDollars } from "@/lib/money";
 import { effectiveTier, type TierKey } from "@/lib/tiers";
 import { SettingsForm, type SettingsInitial } from "./settings-form";
 import { DeliveryZonesCard, type ZoneRow } from "./zones-editor";
+import { EmailDomainCard, type EmailDomainInitial } from "./email-domain-card";
+import { EMAIL_ENABLED, PLATFORM_FROM } from "@/lib/resend-client";
+import { simplifyRecords, senderFor } from "@/lib/sender";
 import { enabledDeliveryDays } from "@/lib/delivery-days";
 
 export default async function SettingsPage() {
@@ -28,6 +31,18 @@ export default async function SettingsPage() {
     days: (z.deliveryDays ?? {}) as Record<string, boolean>,
     feeDollars: z.deliveryFeeCents == null ? "" : centsToDollars(z.deliveryFeeCents).toFixed(2),
   }));
+
+  const owner = await db.user.findFirst({ where: { businessId: business.id, role: "owner" }, select: { email: true } });
+  const emailInitial: EmailDomainInitial = {
+    enabled: EMAIL_ENABLED,
+    domain: business.emailDomain,
+    status: business.emailDomainStatus,
+    records: simplifyRecords(business.emailDomainRecords),
+    fromLocal: business.emailFromLocal,
+    replyTo: business.emailReplyTo ?? "",
+    ownerEmail: owner?.email ?? "",
+    preview: senderFor({ businessName: business.name, emailDomain: business.emailDomain, emailDomainStatus: business.emailDomainStatus, emailFromLocal: business.emailFromLocal, fallbackFrom: PLATFORM_FROM }).from,
+  };
 
   const initial: SettingsInitial = {
     name: business.name,
@@ -86,6 +101,7 @@ export default async function SettingsPage() {
       />
       <SettingsForm initial={initial} />
       <DeliveryZonesCard initial={zoneRows} kitchenDays={enabledDeliveryDays(dd)} defaultFeeDollars={centsToDollars(settings.deliveryFeeCents)} />
+      <EmailDomainCard initial={emailInitial} />
     </Page>
   );
 }

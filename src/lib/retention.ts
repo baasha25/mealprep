@@ -51,6 +51,7 @@ export async function runRetentionEmails(now: Date = new Date()): Promise<Retent
         continue; // raced by another run
       }
       await sendAbandonedCheckout({
+        businessId: biz.id,
         to: o.customer.email,
         customerName: o.customer.name,
         businessName: biz.name,
@@ -97,6 +98,7 @@ export async function runRetentionEmails(now: Date = new Date()): Promise<Retent
         continue;
       }
       await sendWinBack({
+        businessId: biz.id,
         to: c.email,
         customerName: c.name,
         businessName: biz.name,
@@ -150,6 +152,7 @@ export async function runRetentionEmails(now: Date = new Date()): Promise<Retent
       }
       asked.add(cid);
       await sendReviewRequest({
+        businessId: biz.id,
         to: o.customer.email,
         customerName: o.customer.name,
         businessName: biz.name,
