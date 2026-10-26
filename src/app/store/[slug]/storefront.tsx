@@ -22,6 +22,7 @@ import { formatCents } from "@/lib/money";
 import { resolveSelections, optionsKeyOf, nameWithOptions } from "@/lib/meal-options";
 import { computeOrder, type PricingSettings } from "@/lib/pricing";
 import { zoneForPostal, postalLooksComplete } from "@/lib/zones";
+import { countNoun, nounsFor, type Nouns } from "@/lib/nouns";
 import {
   lookupCoupon,
   lookupGiftCard,
@@ -74,6 +75,8 @@ export type StoreZone = {
 };
 
 export type StoreSettings = PricingSettings & {
+  /** What this kitchen sells, in its customers' words (meals, portions, bottles…). */
+  nouns?: Nouns;
   // Plans-only kitchens: the menu is what subscribers pick from each week; there
   // is no one-time cart (no Add buttons, no checkout panel).
   subscriptionsOnly?: boolean;
@@ -361,6 +364,7 @@ export function Storefront({
   }
 
   const plansOnly = Boolean(settings.subscriptionsOnly);
+  const N = settings.nouns ?? nounsFor("meal");
 
   return (
     <div className={plansOnly ? "" : "grid lg:grid-cols-[1fr_356px] gap-6"}>
@@ -369,7 +373,7 @@ export function Storefront({
           <div className="mb-4">
             <h2 className="text-[15px] font-semibold" style={{ color: "var(--ink)" }}>This week&apos;s menu</h2>
             <p className="text-[12.5px] mt-0.5" style={{ color: "var(--muted)" }}>
-              Subscribers choose their meals from this menu each week in their account.{" "}
+              Subscribers choose their {N.many} from this menu each week in their account.{" "}
               <a href="#plans" className="font-medium" style={{ color: "var(--pine)" }}>Choose a plan</a> to get started.
             </p>
           </div>
@@ -615,14 +619,14 @@ export function Storefront({
             </h2>
             {totals.itemCount > 0 && (
               <span className="ml-auto text-[12.5px]" style={{ color: "var(--muted)" }}>
-                {totals.itemCount} meals
+                {countNoun(totals.itemCount, N)}
               </span>
             )}
           </div>
 
           {totals.itemCount === 0 ? (
             <p className="text-[13px] py-9 text-center" style={{ color: "var(--muted)" }}>
-              Add meals to start your order.
+              Add {N.many} to start your order.
             </p>
           ) : (
             <>
@@ -822,7 +826,7 @@ export function Storefront({
                     color: "var(--clay)",
                   }}
                 >
-                  Minimum {settings.minMeals} meals per order — add {totals.mealsShort} more.
+                  Minimum {settings.minMeals} {N.many} per order — add {totals.mealsShort} more.
                 </p>
               )}
 
@@ -951,7 +955,7 @@ export function Storefront({
                               ))}
                           </select>
                           <div className="text-[11.5px] mb-1.5" style={{ color: "var(--muted)" }}>
-                            Which day for each meal?
+                            Which day for each {N.one}?
                           </div>
                           <div className="space-y-1.5">
                             {Object.entries(cart).map(([id, q]) => {

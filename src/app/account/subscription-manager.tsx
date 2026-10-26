@@ -17,6 +17,7 @@ import {
 import { formatCents } from "@/lib/money";
 import { dayFullName } from "@/lib/delivery-days";
 import { resolveSelections, optionsKeyOf } from "@/lib/meal-options";
+import { nounsFor, type Nouns } from "@/lib/nouns";
 import {
   pauseSubscription,
   resumeSubscription,
@@ -56,6 +57,7 @@ export function SubscriptionManager({
   chosenDays,
   allDeliveryDays,
   zoneLine = null,
+  nouns,
   meals,
 }: {
   subscriptionId: string;
@@ -75,8 +77,10 @@ export function SubscriptionManager({
   allDeliveryDays: string[];
   /** Zone kitchens: "North Shore · Sundays · $7.00 delivery each week". */
   zoneLine?: string | null;
+  nouns?: Nouns;
   meals: ManagerMeal[];
 }) {
+  const N = nouns ?? nounsFor("meal");
   const [pending, startTransition] = useTransition();
   const [toast, setToast] = useState<{ ok: boolean; message: string } | null>(null);
 
@@ -329,7 +333,7 @@ export function SubscriptionManager({
             </h3>
           </div>
           <p className="text-[12.5px] mb-3" style={{ color: "var(--muted)" }}>
-            Choose the day you get your meals — or pick both to split your week into two fresh drops
+            Choose the day you get your {N.many} — or pick both to split your week into two fresh drops
             (same price).
           </p>
           <div className="flex items-center gap-2 flex-wrap">
@@ -371,10 +375,10 @@ export function SubscriptionManager({
         <div className="rounded-xl border p-5" style={cardStyle}>
           <div className="flex items-center justify-between mb-1 gap-3 flex-wrap">
             <h3 className="text-[15px] font-semibold" style={{ color: "var(--ink)" }}>
-              {multiDay ? "Meals for each delivery" : "Meals for your next delivery"}
+              {multiDay ? `${N.Many} for each delivery` : `${N.Many} for your next delivery`}
             </h3>
             <span className="text-[12px]" style={{ color: "var(--muted)" }}>
-              {planMeals > 0 ? `${weekMeals} of ${planMeals} plan meals` : `${totalMeals} meals · ${formatCents(totalMeals * perMealPriceCents)}`}
+              {planMeals > 0 ? `${weekMeals} of ${planMeals} plan ${N.many}` : `${totalMeals} ${N.many} · ${formatCents(totalMeals * perMealPriceCents)}`}
               {extras > 0 && <span style={{ color: "var(--pine)" }}> · +{extras} extra{extras === 1 ? "" : "s"} · {formatCents(extrasCents)}</span>}
               {upgradesCents > 0 && <span style={{ color: "var(--pine)" }}> · upgrades {formatCents(upgradesCents)}</span>}
             </span>
@@ -387,10 +391,10 @@ export function SubscriptionManager({
           {planMeals > 0 && (
             <p className="text-[12px] mb-2.5" style={{ color: extras > 0 ? "var(--pine)" : "var(--muted)" }}>
               {extras > 0
-                ? `${extras} extra meal${extras === 1 ? "" : "s"} at ${formatCents(perMealPriceCents)} each (${formatCents(extrasCents)}) will be billed with your next plan payment and delivered with this box. No extra delivery fee.`
+                ? `${extras} extra ${extras === 1 ? N.one : N.many} at ${formatCents(perMealPriceCents)} each (${formatCents(extrasCents)}) will be billed with your next plan payment and delivered with this box. No extra delivery fee.`
                 : shortBy > 0
-                  ? `Pick ${shortBy} more to fill your plan. Want more? Anything beyond ${planMeals} is ${formatCents(perMealPriceCents)} a meal, billed with your next payment, same delivery.`
-                  : `Your plan is full. Add more if you like: ${formatCents(perMealPriceCents)} a meal, billed with your next payment, same delivery.`}
+                  ? `Pick ${shortBy} more to fill your plan. Want more? Anything beyond ${planMeals} is ${formatCents(perMealPriceCents)} a ${N.one}, billed with your next payment, same delivery.`
+                  : `Your plan is full. Add more if you like: ${formatCents(perMealPriceCents)} a ${N.one}, billed with your next payment, same delivery.`}
             </p>
           )}
 
@@ -509,7 +513,7 @@ export function SubscriptionManager({
                 style={{ background: "var(--pine)", color: "#f4f2ec" }}
               >
                 <Check size={15} />{" "}
-                {pending ? "Saving…" : multiDay ? `Save ${deliveries[active]?.label} meals` : "Save meals"}
+                {pending ? "Saving…" : multiDay ? `Save ${deliveries[active]?.label} ${N.many}` : `Save ${N.many}`}
               </button>
               {dirty[active] && (
                 <span className="text-[12px]" style={{ color: "var(--muted)" }}>

@@ -65,6 +65,7 @@ export default async function SettingsPage() {
     fulfillment: settings.fulfillment as "delivery" | "pickup" | "both",
     deliveryDays: dd,
     subscriptionsOnly: settings.subscriptionsOnly,
+    itemNoun: settings.itemNoun,
     subNoPick: settings.subNoPick === "skip" ? "skip" : "chef_choice",
     pickupLocations: settings.pickupLocations,
     loyaltyEnabled: settings.loyaltyEnabled,

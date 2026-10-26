@@ -11,6 +11,7 @@ import { orderLimitStatus } from "@/lib/usage";
 import { effectiveTier, type TierKey } from "@/lib/tiers";
 import { sendOrderConfirmation, sendOwnerNewOrder } from "@/lib/email";
 import { computeOrder, type AppliedCoupon } from "@/lib/pricing";
+import { nounsFor } from "@/lib/nouns";
 import { nextCutoffAt, upcomingDeliveries, DEFAULT_TIMEZONE } from "@/lib/cutoff";
 import { enabledDeliveryDays } from "@/lib/delivery-days";
 import { zoneForPostal, zoneDays, zoneFeeCents, type ZoneLike } from "@/lib/zones";
@@ -418,7 +419,7 @@ export async function placeOrder(input: PlaceOrderInputT): Promise<PlaceOrderRes
           price_data: {
             currency: PLATFORM_CURRENCY,
             unit_amount: amountDueCents,
-            product_data: { name: `${business.name} — ${totals.itemCount} meals`, description: `Order #${order.id.slice(-6)}` },
+            product_data: { name: `${business.name} — ${totals.itemCount} ${nounsFor(s.itemNoun).many}`, description: `Order #${order.id.slice(-6)}` },
           },
         },
       ],

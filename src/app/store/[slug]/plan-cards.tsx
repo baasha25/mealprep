@@ -5,6 +5,7 @@ import { formatCents } from "@/lib/money";
 import { dayFullName } from "@/lib/delivery-days";
 import { zoneForPostal, postalLooksComplete } from "@/lib/zones";
 import { subscriptionWeeklyCharge } from "@/lib/subscription-orders";
+import { nounsFor, type Nouns } from "@/lib/nouns";
 import { startPlanSubscription } from "./subscribe-actions";
 
 export type PlanCard = {
@@ -31,6 +32,7 @@ export function PlanCards({
   subDiscountPct,
   deliveryDays = [],
   zones = [],
+  nouns,
 }: {
   slug: string;
   plans: PlanCard[];
@@ -39,7 +41,9 @@ export function PlanCards({
   deliveryDays?: string[];
   /** Delivery zones (empty = off). With zones, the postal code picks the days and the weekly fee. */
   zones?: PlanZone[];
+  nouns?: Nouns;
 }) {
+  const N = nouns ?? nounsFor("meal");
   const [freq, setFreq] = useState<"weekly" | "biweekly">("weekly");
   const [pending, startTransition] = useTransition();
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -198,7 +202,7 @@ export function PlanCards({
             >
               <div className="text-[14px] font-semibold" style={{ color: "var(--ink)" }}>{p.name}</div>
               <div className="text-[12px] mt-0.5" style={{ color: "var(--muted)" }}>
-                {p.mealsPerWeek} meals/week · {formatCents(p.perMealPriceCents)}/meal
+                {p.mealsPerWeek} {N.many}/week · {formatCents(p.perMealPriceCents)}/{N.one}
               </div>
               <div className="mt-2">
                 <span className="disp text-[20px] font-medium" style={{ color: "var(--pine)" }}>

@@ -6,6 +6,7 @@ import { Card, CardTitle, Field, INP, btnPrimary } from "@/components/ui";
 import { updateSettings, signLogoUpload, type SettingsActionState } from "./actions";
 import { TIERS, TIER_KEYS, feePctLabel, type TierKey } from "@/lib/tiers";
 import { TIMEZONES } from "@/lib/cutoff";
+import { NOUN_OPTIONS } from "@/lib/nouns";
 
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
 
@@ -31,6 +32,7 @@ export type SettingsInitial = {
   deliveryDays: Record<string, boolean>;
   subscriptionsOnly: boolean;
   subNoPick: "skip" | "chef_choice";
+  itemNoun: string;
   pickupLocations: string[];
   loyaltyEnabled: boolean;
   autoApproveReviews: boolean;
@@ -238,6 +240,13 @@ export function SettingsForm({ initial }: { initial: SettingsInitial }) {
           </Field>
         </div>
         <div className="grid sm:grid-cols-2 gap-4 mt-4">
+          <Field label="What you sell" hint="Changes the word customers and your kitchen screens use: 'Add 3 portions', 'Pick 10 pouches', 'bottles out'. Prices, plans and recipes are unchanged.">
+            <select name="itemNoun" defaultValue={initial.itemNoun} className={INP} style={inputStyle}>
+              {NOUN_OPTIONS.map((n) => (
+                <option key={n.key} value={n.key}>{n.many.charAt(0).toUpperCase() + n.many.slice(1)} — {n.hint}</option>
+              ))}
+            </select>
+          </Field>
           <Field
             label="Custom domain (your own URL)"
             hint={

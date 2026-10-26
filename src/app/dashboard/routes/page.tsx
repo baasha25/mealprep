@@ -5,6 +5,7 @@ import { Page, Head, Kpi, Card } from "@/components/ui";
 import { Hint } from "@/components/ui";
 import { DispatchCheck, type DispatchRoute } from "./dispatch-check";
 import { ensureSubscriptionOrders } from "@/lib/subscription-orders-run";
+import { nounsFor, countNoun } from "@/lib/nouns";
 
 // Orders that are headed out for delivery (paid through packed/out-for-delivery).
 const ROUTABLE = ["paid", "in_production", "packed", "out_for_delivery"] as const;
@@ -13,6 +14,7 @@ export default async function RoutesPage() {
   const { business } = await requireBusiness();
   // Subscriber deliveries past their cut-off are orders too — make sure they're here.
   await ensureSubscriptionOrders(business.id);
+  const N = nounsFor((await db.businessSettings.findUnique({ where: { businessId: business.id }, select: { itemNoun: true } }))?.itemNoun);
 
   const orders = await db.order.findMany({
     where: { businessId: business.id, fulfillment: "delivery", status: { in: [...ROUTABLE] } },
@@ -56,7 +58,7 @@ export default async function RoutesPage() {
       <div className="grid sm:grid-cols-3 gap-3.5 mb-5">
         <Kpi icon={<Truck size={16} />} label="Stops" value={totalStops} />
         <Kpi icon={<Navigation size={16} />} label={<span className="inline-flex items-center gap-1">Routes (zones) <Hint text="One route per delivery zone. Orders are placed in a zone by the customer's postal code (Settings → Delivery zones); the rest land in Unzoned." /></span>} value={routes.length} />
-        <Kpi icon={<MapPin size={16} />} label="Meals out" value={orders.reduce((s, o) => s + o._count.items, 0)} />
+        <Kpi icon={<MapPin size={16} />} label={`${N.Many} out`} value={orders.reduce((s, o) => s + o._count.items, 0)} />
       </div>
 
       {routes.length === 0 ? (
@@ -86,7 +88,7 @@ export default async function RoutesPage() {
                       <div className="text-[12px] truncate" style={{ color: "var(--muted)" }}>{o.address ?? "No address on file"}</div>
                     </div>
                     <span className="text-[12px] shrink-0" style={{ color: "var(--ink-soft)" }}>
-                      {o.deliveryDate ? `${dayFmt.format(o.deliveryDate)} · ` : ""}{o._count.items} meal{o._count.items === 1 ? "" : "s"} · #{o.id.slice(-6)}
+                      {o.deliveryDate ? `${dayFmt.format(o.deliveryDate)} · ` : ""}{countNoun(o._count.items, N)} · #{o.id.slice(-6)}
                     </span>
                   </div>
                 ))}

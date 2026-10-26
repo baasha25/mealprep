@@ -17,6 +17,7 @@ import { enabledDeliveryDays, sanitizePreferredDays, describeDeliveryDays } from
 import { zoneForPostal, zoneDays, kitchenDaysWithZones, type ZoneLike } from "@/lib/zones";
 import { formatCents } from "@/lib/money";
 import { picksFromSnapshot } from "@/lib/meal-options";
+import { nounsFor } from "@/lib/nouns";
 import { SubscriptionManager, type ManagerMeal, type DeliverySlot } from "@/app/account/subscription-manager";
 import { RateMeals, type ReviewableMeal } from "@/app/account/rate-meals";
 import { DeliveryAddress } from "@/app/account/delivery-address";
@@ -37,6 +38,7 @@ export default async function KitchenAccountPage({
   const business = await getStorefrontBusiness(slug);
   if (!business) notFound();
 
+  const N = nounsFor(business.settings?.itemNoun);
   const storeHref = `/store/${slug}`;
   const accountHref = `/store/${slug}/account`;
   const { signedIn, customer } = await getKitchenCustomer(business.id);
@@ -211,7 +213,7 @@ export default async function KitchenAccountPage({
           Hi {customer.name.split(" ")[0]}
         </h1>
         <p className="text-[13.5px] mt-2.5" style={{ color: "var(--ink-soft)" }}>
-          Manage your meal-plan subscription — pause, skip, or swap meals before the cut-off.
+          Manage your plan — pause, skip, or swap {N.many} before the cut-off.
         </p>
       </div>
 
@@ -284,6 +286,7 @@ export default async function KitchenAccountPage({
           chosenDays={chosenDays}
           allDeliveryDays={enabledDays}
           zoneLine={zoneLine}
+          nouns={N}
           meals={managerMeals}
         />
       )}
@@ -291,7 +294,7 @@ export default async function KitchenAccountPage({
       <div className="rounded-xl border p-5 mt-4" style={{ borderColor: "var(--line)", background: "var(--surface)" }}>
         <div className="flex items-center gap-2 mb-1">
           <Star size={16} style={{ color: "#e0a53f" }} />
-          <h3 className="text-[15px] font-semibold" style={{ color: "var(--ink)" }}>Rate your meals</h3>
+          <h3 className="text-[15px] font-semibold" style={{ color: "var(--ink)" }}>Rate your {N.many}</h3>
         </div>
         <p className="text-[12.5px] mb-1" style={{ color: "var(--muted)" }}>
           Your ratings help other diners and the kitchen improve.

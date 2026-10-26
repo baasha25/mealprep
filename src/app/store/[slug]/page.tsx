@@ -18,6 +18,7 @@ import { CutoffBanner } from "./cutoff-banner";
 import { PlanCards, type PlanZone } from "./plan-cards";
 import { Storefront, type StoreMeal, type StoreReview, type StoreSettings, type StoreZone } from "./storefront";
 import { zoneDays, kitchenDaysWithZones, zoneFeeCents } from "@/lib/zones";
+import { nounsFor } from "@/lib/nouns";
 
 export const dynamic = "force-dynamic";
 
@@ -207,7 +208,9 @@ export default async function StorePage({
     };
   });
 
+  const nouns = nounsFor(s.itemNoun);
   const settings: StoreSettings = {
+    nouns,
     subscriptionsOnly: s.subscriptionsOnly,
     isDemo: business.isDemo,
     demoPostal: business.isDemo ? (zoneRows[0]?.postalPrefixes[0] ? `${zoneRows[0].postalPrefixes[0]} 1A2` : "") : undefined,
@@ -250,10 +253,10 @@ export default async function StorePage({
       <main className="max-w-6xl mx-auto px-6 py-8 fade">
         <div className="mb-7">
           <h1 className="disp text-[30px] leading-none font-medium" style={{ color: "var(--ink)" }}>
-            Order Fresh Meals{s.serviceArea ? <span style={{ color: "var(--ink-soft)" }}> · {s.serviceArea}</span> : null}
+            {nouns.key === "meal" ? "Order Fresh Meals" : `Order Fresh ${nouns.Many}`}{s.serviceArea ? <span style={{ color: "var(--ink-soft)" }}> · {s.serviceArea}</span> : null}
           </h1>
           <p className="text-[13.5px] mt-2.5" style={{ color: "var(--ink-soft)" }}>
-            {s.storeTagline || (s.subscriptionsOnly ? "Choose a plan, then pick your meals each week from the menu below." : "Browse the menu, build your order, and subscribe to save every week.")}
+            {s.storeTagline || (s.subscriptionsOnly ? `Choose a plan, then pick your ${nouns.many} each week from the menu below.` : "Browse the menu, build your order, and subscribe to save every week.")}
           </p>
           {s.cateringEnabled && (
             <Link href={`/store/${slug}/catering`} className="inline-flex items-center gap-1.5 mt-3 text-[13px] font-medium" style={{ color: "var(--pine)" }}>
@@ -274,6 +277,7 @@ export default async function StorePage({
             subDiscountPct={Math.round(s.subDiscountBps / 100)}
             deliveryDays={enabledDays}
             zones={planZones}
+            nouns={nouns}
           />
         )}
 

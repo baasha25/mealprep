@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { resend, EMAIL_ENABLED as ENABLED, PLATFORM_FROM } from "@/lib/resend-client";
 import { senderFor, type Sender } from "@/lib/sender";
+import { nounsFor } from "@/lib/nouns";
 import { formatCents } from "@/lib/money";
 import { cldImage } from "@/lib/cloudinary";
 
@@ -184,7 +185,7 @@ type OrderRow = {
   extrasCents?: number;
   items: { nameSnapshot: string; qty: number; unitPriceCentsSnapshot: number; addedVia?: string | null }[];
   customer: { name: string; email: string; phone: string | null } | null;
-  business: { name: string; brandColor: string };
+  business: { name: string; brandColor: string; settings?: { itemNoun: string } | null };
 };
 
 function itemsTable(items: OrderRow["items"]): string {
@@ -219,7 +220,7 @@ function totalsTable(o: OrderRow, chargedLabel: string): string {
 async function loadOrder(orderId: string): Promise<OrderRow | null> {
   return db.order.findUnique({
     where: { id: orderId },
-    include: { items: true, customer: true, business: true },
+    include: { items: true, customer: true, business: { include: { settings: { select: { itemNoun: true } } } } },
   }) as unknown as OrderRow | null;
 }
 
@@ -237,15 +238,16 @@ export async function sendOrderConfirmation(orderId: string): Promise<void> {
     o.type === "catering"
       ? `Your catering order is confirmed${when ? ` for ${when}` : ""}. We'll be in touch if we need anything before then.`
       : when
-        ? `We'll have your meals ready for ${o.fulfillment === "pickup" ? "pickup" : "delivery"} on ${when}.`
-        : `We'll have your meals ready for your next ${o.fulfillment === "pickup" ? "pickup" : "delivery"}.`;
+        ? `We'll have your ${nounsFor(o.business.settings?.itemNoun).many} ready for ${o.fulfillment === "pickup" ? "pickup" : "delivery"} on ${when}.`
+        : `We'll have your ${nounsFor(o.business.settings?.itemNoun).many} ready for your next ${o.fulfillment === "pickup" ? "pickup" : "delivery"}.`;
   const isSub = o.type === "subscription";
+  const N = nounsFor(o.business.settings?.itemNoun);
   const autoPicked = isSub && o.items.length > 0 && o.items.every((i) => i.addedVia === "chef_choice");
   const autoNote = autoPicked
     ? `<p style="margin:12px 0 0;color:${INK};font-size:13px;">The cut-off passed before you picked, so we chose these for you from meals you've enjoyed before. You can pick next week's meals any time before the cut-off.</p>`
     : "";
   const extrasNote = isSub && (o.extrasCents ?? 0) > 0
-    ? `<p style="margin:12px 0 0;color:${INK};font-size:13px;">Includes <strong>${o.extrasCount ? `${o.extrasCount} extra meal${o.extrasCount === 1 ? "" : "s"}` : "option upgrades"}</strong> beyond your plan (${formatCents(o.extrasCents ?? 0)}${o.extrasCount ? ", including any option upgrades" : ""}), billed with your next plan payment. No extra delivery fee.</p>`
+    ? `<p style="margin:12px 0 0;color:${INK};font-size:13px;">Includes <strong>${o.extrasCount ? `${o.extrasCount} extra ${o.extrasCount === 1 ? N.one : N.many}` : "option upgrades"}</strong> beyond your plan (${formatCents(o.extrasCents ?? 0)}${o.extrasCount ? ", including any option upgrades" : ""}), billed with your next plan payment. No extra delivery fee.</p>`
     : "";
   await send({
     to: o.customer.email,

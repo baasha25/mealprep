@@ -6,6 +6,7 @@ import { Page, Head, Kpi, Card } from "@/components/ui";
 import { Hint } from "@/components/ui";
 import { picksFromSnapshot, nameWithOptions } from "@/lib/meal-options";
 import { ensureSubscriptionOrders } from "@/lib/subscription-orders-run";
+import { nounsFor, countNoun } from "@/lib/nouns";
 
 // Diet -> kitchen station (ported from the demo's STATION map).
 const STATION: Record<string, string> = {
@@ -32,6 +33,7 @@ export default async function KitchenPage() {
   // Subscriber picks past their cut-off become paid orders (so they're counted
   // once, below, as orders — not again as selections).
   await ensureSubscriptionOrders(business.id);
+  const N = nounsFor((await db.businessSettings.findUnique({ where: { businessId: business.id }, select: { itemNoun: true } }))?.itemNoun);
 
   const now = new Date();
   const startToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -141,7 +143,7 @@ export default async function KitchenPage() {
       />
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 mb-5">
-        <Kpi icon={<ClipboardList size={16} />} label="Meals to produce" value={totalMeals} />
+        <Kpi icon={<ClipboardList size={16} />} label={`${N.Many} to produce`} value={totalMeals} />
         <Kpi icon={<ChefHat size={16} />} label="Orders in queue" value={distinctOrders} />
         <Kpi icon={<Repeat size={16} />} label={<span className="inline-flex items-center gap-1">Upcoming subscriber picks <Hint text="Meals subscribers have picked for deliveries whose cut-off has not passed yet. Once it passes, those picks become paid orders and move into the counts on the left." /></span>} value={subMealCount} />
         <Kpi icon={<Boxes size={16} />} label="Distinct recipes" value={meals.length} />
@@ -157,7 +159,7 @@ export default async function KitchenPage() {
             Nothing in the production queue.
           </p>
           <p className="text-[12.5px] mt-1" style={{ color: "var(--muted)" }}>
-            Meals appear here from paid orders and active subscriptions&apos; upcoming deliveries.
+            {N.Many} appear here from paid orders and active subscriptions&apos; upcoming deliveries.
           </p>
         </div>
       ) : (
@@ -177,7 +179,7 @@ export default async function KitchenPage() {
                     </h3>
                   </div>
                   <span className="text-[12px]" style={{ color: "var(--muted)" }}>
-                    {stationTotal} meals
+                    {countNoun(stationTotal, N)}
                   </span>
                 </div>
                 <div className="space-y-2">
