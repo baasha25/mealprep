@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { FlaskConical } from "lucide-react";
 import { mealEconomics, suggestedPriceCents } from "@/lib/profitability";
 import { PRESETS, priceChangePct, expectedVolumeChangePct, thresholdWarning, elasticityAdvice, type ElasticityPreset } from "@/lib/elasticity";
@@ -21,10 +21,15 @@ export function PriceSimulator({ meals, rangeLabel }: { meals: SimMeal[]; rangeL
   const [mealId, setMealId] = useState(first?.id ?? "");
   const meal = costed.find((m) => m.id === mealId) ?? first;
   const [price, setPrice] = useState<string>(meal ? (meal.priceCents / 100).toFixed(2) : "");
-  const [unitsPct, setUnitsPct] = useState(0);
-  // Customer-response preset drives the volume slider from the price change;
-  // dragging the slider by hand switches to "custom".
+  // Volume is derived while a customer-response preset is active (from the
+  // price change and the preset's elasticity); dragging the slider by hand
+  // switches to "custom" and this manual value takes over.
+  const [manualPct, setManualPct] = useState(0);
   const [preset, setPreset] = useState<ElasticityPreset>("typical");
+  const newPriceCents = Math.max(0, Math.round(Number(price || 0) * 100));
+  const priceChange = meal ? priceChangePct(meal.priceCents, newPriceCents) : 0;
+  const activePreset = PRESETS.find((p) => p.key === preset) ?? null;
+  const unitsPct = activePreset ? expectedVolumeChangePct(priceChange, activePreset.e) : manualPct;
 
   // The Price coach's "Try it" button hands a meal + suggested price down here.
   useEffect(() => {
@@ -33,16 +38,16 @@ export function PriceSimulator({ meals, rangeLabel }: { meals: SimMeal[]; rangeL
       if (!d || !costed.some((m) => m.id === d.mealId)) return;
       setMealId(d.mealId);
       setPrice((d.priceCents / 100).toFixed(2));
-      setUnitsPct(0);
+      setManualPct(0);
     };
     window.addEventListener("pf:simulate", onSim);
     return () => window.removeEventListener("pf:simulate", onSim);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [meals]);
 
-  const sim = useMemo(() => {
+  const sim = (() => {
     if (!meal) return null;
-    const newPrice = Math.max(0, Math.round(Number(price || 0) * 100));
+    const newPrice = newPriceCents;
     const cur = mealEconomics(meal.priceCents, meal.costCents);
     const nxt = mealEconomics(newPrice, meal.costCents);
     const projUnits = Math.max(0, Math.round(meal.units * (1 + unitsPct / 100)));
@@ -50,16 +55,7 @@ export function PriceSimulator({ meals, rangeLabel }: { meals: SimMeal[]; rangeL
     const newContribution = nxt.marginCents * projUnits;
     const breakEvenUnits = nxt.marginCents > 0 ? Math.ceil(curContribution / nxt.marginCents) : null;
     return { newPrice, cur, nxt, projUnits, curContribution, newContribution, delta: newContribution - curContribution, breakEvenUnits };
-  }, [meal, price, unitsPct]);
-
-  // Elasticity: expected volume change for the current price move.
-  const priceChange = meal && sim ? priceChangePct(meal.priceCents, sim.newPrice) : 0;
-  const activePreset = PRESETS.find((p) => p.key === preset) ?? null;
-  const autoVolume = activePreset ? expectedVolumeChangePct(priceChange, activePreset.e) : null;
-  useEffect(() => {
-    if (autoVolume != null) setUnitsPct(autoVolume);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoVolume]);
+  })();
 
   if (!meal || !sim) return null;
   const affordableLoss = sim.breakEvenUnits != null && meal.units > 0 && sim.newPrice > meal.priceCents
@@ -73,7 +69,7 @@ export function PriceSimulator({ meals, rangeLabel }: { meals: SimMeal[]; rangeL
     const m = costed.find((x) => x.id === id);
     setMealId(id);
     if (m) setPrice((m.priceCents / 100).toFixed(2));
-    setUnitsPct(0);
+    setManualPct(0);
   };
   const pct = (bps: number) => `${bpsToPercent(bps).toFixed(1)}%`;
   const minP = Math.max(0.5, meal.priceCents * 0.7) / 100;
@@ -118,7 +114,7 @@ export function PriceSimulator({ meals, rangeLabel }: { meals: SimMeal[]; rangeL
           </div>
           <label className="block">
             <span className="text-[12px]" style={{ color: "var(--muted)" }}>Sales change <strong style={{ color: "var(--ink)" }}>{unitsPct > 0 ? "+" : ""}{unitsPct}%</strong>{activePreset ? <span> · expected at a {activePreset.label.toLowerCase()} response</span> : null}</span>
-            <input type="range" min={-95} max={100} step={1} value={unitsPct} onChange={(e) => { setPreset("custom"); setUnitsPct(Number(e.target.value)); }} className="w-full mt-1" />
+            <input type="range" min={-95} max={100} step={1} value={unitsPct} onChange={(e) => { setPreset("custom"); setManualPct(Number(e.target.value)); }} className="w-full mt-1" />
           </label>
           {threshold !== "none" && (
             <p className="text-[11.5px] px-2.5 py-2 rounded-lg" style={{ background: "color-mix(in srgb, #c9a227 12%, transparent)", color: "#8a6d1f" }}>
