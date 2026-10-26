@@ -1,6 +1,7 @@
 "use server";
 
 import { z } from "zod";
+import { normalizePostalCode } from "@/lib/regions";
 import { isValidHostname } from "@/lib/custom-domains";
 import { validateZones } from "@/lib/zones";
 import { revalidatePath } from "next/cache";
@@ -81,6 +82,12 @@ const SettingsInput = z.object({
   storeTagline: z.string().trim().max(90, "Keep the tagline under 90 characters").optional().default(""),
   storeDescription: z.string().trim().max(200, "Keep the description under 200 characters — Google shows about 160").optional().default(""),
   serviceArea: z.string().trim().max(80).optional().default(""),
+  postalCode: z.string().trim().max(12).optional().default("").transform((v, ctx) => {
+    if (!v) return null;
+    const n = normalizePostalCode(v);
+    if (!n) ctx.addIssue({ code: "custom", message: "Enter a postal code like V6E 1A1 or a ZIP like 98101" });
+    return n;
+  }),
 });
 
 export type SettingsActionState = {
@@ -147,6 +154,7 @@ export async function updateSettings(
     storeTagline: formData.get("storeTagline") ?? "",
     storeDescription: formData.get("storeDescription") ?? "",
     serviceArea: formData.get("serviceArea") ?? "",
+    postalCode: formData.get("postalCode") ?? "",
   });
 
   if (!parsed.success) {
@@ -174,7 +182,7 @@ export async function updateSettings(
   await db.$transaction([
     db.business.update({
       where: { id: business.id },
-      data: { name: d.name, brandColor: d.brandColor, logoUrl: d.logoUrl, customDomain: d.customDomain || null, tier: effectiveTier, sharePartnerStats: d.sharePartnerStats },
+      data: { name: d.name, brandColor: d.brandColor, logoUrl: d.logoUrl, customDomain: d.customDomain || null, tier: effectiveTier, sharePartnerStats: d.sharePartnerStats, postalCode: d.postalCode },
     }),
     db.businessSettings.upsert({
       where: { businessId: business.id },

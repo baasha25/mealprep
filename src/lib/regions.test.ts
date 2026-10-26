@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { provinceForPostal, regionForKitchen, regionHintForPostal, type KitchenEntry } from "./regions";
+import { provinceForPostal, regionForKitchen, regionHintForPostal, normalizePostalCode, defaultsForPostal, type KitchenEntry } from "./regions";
 
 const entries: KitchenEntry[] = [
   { name: "A", domain: "a.ca", city: "Toronto", region: "GTA", platform: "Shopify", province: "ON" },
@@ -52,5 +52,28 @@ describe("regionHintForPostal", () => {
     expect(regionForKitchen({ postalPrefixes: ["G1R"], serviceArea: "" }, entries)).toBe("Québec City / Lévis");
     expect(regionForKitchen({ postalPrefixes: ["J8X"], serviceArea: "" }, entries)).toBe("Gatineau / Outaouais");
     expect(regionForKitchen({ postalPrefixes: ["T1Y"], serviceArea: "" }, entries)).toBe("Calgary"); // province fallback → first AB region
+  });
+});
+
+describe("the kitchen's own postal code", () => {
+  it("wins over zones and service area", () => {
+    expect(regionForKitchen({ postalCode: "T5K 2J5", postalPrefixes: ["V6E"], serviceArea: "Durham Region" }, entries)).toBe("Edmonton");
+    expect(regionForKitchen({ postalCode: "H2X 1Y4", postalPrefixes: [], serviceArea: "" }, entries)).toBe("Montréal / Laval / Rive-Sud");
+    expect(regionForKitchen({ postalCode: "K1A 0B1", postalPrefixes: [], serviceArea: "" }, entries)).toBe("GTA"); // Ottawa: province fallback → first ON list
+    expect(regionForKitchen({ postalCode: null, postalPrefixes: ["V6E"], serviceArea: "" }, entries)).toBe("Vancouver / Lower Mainland");
+  });
+  it("normalises what owners type", () => {
+    expect(normalizePostalCode("v6e1a1")).toBe("V6E 1A1");
+    expect(normalizePostalCode(" V6E 1A1 ")).toBe("V6E 1A1");
+    expect(normalizePostalCode("98101-1234")).toBe("98101");
+    expect(normalizePostalCode("Vancouver")).toBeNull();
+    expect(normalizePostalCode("")).toBeNull();
+  });
+  it("derives country, province and timezone", () => {
+    expect(defaultsForPostal("V6E 1A1")).toEqual({ country: "CA", province: "BC", timezone: "America/Vancouver" });
+    expect(defaultsForPostal("T2P 1J9")).toEqual({ country: "CA", province: "AB", timezone: "America/Edmonton" });
+    expect(defaultsForPostal("H2X 1Y4")).toEqual({ country: "CA", province: "QC", timezone: "America/Toronto" });
+    expect(defaultsForPostal("98101")).toEqual({ country: "US", province: null, timezone: null });
+    expect(defaultsForPostal(null)).toEqual({ country: null, province: null, timezone: null });
   });
 });

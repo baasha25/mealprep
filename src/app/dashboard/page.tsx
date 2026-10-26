@@ -83,6 +83,7 @@ export default async function DashboardPage({
         : { key: "risk", level: "watch", href: "/dashboard/subscriptions", text: `Reach out: ${risk.length} subscriber${risk.length === 1 ? "" : "s"} going quiet` });
     }
     if (pendingReviews) attention.push({ key: "reviews", level: "info", href: "/dashboard/reviews", text: `Approve: ${pendingReviews} review${pendingReviews === 1 ? "" : "s"} waiting` });
+    if (!business.postalCode && !business.isDemo) attention.push({ key: "postal", level: "info", href: "/dashboard/settings", text: "Add your kitchen's postal code (Settings → Brand) so Nearby prices and defaults open on your own area" });
     attention = sortAlerts(attention);
 
     // Revenue KPIs exclude canceled/refunded orders — those were never earned.

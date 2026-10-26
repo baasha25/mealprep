@@ -9,6 +9,8 @@ import { TIERS } from "@/lib/tiers";
 import { trialEndFrom } from "@/lib/trial";
 import { ATTRIB_COOKIE, parseAttributionCookie } from "@/lib/attribution";
 import { COUNTRY_COOKIE, currencyForCountry, normalizeCountry } from "@/lib/geo";
+import { normalizePostalCode, defaultsForPostal } from "@/lib/regions";
+import { TIMEZONE_VALUES } from "@/lib/cutoff";
 
 const Input = z.object({
   name: z.string().trim().min(2, "Enter your kitchen's name").max(80),
@@ -18,6 +20,12 @@ const Input = z.object({
     .regex(/^#[0-9a-fA-F]{6}$/, "Pick a valid color")
     .optional(),
   tier: z.enum(["starter", "growth", "pro"]).default("starter"),
+  postalCode: z.string().trim().max(12).transform((v, ctx) => {
+    if (!v) return null;
+    const n = normalizePostalCode(v);
+    if (!n) ctx.addIssue({ code: "custom", message: "Enter your kitchen's postal code (e.g. V6E 1A1) or ZIP (e.g. 98101)" });
+    return n;
+  }),
 });
 
 export type OnboardResult = { ok: false; message: string };
@@ -36,6 +44,7 @@ export async function createKitchen(
     name: formData.get("name"),
     brandColor: formData.get("brandColor") || undefined,
     tier: formData.get("tier") || undefined,
+    postalCode: formData.get("postalCode") ?? "",
   });
   if (!parsed.success) {
     return { ok: false, message: parsed.error.issues[0]?.message ?? "Invalid details." };
@@ -79,7 +88,10 @@ export async function createKitchen(
   }
   // Country from the visitor cookie middleware set on the marketing/sign-up
   // pages → the currency this kitchen is quoted and billed in (parity numbers).
-  const country = normalizeCountry((await cookies()).get(COUNTRY_COOKIE)?.value);
+  // The kitchen's own postal code beats the visitor cookie for country, and seeds the cut-off timezone.
+  const geo = defaultsForPostal(parsed.data.postalCode);
+  const country = geo.country ?? normalizeCountry((await cookies()).get(COUNTRY_COOKIE)?.value);
+  const timezone = geo.timezone && TIMEZONE_VALUES.includes(geo.timezone) ? geo.timezone : undefined;
   await db.business.create({
     data: {
       name: parsed.data.name,
@@ -87,6 +99,7 @@ export async function createKitchen(
       brandColor,
       tier,
       country,
+      postalCode: parsed.data.postalCode,
       currency: currencyForCountry(country),
       // Every kitchen starts a 30-day free trial (informational until billing).
       trialEndsAt: trialEndFrom(),
@@ -97,7 +110,7 @@ export async function createKitchen(
       referredByPartnerId,
       // Chosen plan drives the platform fee; other pricing/fulfillment
       // fields fall back to the schema defaults.
-      settings: { create: { platformFeeBps: TIERS[tier].platformFeeBps } },
+      settings: { create: { platformFeeBps: TIERS[tier].platformFeeBps, ...(timezone ? { timezone } : {}) } },
       users: { create: { email, role: "owner", authProviderId: userId } },
     },
   });

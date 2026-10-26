@@ -87,6 +87,7 @@ export default async function SettingsPage() {
     storeTagline: settings.storeTagline ?? "",
     storeDescription: settings.storeDescription ?? "",
     serviceArea: settings.serviceArea ?? "",
+    postalCode: business.postalCode ?? "",
     storeUrl: business.slug ? `/store/${business.slug}` : null,
     loyaltyPointsPerDollar: settings.loyaltyPointsPerDollar,
     loyaltyRedeemCentsPerPoint: settings.loyaltyRedeemCentsPerPoint,

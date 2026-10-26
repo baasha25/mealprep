@@ -141,6 +141,7 @@ model Business {
   demoKey         String?  @unique // branded prospect demo: "<rep>:<brand>" — re-entering the same link reuses this tenant instead of minting a new one
   demoExpiresAt   DateTime? // when a kept demo is swept (null = default 24h after creation)
   country         String?  // ISO-2 from the visitor's country at sign-up (e.g. CA, US); drives pricing currency
+  postalCode      String?  // the kitchen's own postal/ZIP code (asked at onboarding) — opens Nearby prices on the right metro, seeds timezone
   currency        String   @default("CAD") // what this kitchen is billed in for its PrepFlow plan (CAD | USD, parity numbers)
   tier            BusinessTier @default(starter) // PrepFlow plan; sets the platform fee (see src/lib/tiers.ts)
   trialEndsAt     DateTime? // end of the 30-day free trial (null = no trial set, e.g. legacy)

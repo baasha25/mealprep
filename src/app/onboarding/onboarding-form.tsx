@@ -63,6 +63,27 @@ export function OnboardingForm() {
               className="block text-[13px] font-medium mb-1.5"
               style={{ color: "var(--ink)" }}
             >
+              Kitchen postal code
+            </label>
+            <input
+              name="postalCode"
+              required
+              maxLength={12}
+              autoComplete="postal-code"
+              placeholder="e.g. V6E 1A1"
+              className="w-full rounded-lg border px-3 py-2.5 text-[14px] outline-none"
+              style={{ borderColor: "var(--line)", background: "var(--paper)", color: "var(--ink)" }}
+            />
+            <p className="mt-1 text-[12px]" style={{ color: "var(--muted)" }}>
+              Where you cook from. Sets your timezone and which nearby kitchens we compare prices with. Never shown to customers.
+            </p>
+          </div>
+
+          <div>
+            <label
+              className="block text-[13px] font-medium mb-1.5"
+              style={{ color: "var(--ink)" }}
+            >
               Brand color
             </label>
             <input

@@ -53,6 +53,7 @@ export type SettingsInitial = {
   storeTagline: string;
   storeDescription: string;
   serviceArea: string;
+  postalCode: string;
   storeUrl: string | null;
   loyaltyPointsPerDollar: number;
   loyaltyRedeemCentsPerPoint: number;
@@ -280,6 +281,10 @@ export function SettingsForm({ initial }: { initial: SettingsInitial }) {
             <Field label="Service area" hint="City or region you deliver to, e.g. Mississauga & Oakville. Goes in your page title: “<name> · Meal prep in Mississauga & Oakville, delivered”.">
               <input name="serviceArea" defaultValue={initial.serviceArea} placeholder="Durham Region" maxLength={80} className={INP} style={inputStyle} />
               <ErrorText msg={errors.serviceArea} />
+            </Field>
+            <Field label="Kitchen postal code" hint="Where you cook from. Opens Nearby prices on your own area and sets sensible defaults. Never shown to customers.">
+              <input name="postalCode" defaultValue={initial.postalCode} placeholder="V6E 1A1" maxLength={12} autoComplete="postal-code" className={INP} style={inputStyle} />
+              <ErrorText msg={errors.postalCode} />
             </Field>
             <Field label="Tagline (one line)" hint="Shown under your name on the storefront, e.g. “Chef-made meal prep, delivered Mondays & Thursdays”.">
               <input name="storeTagline" defaultValue={initial.storeTagline} placeholder="Fresh meals, made to order" maxLength={90} className={INP} style={inputStyle} />

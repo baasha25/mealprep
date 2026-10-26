@@ -180,13 +180,13 @@ export default async function ProfitabilityPage({
   const isPro = effectiveTier({ tier: business.tier as TierKey, trialEndsAt: business.trialEndsAt }) === "pro";
   const experiments = await loadPriceExperiments(business.id);
   const nearby = isPro ? await loadNearbyPrices(business.id) : { competitors: [], rows: [], planRows: [], suggestedCount: 0 };
-  // "Kitchens near you" opens on the kitchen's own region: its delivery-zone
-  // postal prefixes first, then the service area it typed, then the first list.
+  // "Kitchens near you" opens on the kitchen's own region: its own postal code
+  // first, then its delivery-zone prefixes, then the service area it typed, then the first list.
   const [zonePrefixes, brandSettings] = await Promise.all([
     db.deliveryZone.findMany({ where: { businessId: business.id, active: true }, select: { postalPrefixes: true } }),
     db.businessSettings.findUnique({ where: { businessId: business.id }, select: { serviceArea: true } }),
   ]);
-  const defaultRegion = regionForKitchen({ postalPrefixes: zonePrefixes.flatMap((z) => z.postalPrefixes), serviceArea: brandSettings?.serviceArea }, kitchensList as KitchenEntry[]) ?? "GTA";
+  const defaultRegion = regionForKitchen({ postalCode: business.postalCode, postalPrefixes: zonePrefixes.flatMap((z) => z.postalPrefixes), serviceArea: brandSettings?.serviceArea }, kitchensList as KitchenEntry[]) ?? "GTA";
 
   // Rows the Dashboard sent the owner here to look at (same thresholds as the panel).
   const focusedRows =
