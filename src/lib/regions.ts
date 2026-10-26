@@ -14,6 +14,25 @@ export function provinceForPostal(code: string | null | undefined): string | nul
   return map[c] ?? null;
 }
 
+/** Metro-level hint from the first characters of a Canadian postal code; null when the province has one list only. */
+export function regionHintForPostal(code: string | null | undefined): string | null {
+  const c = String(code ?? "").trim().toUpperCase().replace(/\s/g, "");
+  if (!c) return null;
+  if (c[0] === "T") {
+    if (/^T[23]/.test(c)) return "Calgary";
+    if (/^T[56]/.test(c) || /^T8[A-HN]/.test(c)) return "Edmonton";
+    return null;
+  }
+  if (c[0] === "G") return "Québec City / Lévis";
+  if (c[0] === "H") return "Montréal / Laval / Rive-Sud";
+  if (c[0] === "J") {
+    if (/^J[89]/.test(c)) return "Gatineau / Outaouais";
+    return "Montréal / Laval / Rive-Sud";
+  }
+  if (c[0] === "V") return "Vancouver / Lower Mainland";
+  return null;
+}
+
 /**
  * Pick the default region. `postalPrefixes` are the kitchen's zone prefixes
  * (any), `serviceArea` is free text like "Surrey & Langley", `entries` is the
@@ -31,6 +50,9 @@ export function regionForKitchen(input: { postalPrefixes: string[]; serviceArea:
   }
   const topProvince = [...provinces.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
   if (topProvince) {
+    // Within a province, the postal prefix can name the metro (T5/T6 = Edmonton, G = Québec City, J8/J9 = Outaouais…).
+    const hinted = input.postalPrefixes.map(regionHintForPostal).find((r): r is string => !!r && regions.includes(r));
+    if (hinted) return hinted;
     const r = entries.find((e) => e.province === topProvince)?.region;
     if (r) return r;
   }

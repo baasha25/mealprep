@@ -678,5 +678,181 @@
     "region": "Vancouver / Lower Mainland",
     "platform": "Shopify",
     "province": "BC"
+  },
+  {
+    "name": "BetterDay Food Co.",
+    "domain": "eatbetterday.ca",
+    "city": "Calgary",
+    "region": "Calgary",
+    "platform": "Custom-built",
+    "province": "AB"
+  },
+  {
+    "name": "Nutri-Go",
+    "domain": "nutri-go.ca",
+    "city": "Calgary",
+    "region": "Calgary",
+    "platform": "Sprwt",
+    "province": "AB"
+  },
+  {
+    "name": "Fit Kitchen",
+    "domain": "fitkitchen.ca",
+    "city": "Calgary",
+    "region": "Calgary",
+    "platform": "Custom ordering app",
+    "province": "AB"
+  },
+  {
+    "name": "MODD Meals",
+    "domain": "moddmeals.ca",
+    "city": "Calgary",
+    "region": "Calgary",
+    "platform": "WooCommerce",
+    "province": "AB"
+  },
+  {
+    "name": "Just Bite Me Meals",
+    "domain": "justbitememeals.com",
+    "city": "Calgary",
+    "region": "Calgary",
+    "platform": "Shopify",
+    "province": "AB"
+  },
+  {
+    "name": "Healthy Chef Delivery",
+    "domain": "healthychefdelivery.com",
+    "city": "Calgary",
+    "region": "Calgary",
+    "platform": "Custom-built",
+    "province": "AB"
+  },
+  {
+    "name": "Eazy Meals",
+    "domain": "eazymeals.ca",
+    "city": "Calgary",
+    "region": "Calgary",
+    "platform": "Shopify",
+    "province": "AB"
+  },
+  {
+    "name": "MealKraft",
+    "domain": "mealkraft.ca",
+    "city": "Edmonton",
+    "region": "Edmonton",
+    "platform": "WooCommerce",
+    "province": "AB"
+  },
+  {
+    "name": "Dinner Factory",
+    "domain": "dinnerfactory.ca",
+    "city": "St. Albert",
+    "region": "Edmonton",
+    "platform": "WooCommerce",
+    "province": "AB"
+  },
+  {
+    "name": "Simply Supper",
+    "domain": "simplysupper.ca",
+    "city": "Edmonton",
+    "region": "Edmonton",
+    "platform": "WooCommerce",
+    "province": "AB"
+  },
+  {
+    "name": "Créations Sublime",
+    "domain": "creationssublime.ca",
+    "city": "Montréal",
+    "region": "Montréal / Laval / Rive-Sud",
+    "platform": "Square Online",
+    "province": "QC"
+  },
+  {
+    "name": "Pierina Plats Maison",
+    "domain": "pierinaplatsmaison.com",
+    "city": "Laval",
+    "region": "Montréal / Laval / Rive-Sud",
+    "platform": "WooCommerce",
+    "province": "QC"
+  },
+  {
+    "name": "PūrePrep",
+    "domain": "pureprep.ca",
+    "city": "Laval",
+    "region": "Montréal / Laval / Rive-Sud",
+    "platform": "Shopify",
+    "province": "QC"
+  },
+  {
+    "name": "EZ Delights",
+    "domain": "ezdelights.com",
+    "city": "Montréal",
+    "region": "Montréal / Laval / Rive-Sud",
+    "platform": "Custom-built",
+    "province": "QC"
+  },
+  {
+    "name": "Prep'd by Legacy",
+    "domain": "prepdbylegacy.com",
+    "city": "Montréal",
+    "region": "Montréal / Laval / Rive-Sud",
+    "platform": "WooCommerce",
+    "province": "QC"
+  },
+  {
+    "name": "HulkMeal",
+    "domain": "hulkmeal.com",
+    "city": "Montréal",
+    "region": "Montréal / Laval / Rive-Sud",
+    "platform": "Shopify",
+    "province": "QC"
+  },
+  {
+    "name": "Protéine Express",
+    "domain": "proteineexpress.com",
+    "city": "Montréal",
+    "region": "Montréal / Laval / Rive-Sud",
+    "platform": "Custom-built",
+    "province": "QC"
+  },
+  {
+    "name": "Antoine.ca",
+    "domain": "antoine.ca",
+    "city": "Montréal",
+    "region": "Montréal / Laval / Rive-Sud",
+    "platform": "Custom-built",
+    "province": "QC"
+  },
+  {
+    "name": "Jean Bouffe",
+    "domain": "jeanbouffe.com",
+    "city": "Montréal",
+    "region": "Montréal / Laval / Rive-Sud",
+    "platform": "Custom-built",
+    "province": "QC"
+  },
+  {
+    "name": "Fresh MTL",
+    "domain": "freshmtl.ca",
+    "city": "Montréal",
+    "region": "Montréal / Laval / Rive-Sud",
+    "platform": "Shopify",
+    "province": "QC"
+  },
+  {
+    "name": "Gourmet & Cie",
+    "domain": "gourmetetcie.com",
+    "city": "Québec",
+    "region": "Québec City / Lévis",
+    "platform": "Custom-built",
+    "province": "QC"
+  },
+  {
+    "name": "BigMig",
+    "domain": "bigmig.ca",
+    "city": "Gatineau",
+    "region": "Gatineau / Outaouais",
+    "platform": "Shopify",
+    "province": "QC"
   }
 ]
