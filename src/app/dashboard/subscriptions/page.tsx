@@ -5,6 +5,7 @@ import { requireOwner } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { Page, Head, Kpi, Card, CardTitle } from "@/components/ui";
 import { Hint } from "@/components/ui";
+import { SubActions } from "./sub-actions";
 import { formatCents } from "@/lib/money";
 
 export const dynamic = "force-dynamic";
@@ -123,6 +124,7 @@ export default async function SubscriptionsPage() {
                   <th className="py-2 font-medium"><span className="inline-flex items-center gap-1">Zone <Hint text="Their delivery zone and weekly delivery fee, set from the postal code they typed when they subscribed. Moves with them if they save an address in another zone." /></span></th>
                   <th className="py-2 font-medium"><span className="inline-flex items-center gap-1">Next delivery <Hint text="Picked = they chose meals for this delivery. Not picked yet = nothing chosen; at the cut-off they get an auto-pick from their history (or are skipped, per Settings)." /></span></th>
                   <th className="py-2 font-medium text-right">Monthly</th>
+                  <th className="py-2 font-medium text-right"></th>
                 </tr>
               </thead>
               <tbody>
@@ -151,6 +153,9 @@ export default async function SubscriptionsPage() {
                     </td>
                     <td className="py-2.5 text-right" style={{ color: "var(--ink)" }}>
                       {s.status === "active" ? formatCents(monthly(s.plan)) : "—"}
+                    </td>
+                    <td className="py-2.5 text-right">
+                      <SubActions subscriptionId={s.id} customerName={s.customer?.name ?? "this customer"} status={s.status} />
                     </td>
                   </tr>
                 ))}

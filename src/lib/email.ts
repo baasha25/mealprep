@@ -534,6 +534,37 @@ export async function sendSubscriptionConfirmation(opts: {
   });
 }
 
+/** Kitchen cancelled the subscriber's plan from the dashboard. */
+export async function sendSubscriptionCanceledByKitchen(opts: { to: string; businessId?: string; businessName: string; brandColor?: string; customerName: string; planName: string }): Promise<void> {
+  await send({
+    to: opts.to,
+    businessId: opts.businessId,
+    subject: `Your ${opts.businessName} plan has been cancelled`,
+    businessName: opts.businessName,
+    brandColor: opts.brandColor,
+    heading: "Your plan is cancelled",
+    subheading: escapeHtml(opts.planName),
+    bodyHtml: `
+      <p style="margin:0 0 14px;color:${INK};font-size:14px;">Hi ${escapeHtml(opts.customerName.split(" ")[0] || "there")}, ${escapeHtml(opts.businessName)} has cancelled your ${escapeHtml(opts.planName)} plan. You won't be charged again, and no further deliveries are scheduled.</p>
+      <p style="margin:0;color:${SOFT};font-size:13px;">If this is a surprise, just reply to this email and the kitchen will sort it out.</p>`,
+  });
+}
+
+/** Kitchen refunded the subscriber's last payment from the dashboard. */
+export async function sendSubscriptionRefund(opts: { to: string; businessId?: string; businessName: string; brandColor?: string; customerName: string; amountCents: number }): Promise<void> {
+  await send({
+    to: opts.to,
+    businessId: opts.businessId,
+    subject: `Refund of ${formatCents(opts.amountCents)} from ${opts.businessName}`,
+    businessName: opts.businessName,
+    brandColor: opts.brandColor,
+    heading: `Refund issued · ${formatCents(opts.amountCents)}`,
+    bodyHtml: `
+      <p style="margin:0 0 14px;color:${INK};font-size:14px;">Hi ${escapeHtml(opts.customerName.split(" ")[0] || "there")}, ${escapeHtml(opts.businessName)} has refunded ${formatCents(opts.amountCents)} to your card. It usually shows on your statement within 5 to 10 business days.</p>
+      <p style="margin:0;color:${SOFT};font-size:13px;">Questions? Just reply to this email.</p>`,
+  });
+}
+
 /** Dunning — sent when a subscription payment fails. */
 export async function sendPaymentFailed(opts: {
   to: string;
