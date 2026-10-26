@@ -162,9 +162,9 @@ const STEPS: Step[] = [
     kicker: "Know your market",
     title: "What the kitchen down the road charges",
     blurb:
-      "Watch nearby competitors and PrepFlow reads their public menu prices for you — exact where the store exposes them, estimated and marked where it has to read the page. See where each of your meals sits, and how your weekly plans compare at the same plan size.",
+      "Watch nearby competitors and PrepFlow reads their public menu prices for you — exact where the store exposes them, estimated and marked where it has to read the page. The quick-add list opens on your own city from your postal code (Ontario, Vancouver, Calgary, Edmonton, Montréal, Québec City, Gatineau). See where each of your meals sits, and how your weekly plans compare at the same plan size.",
     points: [
-      "Dish-by-dish: nearby range, median, and where you sit",
+      "Dish-by-dish: nearby range, median, and where you sit — type prices yourself for sites that hide them",
       "Weekly plans vs nearby per-meal prices at the same plan size",
       "A Price Coach that suggests a move and shows the dollars",
       "Price tests: run a new price live for 7 or 14 days, keep or revert on the numbers",
