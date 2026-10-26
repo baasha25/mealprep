@@ -53,10 +53,10 @@ export function experimentVerdict(o: { baselineUnits: number; baselineDays: numb
     reason = "No sales in the window before, so there's no baseline — judge the test on its own: " + (tC > 0 ? "it's contributing." : "it isn't contributing.");
   } else if (tC > bC) {
     recommendation = "keep";
-    reason = `Contribution per day went from ${(bC / 100).toFixed(2)} to ${(tC / 100).toFixed(2)}${unitsChangePct != null && unitsChangePct < 0 ? ` even though units fell ${Math.abs(unitsChangePct)}%` : ""}. The new price earns more.`;
+    reason = `Contribution per day went from $${(bC / 100).toFixed(2)} to $${(tC / 100).toFixed(2)}${unitsChangePct != null && unitsChangePct < 0 ? ` even though units fell ${Math.abs(unitsChangePct)}%` : ""}. The new price earns more.`;
   } else {
     recommendation = "revert";
-    reason = `Contribution per day went from ${(bC / 100).toFixed(2)} to ${(tC / 100).toFixed(2)}${unitsChangePct != null ? ` (units ${unitsChangePct >= 0 ? "+" : ""}${unitsChangePct}%)` : ""}. The old price earned more.`;
+    reason = `Contribution per day went from $${(bC / 100).toFixed(2)} to $${(tC / 100).toFixed(2)}${unitsChangePct != null ? ` (units ${unitsChangePct >= 0 ? "+" : ""}${unitsChangePct}%)` : ""}. The old price earned more.`;
   }
   return { baselineUnitsPerDay: bU, testUnitsPerDay: tU, unitsChangePct, baselineContribPerDay: Math.round(bC), testContribPerDay: Math.round(tC), contribChangePct, recommendation, reason };
 }

@@ -103,6 +103,7 @@ export function PriceCoach({ meals }: { meals: CoachMeal[] }) {
               <div className="text-[12.5px] text-right font-medium" style={{ color: "var(--ink)" }}>
                 +{formatCents(r.gap)}
               </div>
+              <div className="flex items-center gap-1.5 justify-end">
               <button
                 type="button"
                 onClick={() => {
@@ -123,12 +124,13 @@ export function PriceCoach({ meals }: { meals: CoachMeal[] }) {
                   if (!confirm(`Put ${r.name} at ${formatCents(r.suggested)} for 14 days and measure it against the last 14? You can keep or revert any time.`)) return;
                   startTesting(async () => setTestNote(await startPriceTest({ mealId: r.id, testPriceCents: r.suggested, days: 14 })));
                 }}
-                className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11.5px] font-medium disabled:opacity-50"
+                className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11.5px] font-medium whitespace-nowrap disabled:opacity-50"
                 style={{ background: "var(--pine)", color: "#f4f2ec" }}
                 title="Run the suggested price live for 14 days and compare"
               >
                 Test it
               </button>
+              </div>
             </div>
           ))}
           <p className="text-[11px] mt-1" style={{ color: "var(--muted)" }}>

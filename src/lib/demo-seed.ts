@@ -187,6 +187,15 @@ export async function seedDemoKitchen(businessId: string): Promise<void> {
     }
   }
 
+  // A price test in flight (day 6 of 14) so the Price tests card has something to show.
+  const tested = MEALS[1];
+  const testedMeal = mealIds.get(tested.name)!;
+  const testPrice = cents(tested.price) + 150;
+  await db.priceExperiment.create({
+    data: { businessId, mealId: testedMeal.id, basePriceCents: cents(tested.price), testPriceCents: testPrice, costCents: Math.round(cents(tested.price) * 0.38), startAt: new Date(Date.now() - 6 * 86_400_000), endAt: new Date(Date.now() + 8 * 86_400_000), baselineUnits: 9, baselineDays: 14 },
+  });
+  await db.meal.update({ where: { id: testedMeal.id }, data: { priceCents: testPrice } });
+
   // Labour + overhead so Profitability shows Prime Cost and true profit populated.
   await db.operatingCost.createMany({
     data: OPERATING_COSTS.map((c) => ({ businessId, label: c.label, category: c.category, monthlyCents: cents(c.monthly) })),
