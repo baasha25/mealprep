@@ -1,4 +1,4 @@
-import { requireOwner } from "@/lib/auth";
+import { businessForReport } from "@/lib/report-auth";
 import { db } from "@/lib/db";
 import { toCsv } from "@/lib/csv";
 import { slugify } from "@/lib/slug";
@@ -8,8 +8,8 @@ const money = (cents: number) => (cents / 100).toFixed(2);
 const isoDate = (d: Date) => d.toISOString().slice(0, 10);
 
 // Downloadable customer list (CRM / email marketing / bookkeeping).
-export async function GET() {
-  const { business } = await requireOwner();
+export async function GET(request: Request) {
+  const business = await businessForReport(request);
 
   const [customers, spentAgg] = await Promise.all([
     db.customer.findMany({

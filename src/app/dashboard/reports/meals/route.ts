@@ -1,4 +1,4 @@
-import { requireOwner } from "@/lib/auth";
+import { businessForReport } from "@/lib/report-auth";
 import { db } from "@/lib/db";
 import { toCsv } from "@/lib/csv";
 import { slugify } from "@/lib/slug";
@@ -10,7 +10,7 @@ const isoDate = (d: Date) => d.toISOString().slice(0, 10);
 
 // Downloadable meal-sales report: units and revenue per meal (respects ?range=).
 export async function GET(request: Request) {
-  const { business } = await requireOwner();
+  const business = await businessForReport(request);
   const range = toRangeKey(new URL(request.url).searchParams.get("range"), "all");
 
   const items = await db.orderItem.findMany({

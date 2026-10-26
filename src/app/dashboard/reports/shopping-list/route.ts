@@ -1,4 +1,4 @@
-import { requireOwner } from "@/lib/auth";
+import { businessForReport } from "@/lib/report-auth";
 import { db } from "@/lib/db";
 import { toCsv } from "@/lib/csv";
 import { slugify } from "@/lib/slug";
@@ -13,8 +13,8 @@ const round2 = (n: number) => (Math.round(n * 100) / 100).toString();
 const PRODUCING = ["paid", "in_production"] as const;
 
 // Downloadable trim-aware shopping list — what to buy + dollars lost to over-buying.
-export async function GET() {
-  const { business } = await requireOwner();
+export async function GET(request: Request) {
+  const business = await businessForReport(request);
 
   const orderItems = await db.orderItem.findMany({
     where: {

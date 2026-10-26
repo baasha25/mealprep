@@ -1,4 +1,4 @@
-import { requireOwner } from "@/lib/auth";
+import { businessForReport } from "@/lib/report-auth";
 import { db } from "@/lib/db";
 import { toCsv } from "@/lib/csv";
 import { slugify } from "@/lib/slug";
@@ -9,8 +9,8 @@ const isoDate = (d: Date) => d.toISOString().slice(0, 10);
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
 // Downloadable inventory: on-hand quantities, costs, and stock value.
-export async function GET() {
-  const { business } = await requireOwner();
+export async function GET(request: Request) {
+  const business = await businessForReport(request);
 
   const ingredients = await db.ingredient.findMany({
     where: { businessId: business.id },

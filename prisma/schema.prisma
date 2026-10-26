@@ -324,6 +324,7 @@ model BusinessSettings {
   serviceArea      String? // city/region for local search, e.g. "Mississauga & Oakville"
 
   // Fulfillment
+  exportKey         String? @unique // secret for live read-only CSV links (Google Sheets IMPORTDATA); null = off
   itemNoun          String  @default("meal") // what the kitchen sells, for customer-facing wording: meal | portion | pouch | bottle | box | jar | loaf | bowl | pack | item
   subscriptionsOnly Boolean @default(false) // storefront sells meal plans only; the menu shows what subscribers pick from each week
   subNoPick         String  @default("chef_choice") // "chef_choice" (auto-pick a random mix from their history; default) | "skip" — for a subscriber who hasn't picked by the cut-off

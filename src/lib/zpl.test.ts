@@ -1,3 +1,4 @@
+import { DEFAULT_LABEL_CONFIG } from "./labels";
 import { describe, it, expect } from "vitest";
 import { labelZpl, batchZpl, type ZplLabel } from "./zpl";
 
@@ -53,6 +54,7 @@ describe("labelZpl", () => {
 describe("labelZpl label config", () => {
   it("hides fields that are toggled off and adds a footer", () => {
     const z = labelZpl(base, "4x2", {
+      ...DEFAULT_LABEL_CONFIG,
       showBusinessName: false,
       showMacros: false,
       showBestBy: true,

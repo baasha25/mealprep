@@ -75,6 +75,8 @@ export default async function FulfillmentPage() {
           allergens: true,
           swatch: true,
           shelfLifeDays: true,
+          description: true,
+          ingredients: { select: { ingredient: { select: { name: true } } }, orderBy: { id: "asc" } },
         },
       },
     },
@@ -136,6 +138,8 @@ export default async function FulfillmentPage() {
       allergens: [...allergens],
       swatch: it.meal.swatch,
       bestByLabel: bestByLabelFor(it.meal.shelfLifeDays),
+      description: it.meal.description,
+      ingredients: [...new Set(it.meal.ingredients.map((r) => r.ingredient.name))],
     });
   }
   const labels = [...byMeal.values()].sort((a, b) => b.qty - a.qty);
@@ -151,6 +155,9 @@ export default async function FulfillmentPage() {
       </div>
       <Fulfillment
         businessName={business.name}
+        logoUrl={business.logoUrl}
+        brandColor={business.brandColor}
+        kitchenLine={business.slug ? `Reorder at prepflow.ca/store/${business.slug}` : null}
         slips={slips}
         labels={labels}
         labelConfig={labelConfig}

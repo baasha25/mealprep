@@ -171,6 +171,8 @@ export const GUIDE: GuideArea[] = [
           "Under “Download reports (CSV)”, click any export — the file opens in Excel or Google Sheets.",
         ],
         numbers: [
+          ["Live links for Google Sheets", "Create live links and paste the IMPORTDATA formula for any report (orders, production pull-list, shopping list, menu & margins, customers, subscriptions, inventory) into a Google Sheet. The sheet fills in and refreshes itself about hourly — no downloading. Links are read-only and private to your kitchen; Regenerate replaces them, Switch off kills them."],
+          ["Production pull-list (CSV)", "What to make, by delivery day and station, straight from the production queue — the same numbers as Kitchen OS, for a printout or a sheet."],
           ["Orders ledger", "Every order with customer, type, status, totals and amount due — for the period you picked. Hand this to your bookkeeper."],
           ["Meal sales", "Units sold and revenue per meal for the period — see your best and worst sellers."],
           ["Customers", "Your full customer list with email, phone, loyalty points, order count and total spent — a ready-made marketing/CRM list (live snapshot)."],
@@ -474,6 +476,7 @@ export const GUIDE: GuideArea[] = [
           "Zebra printer: pick the label size (4×2 or 2×1) and 'Download .zpl', then send that file to your Zebra (via Zebra Browser Print, Zebra Setup Utilities, or your print queue).",
         ],
         numbers: [
+          ["Label design", "Under Meal labels → Label design: tick what prints — kitchen name, logo, macros, best-by, allergens, the meal's description, its ingredient list (from the recipe), a 'Reorder at …' line, a brand-colour bar and compact type — pick a handling line (Keep refrigerated, Keep frozen, Reheat before eating, Shake well) and add a footer. The labels below update live; the same design drives the Zebra .zpl export."],
           ["Download .zpl (N)", "Exports N labels as a ZPL file — the language Zebra printers read directly. The quantity you set per meal becomes the printer's copy count, so one file can print 100–10,000 labels."],
           ["Sheet size (paper)", "How many labels per row when printing to a regular/office printer. The two Avery options size each label exactly to the sheet — print at 100% scale with no extra margins, and test on plain paper first."],
           ["Recommended", "Quick links to the printers and label stock kitchens actually use — Zebra ZD421 (best value 4\" thermal), ZD220 (budget), 4×2\" thermal rolls, and Avery 5163/5160 sheets. Some are affiliate links; they don't change your price."],

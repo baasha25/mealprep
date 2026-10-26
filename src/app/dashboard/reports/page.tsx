@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { LiveLinks } from "./live-links";
+import { appUrl } from "@/lib/app-url";
 import { FileSpreadsheet, Download, TrendingUp, Receipt, Percent, CreditCard, Sparkles } from "lucide-react";
 import { requireOwner } from "@/lib/auth";
 import { db } from "@/lib/db";
@@ -15,6 +17,8 @@ export default async function ReportsPage({
   searchParams: Promise<{ range?: string }>;
 }) {
   const { business } = await requireOwner();
+  const origin = await appUrl();
+  const exportKey = (await db.businessSettings.findUnique({ where: { businessId: business.id }, select: { exportKey: true } }))?.exportKey ?? null;
   const range = toRangeKey((await searchParams).range, "all");
   const rangeQ = range !== "all" ? `?range=${range}` : "";
 
@@ -113,6 +117,8 @@ export default async function ReportsPage({
         </div>
       </Link>
 
+      <LiveLinks origin={origin} exportKey={exportKey} />
+
       {/* Exports */}
       <Card className="mt-4 no-print">
         <CardTitle icon={<FileSpreadsheet size={15} />} title="Download reports (CSV)" note="Opens in Excel / Google Sheets" />
@@ -124,6 +130,14 @@ export default async function ReportsPage({
             style={{ borderColor: "var(--line)", color: "var(--ink)", background: "var(--paper)" }}
           >
             <Download size={15} /> Orders ledger
+          </a>
+          <a
+            href={`/dashboard/reports/production`}
+            download
+            className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-[13px] font-medium border"
+            style={{ borderColor: "var(--line)", color: "var(--ink)", background: "var(--paper)" }}
+          >
+            <Download size={15} /> Production pull-list
           </a>
           <a
             href={`/dashboard/reports/meals${rangeQ}`}

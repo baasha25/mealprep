@@ -1,4 +1,4 @@
-import { requireOwner } from "@/lib/auth";
+import { businessForReport } from "@/lib/report-auth";
 import { db } from "@/lib/db";
 import { toCsv } from "@/lib/csv";
 import { slugify } from "@/lib/slug";
@@ -7,8 +7,8 @@ const isoDate = (d: Date) => d.toISOString().slice(0, 10);
 const FREQ_LABEL: Record<string, string> = { weekly: "Weekly", biweekly: "Every 2 weeks" };
 
 // Downloadable subscriptions list — who's on a recurring plan and their next delivery.
-export async function GET() {
-  const { business } = await requireOwner();
+export async function GET(request: Request) {
+  const business = await businessForReport(request);
 
   const subs = await db.subscription.findMany({
     where: { businessId: business.id },

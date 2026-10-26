@@ -16,11 +16,14 @@ export type ZplLabel = {
   allergens: string[];
   bestByLabel: string;
   qty: number;
+  description?: string | null;
+  ingredients?: string[];
+  kitchenLine?: string | null;
 };
 
 export type ZplSize = "2x1" | "4x2";
 
-import { DEFAULT_LABEL_CONFIG, type LabelConfig } from "@/lib/labels";
+import { DEFAULT_LABEL_CONFIG, storageText, type LabelConfig } from "@/lib/labels";
 
 type SizeSpec = { pw: number; ll: number; x: number; biz: number; title: number; body: number };
 
@@ -56,6 +59,15 @@ export function labelZpl(l: ZplLabel, size: ZplSize = "4x2", cfg: LabelConfig = 
   }
   lines.push(`^FO${s.x},${y}^A0N,${s.title},${s.title}^FD${clean(l.name)}^FS`);
   y += s.title + gap;
+  const small = Math.round(s.body * 0.8);
+  if (cfg.showDescription && l.description) {
+    lines.push(`^FO${s.x},${y}^A0N,${small},${small}^FB${s.pw - 2 * s.x},2,0,L^FD${clean(l.description).slice(0, 140)}^FS`);
+    y += small * 2 + 4;
+  }
+  if (cfg.showIngredients && l.ingredients?.length) {
+    lines.push(`^FO${s.x},${y}^A0N,${small},${small}^FB${s.pw - 2 * s.x},2,0,L^FDIngredients: ${clean(l.ingredients.join(", ")).slice(0, 160)}^FS`);
+    y += small * 2 + 4;
+  }
   if (cfg.showMacros) {
     lines.push(
       `^FO${s.x},${y}^A0N,${s.body},${s.body}^FD${l.calories} cal  ${l.proteinG}P  ${l.carbsG}C  ${l.fatG}F^FS`,
@@ -72,8 +84,17 @@ export function labelZpl(l: ZplLabel, size: ZplSize = "4x2", cfg: LabelConfig = 
     );
     y += s.body + 6;
   }
+  const storage = storageText(cfg.storageLine);
+  if (storage) {
+    lines.push(`^FO${s.x},${y}^A0N,${s.body},${s.body}^FD${clean(storage)}^FS`);
+    y += s.body + 6;
+  }
   if (cfg.footer.trim()) {
     lines.push(`^FO${s.x},${y}^A0N,${s.body},${s.body}^FD${clean(cfg.footer)}^FS`);
+    y += s.body + 6;
+  }
+  if (cfg.showKitchenLine && l.kitchenLine) {
+    lines.push(`^FO${s.x},${y}^A0N,${small},${small}^FD${clean(l.kitchenLine)}^FS`);
   }
 
   lines.push(`^PQ${qty}`, "^XZ");

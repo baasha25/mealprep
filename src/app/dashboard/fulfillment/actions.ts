@@ -8,9 +8,16 @@ import { parseLabelConfig, type LabelConfig } from "@/lib/labels";
 
 const Input = z.object({
   showBusinessName: z.boolean(),
+  showLogo: z.boolean(),
   showMacros: z.boolean(),
   showAllergens: z.boolean(),
   showBestBy: z.boolean(),
+  showDescription: z.boolean(),
+  showIngredients: z.boolean(),
+  showKitchenLine: z.boolean(),
+  storageLine: z.enum(["", "refrigerate", "freeze", "reheat", "shake"]),
+  compact: z.boolean(),
+  accentBar: z.boolean(),
   footer: z.string().max(120),
 });
 

@@ -1,4 +1,4 @@
-import { requireOwner } from "@/lib/auth";
+import { businessForReport } from "@/lib/report-auth";
 import { db } from "@/lib/db";
 import { toCsv } from "@/lib/csv";
 import { slugify } from "@/lib/slug";
@@ -10,7 +10,7 @@ const isoDate = (d: Date) => d.toISOString().slice(0, 10);
 
 // Downloadable orders ledger for the owner's bookkeeper (respects ?range=).
 export async function GET(request: Request) {
-  const { business } = await requireOwner();
+  const business = await businessForReport(request);
   const range = toRangeKey(new URL(request.url).searchParams.get("range"), "all");
 
   const orders = await db.order.findMany({

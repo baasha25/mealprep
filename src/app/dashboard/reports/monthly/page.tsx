@@ -100,7 +100,7 @@ export default async function MonthlyReportPage({ searchParams }: { searchParams
             </div>
             <div className="disp text-[28px] font-medium leading-none" style={{ color: "var(--pine)" }}>{adminHours} hrs</div>
             <p className="text-[11.5px] mt-2" style={{ color: "var(--muted)" }}>
-              Estimate: {orders.length} orders × {minutesPerOrder} min (your number, set in Settings) + {meals} meals × 0.5 min for labels/packing paperwork. Change the minutes in Settings → Customer notifications if it doesn't match how you used to work.
+              Estimate: {orders.length} orders × {minutesPerOrder} min (your number, set in Settings) + {meals} meals × 0.5 min for labels/packing paperwork. Change the minutes in Settings → Customer notifications if it doesn&rsquo;t match how you used to work.
             </p>
           </div>
         </Card>
@@ -125,7 +125,7 @@ export default async function MonthlyReportPage({ searchParams }: { searchParams
             </div>
           )}
           <p className="text-[11.5px] mt-3" style={{ color: "var(--muted)" }}>
-            Plate costs use each meal's recipe (trim-aware, default options). Loss is what you logged in Waste &amp; Loss. Canceled/refunded orders are excluded everywhere on this page.
+            Plate costs use each meal&rsquo;s recipe (trim-aware, default options). Loss is what you logged in Waste &amp; Loss. Canceled/refunded orders are excluded everywhere on this page.
           </p>
           <div className="flex gap-3 mt-3 no-print">
             <Link href="/dashboard/profitability" className="text-[12px] inline-flex items-center gap-1" style={{ color: "var(--pine)" }}><TrendingUp size={12} /> Profitability</Link>

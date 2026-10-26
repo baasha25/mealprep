@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { Printer, Tag, ClipboardList, AlertTriangle, Check, Download, SlidersHorizontal } from "lucide-react";
 import { batchZpl, type ZplLabel, type ZplSize } from "@/lib/zpl";
-import { type LabelConfig } from "@/lib/labels";
+import { STORAGE_LINES, storageText, type LabelConfig } from "@/lib/labels";
 import { saveLabelConfig } from "./actions";
 
 export type PackingSlip = {
@@ -29,6 +29,8 @@ export type MealLabel = {
   allergens: string[];
   swatch: string;
   bestByLabel: string; // per-meal "best by" from its shelf life
+  description?: string | null;
+  ingredients?: string[];
 };
 
 export function Fulfillment({
@@ -36,11 +38,17 @@ export function Fulfillment({
   slips,
   labels,
   labelConfig,
+  logoUrl = null,
+  brandColor = "#2f4536",
+  kitchenLine = null,
 }: {
   businessName: string;
   slips: PackingSlip[];
   labels: MealLabel[];
   labelConfig: LabelConfig;
+  logoUrl?: string | null;
+  brandColor?: string;
+  kitchenLine?: string | null;
 }) {
   const [tab, setTab] = useState<"packing" | "labels">("packing");
   const [size, setSize] = useState<"small" | "medium" | "large" | "avery5163" | "avery5160">("small");
@@ -102,6 +110,9 @@ export function Fulfillment({
       allergens: l.allergens,
       bestByLabel: l.bestByLabel,
       qty: qtyOf(l),
+      description: l.description ?? null,
+      ingredients: l.ingredients ?? [],
+      kitchenLine,
     }));
     const zpl = batchZpl(zplLabels, zplSize, cfg);
     const blob = new Blob([zpl], { type: "text/plain;charset=utf-8" });
@@ -344,9 +355,15 @@ export function Fulfillment({
                     {(
                       [
                         ["showBusinessName", "Kitchen name"],
+                        ["showLogo", "Logo"],
                         ["showMacros", "Macros"],
                         ["showBestBy", "Best-by date"],
                         ["showAllergens", "Allergens"],
+                        ["showDescription", "Description"],
+                        ["showIngredients", "Ingredients"],
+                        ["showKitchenLine", "Reorder line"],
+                        ["accentBar", "Brand colour bar"],
+                        ["compact", "Compact type"],
                       ] as const
                     ).map(([k, label]) => {
                       const on = cfg[k];
@@ -366,6 +383,12 @@ export function Fulfillment({
                         </button>
                       );
                     })}
+                  </div>
+                  <div className="mt-3">
+                    <label className="text-[11.5px] block mb-1" style={{ color: "var(--muted)" }}>Handling line</label>
+                    <select value={cfg.storageLine} onChange={(e) => setField("storageLine", e.target.value as LabelConfig["storageLine"])} className="w-full rounded-lg border px-3 py-2 text-[13px] outline-none" style={{ borderColor: "var(--line)", background: "var(--paper)", color: "var(--ink)" }}>
+                      {STORAGE_LINES.map((s) => (<option key={s.key} value={s.key}>{s.label}{s.text ? ` — ${s.text}` : ""}</option>))}
+                    </select>
                   </div>
                   <div className="mt-3">
                     <label className="text-[11.5px] block mb-1" style={{ color: "var(--muted)" }}>
@@ -448,15 +471,24 @@ export function Fulfillment({
                   <div
                     key={`${l.name}-${i}`}
                     className="rounded-lg border p-3"
-                    style={{ borderColor: "var(--line)", background: "var(--surface)", breakInside: "avoid" }}
+                    style={{ borderColor: "var(--line)", background: "var(--surface)", breakInside: "avoid", borderLeft: cfg.accentBar ? `6px solid ${brandColor}` : undefined, fontSize: cfg.compact ? "88%" : undefined }}
                   >
-                {cfg.showBusinessName && (
-                  <div className="text-[10px] font-medium mb-1" style={{ color: "var(--muted)" }}>{businessName}</div>
+                {(cfg.showBusinessName || (cfg.showLogo && logoUrl)) && (
+                  <div className="flex items-center gap-1.5 mb-1">
+                    {cfg.showLogo && logoUrl && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={logoUrl} alt="" className="h-4 w-auto" />
+                    )}
+                    {cfg.showBusinessName && <div className="text-[10px] font-medium" style={{ color: "var(--muted)" }}>{businessName}</div>}
+                  </div>
                 )}
                 <div className="flex items-center gap-2 mb-2">
                   <span className="w-2.5 h-2.5 rounded-full" style={{ background: l.swatch }} />
                   <span className="text-[13px] font-semibold leading-tight" style={{ color: "var(--ink)" }}>{l.name}</span>
                 </div>
+                {cfg.showDescription && l.description && (
+                  <div className="text-[10px] leading-snug mb-1.5" style={{ color: "var(--ink-soft)" }}>{l.description}</div>
+                )}
                 {cfg.showMacros && (
                   <div className="grid grid-cols-4 gap-1 mb-2 text-center">
                     {([["Cal", l.calories], ["P", `${l.proteinG}g`], ["C", `${l.carbsG}g`], ["F", `${l.fatG}g`]] as const).map(([k, v]) => (
@@ -475,10 +507,16 @@ export function Fulfillment({
                     )}
                   </div>
                 )}
-                {cfg.footer.trim() && (
+                {cfg.showIngredients && (l.ingredients?.length ?? 0) > 0 && (
+                  <div className="text-[9px] leading-snug mt-1" style={{ color: "var(--muted)" }}>Ingredients: {l.ingredients!.join(", ")}</div>
+                )}
+                {(storageText(cfg.storageLine) || cfg.footer.trim()) && (
                   <div className="text-[9.5px] mt-1 pt-1" style={{ color: "var(--muted)", borderTop: "1px solid var(--line)" }}>
-                    {cfg.footer}
+                    {[storageText(cfg.storageLine), cfg.footer.trim()].filter(Boolean).join(" · ")}
                   </div>
+                )}
+                {cfg.showKitchenLine && kitchenLine && (
+                  <div className="text-[9px] mt-0.5" style={{ color: "var(--muted)" }}>{kitchenLine}</div>
                 )}
                   </div>
               ))}
