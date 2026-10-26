@@ -376,6 +376,7 @@ export const GUIDE: GuideArea[] = [
         img: "11-kitchen.png",
         does: "Your prep-day command center. It turns the week's orders into a clear production list — exactly what to make and how much — grouped so the kitchen knows what to cook. No clipboards, no re-counting.",
         numbers: [
+          ["Delivery day chips", "Shown when the queue spans more than one delivery day. Pick a day to see only what ships that day — split orders count each line on its own day, and subscriber picks are filtered to the same day — so the station lists are the pull-list for that run."],
           ["Meal + quantity", "Each meal to produce and the total number needed, added up across every order for the delivery."],
           ["Station / grouping", "Meals grouped by kitchen station so the line knows what to cook where."],
           ["Delivery date", "Which delivery day this production run is for."],
@@ -492,7 +493,8 @@ export const GUIDE: GuideArea[] = [
         does: "Groups the day's deliveries by area/zone so you (or a driver) can run an efficient route, and gives you a Dispatch checklist to tick every bag out the door so nothing is missed. Uses each order's delivery address and zone.",
         numbers: [
           ["Zone / area", "Deliveries grouped by delivery zone. With Delivery zones set up (Settings → Delivery zones), the zone comes from the customer's postal code automatically; otherwise it's whatever area label the order carries, or 'Unzoned'."],
-          ["Stops", "Each delivery address on the route, with the customer, the delivery date and the order. Subscriber deliveries appear here automatically once their cut-off passes (one order per subscriber per delivery day), so plan-only kitchens get a complete manifest too."],
+          ["Stops", "Each delivery address on the route, with the customer, the delivery date and the order. Subscriber deliveries appear here automatically once their cut-off passes (one order per subscriber per delivery day), so plan-only kitchens get a complete manifest too. A one-time order split across two days shows as two stops, one per day, each with only that day's items (marked 'split order')."],
+          ["Delivery day chips", "When more than one delivery day has stops, chips above the routes let you show just one day — the manifest for that day's run. The same chips appear on Kitchen OS so the production list matches the day you're cooking for."],
           ["Dispatch checklist", "The last check before bags leave: each zone shows 'X of Y stops' with a progress bar. Expand a zone and tap each stop as it goes out (big targets, works on a tablet at the pass), or 'Mark zone done' in one go. Ticks are kept for the day so a refresh doesn't lose your place; a new day starts clean."],
         ],
         tips: [

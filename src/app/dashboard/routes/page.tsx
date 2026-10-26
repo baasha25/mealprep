@@ -6,12 +6,15 @@ import { Hint } from "@/components/ui";
 import { DispatchCheck, type DispatchRoute } from "./dispatch-check";
 import { ensureSubscriptionOrders } from "@/lib/subscription-orders-run";
 import { nounsFor, countNoun } from "@/lib/nouns";
+import { stopsFor, dayOptions, dayKey } from "@/lib/delivery-stops";
+import { DayChips } from "@/components/day-chips";
 
 // Orders that are headed out for delivery (paid through packed/out-for-delivery).
 const ROUTABLE = ["paid", "in_production", "packed", "out_for_delivery"] as const;
 
-export default async function RoutesPage() {
+export default async function RoutesPage({ searchParams }: { searchParams?: Promise<{ day?: string }> }) {
   const { business } = await requireBusiness();
+  const activeDay = (await searchParams)?.day ?? "";
   // Subscriber deliveries past their cut-off are orders too — make sure they're here.
   await ensureSubscriptionOrders(business.id);
   const N = nounsFor((await db.businessSettings.findUnique({ where: { businessId: business.id }, select: { itemNoun: true } }))?.itemNoun);
@@ -21,23 +24,28 @@ export default async function RoutesPage() {
     orderBy: [{ deliveryDate: "asc" }, { createdAt: "asc" }],
     include: {
       customer: { select: { name: true } },
-      _count: { select: { items: true } },
+      items: { select: { qty: true, deliveryDate: true } },
     },
   });
 
+  // A split order (items on two days) is two stops, one per day.
+  const allStops = stopsFor(orders);
+  const days = dayOptions(allStops);
+  const stopsToday = allStops.filter((s) => !activeDay || (activeDay === "none" ? !s.date : dayKey(s.date) === activeDay));
+
   // Group into routes by delivery zone.
-  const byZone = new Map<string, typeof orders>();
-  for (const o of orders) {
-    const z = o.zone ?? "Unzoned";
+  const byZone = new Map<string, typeof stopsToday>();
+  for (const s of stopsToday) {
+    const z = s.order.zone ?? "Unzoned";
     if (!byZone.has(z)) byZone.set(z, []);
-    byZone.get(z)!.push(o);
+    byZone.get(z)!.push(s);
   }
   const routes = [...byZone.entries()].sort((a, b) => b[1].length - a[1].length);
-  const totalStops = orders.length;
+  const totalStops = stopsToday.length;
   // Dispatch checklist data — the same stops, shaped for the tick-off view.
   const checkRoutes: DispatchRoute[] = routes.map(([zone, stops]) => ({
     zone,
-    stops: stops.map((o) => ({ id: o.id, name: o.customer?.name ?? "Guest", address: o.address ?? null, items: o._count.items })),
+    stops: stops.map((s) => ({ id: s.id, name: s.order.customer?.name ?? "Guest", address: s.order.address ?? null, items: s.items })),
   }));
   const dateKey = new Date().toISOString().slice(0, 10);
   const dayFmt = new Intl.DateTimeFormat("en-US", { weekday: "short", month: "short", day: "numeric" });
@@ -58,8 +66,9 @@ export default async function RoutesPage() {
       <div className="grid sm:grid-cols-3 gap-3.5 mb-5">
         <Kpi icon={<Truck size={16} />} label="Stops" value={totalStops} />
         <Kpi icon={<Navigation size={16} />} label={<span className="inline-flex items-center gap-1">Routes (zones) <Hint text="One route per delivery zone. Orders are placed in a zone by the customer's postal code (Settings → Delivery zones); the rest land in Unzoned." /></span>} value={routes.length} />
-        <Kpi icon={<MapPin size={16} />} label={`${N.Many} out`} value={orders.reduce((s, o) => s + o._count.items, 0)} />
+        <Kpi icon={<MapPin size={16} />} label={`${N.Many} out`} value={stopsToday.reduce((s, x) => s + x.items, 0)} />
       </div>
+      <DayChips basePath="/dashboard/routes" days={days} active={activeDay} noun={N.many} />
 
       {routes.length === 0 ? (
         <div className="rounded-xl border p-10 text-center" style={{ borderColor: "var(--line)", background: "var(--surface)" }}>
@@ -80,15 +89,15 @@ export default async function RoutesPage() {
                 <span className="text-[12px]" style={{ color: "var(--muted)" }}>{stops.length} stop{stops.length === 1 ? "" : "s"}</span>
               </div>
               <div className="space-y-2">
-                {stops.map((o, i) => (
-                  <div key={o.id} className="flex items-center gap-3 px-3 py-2.5 rounded-lg" style={{ background: "var(--paper)", border: "1px solid var(--line)" }}>
+                {stops.map((s, i) => (
+                  <div key={s.id} className="flex items-center gap-3 px-3 py-2.5 rounded-lg" style={{ background: "var(--paper)", border: "1px solid var(--line)" }}>
                     <span className="grid place-items-center w-6 h-6 rounded-full text-[12px] font-semibold shrink-0" style={{ background: "var(--pine)", color: "#f4f2ec" }}>{i + 1}</span>
                     <div className="flex-1 min-w-0">
-                      <div className="text-[13.5px] font-medium" style={{ color: "var(--ink)" }}>{o.customer?.name ?? "Guest"}</div>
-                      <div className="text-[12px] truncate" style={{ color: "var(--muted)" }}>{o.address ?? "No address on file"}</div>
+                      <div className="text-[13.5px] font-medium" style={{ color: "var(--ink)" }}>{s.order.customer?.name ?? "Guest"}{s.id.includes(":") ? <span className="ml-1.5 text-[10.5px] px-1.5 py-px rounded-full font-medium align-middle" style={{ background: "var(--sand)", color: "var(--muted)" }}>split order</span> : null}</div>
+                      <div className="text-[12px] truncate" style={{ color: "var(--muted)" }}>{s.order.address ?? "No address on file"}</div>
                     </div>
                     <span className="text-[12px] shrink-0" style={{ color: "var(--ink-soft)" }}>
-                      {o.deliveryDate ? `${dayFmt.format(o.deliveryDate)} · ` : ""}{countNoun(o._count.items, N)} · #{o.id.slice(-6)}
+                      {s.date ? `${dayFmt.format(s.date)} · ` : ""}{countNoun(s.items, N)} · #{s.order.id.slice(-6)}
                     </span>
                   </div>
                 ))}

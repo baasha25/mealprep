@@ -7,6 +7,7 @@ import { ListSearch } from "@/components/list-search";
 import { formatCents } from "@/lib/money";
 import { ORDER_TYPE_LABEL } from "@/lib/order-status";
 import { ensureSubscriptionOrders } from "@/lib/subscription-orders-run";
+import { splitSummary } from "@/lib/delivery-stops";
 import { StatusControl } from "./status-control";
 import { updateOrderStatus } from "./actions";
 
@@ -56,6 +57,7 @@ export default async function OrdersPage({
       include: {
         customer: { select: { name: true } },
         _count: { select: { items: true } },
+        items: { select: { qty: true, deliveryDate: true } },
       },
     }),
     db.order.count({ where }),
@@ -146,6 +148,7 @@ export default async function OrdersPage({
               </div>
               <div className="text-[12.5px]" style={{ color: "var(--ink-soft)" }}>
                 {o._count.items}
+                {(() => { const s = splitSummary(o, (d) => new Intl.DateTimeFormat("en-US", { weekday: "short" }).format(d)); return s ? <div className="text-[10.5px]" style={{ color: "var(--muted)" }}>split · {s}</div> : null; })()}
               </div>
               <div>
                 <StatusControl orderId={o.id} status={o.status} action={updateOrderStatus} />

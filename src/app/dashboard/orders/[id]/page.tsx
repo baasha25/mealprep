@@ -56,10 +56,16 @@ export default async function OrderDetailPage({
         <Card>
           <CardTitle title="Items" note={`${order.items.length} lines`} />
           <div className="space-y-2.5">
+            {(() => {
+              const days = new Set(order.items.map((it) => (it.deliveryDate ?? order.deliveryDate)?.toISOString().slice(0, 10) ?? ""));
+              if (days.size < 2) return null;
+              return <p className="text-[12px] px-2.5 py-1.5 rounded-md" style={{ background: "var(--sand)", color: "var(--muted)" }}>Split delivery — each line shows its day. Routes lists this order as one stop per day.</p>;
+            })()}
             {order.items.map((it) => (
               <div key={it.id} className="flex justify-between text-[13.5px]">
                 <span style={{ color: "var(--ink)" }}>
                   {it.qty}× {it.nameSnapshot}
+                  {it.deliveryDate && order.items.some((x) => (x.deliveryDate?.getTime() ?? 0) !== it.deliveryDate!.getTime()) ? <span className="ml-2 text-[11px]" style={{ color: "var(--muted)" }}>{new Intl.DateTimeFormat("en-US", { weekday: "short", month: "short", day: "numeric" }).format(it.deliveryDate)}</span> : null}
                 </span>
                 {!isStaff && (
                   <span style={{ color: "var(--muted)" }}>

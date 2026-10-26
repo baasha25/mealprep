@@ -7,6 +7,8 @@ import { Hint } from "@/components/ui";
 import { picksFromSnapshot, nameWithOptions } from "@/lib/meal-options";
 import { ensureSubscriptionOrders } from "@/lib/subscription-orders-run";
 import { nounsFor, countNoun } from "@/lib/nouns";
+import { effectiveItemDate, dayKey } from "@/lib/delivery-stops";
+import { DayChips } from "@/components/day-chips";
 
 // Diet -> kitchen station (ported from the demo's STATION map).
 const STATION: Record<string, string> = {
@@ -28,8 +30,9 @@ const PRODUCING = ["paid", "in_production"] as const;
 
 type MealRoll = { name: string; qty: number; diet: string | null; swatch: string };
 
-export default async function KitchenPage() {
+export default async function KitchenPage({ searchParams }: { searchParams?: Promise<{ day?: string }> }) {
   const { business } = await requireBusiness();
+  const activeDay = (await searchParams)?.day ?? "";
   // Subscriber picks past their cut-off become paid orders (so they're counted
   // once, below, as orders — not again as selections).
   await ensureSubscriptionOrders(business.id);
@@ -50,7 +53,7 @@ export default async function KitchenPage() {
           OR: [{ type: { not: "catering" } }, { deliveryDate: null }, { deliveryDate: { lte: horizon } }],
         },
       },
-      include: { meal: { select: { diet: true, swatch: true } } },
+      include: { meal: { select: { diet: true, swatch: true } }, order: { select: { deliveryDate: true } } },
     }),
     // Active subscriptions' nearest upcoming delivery selection.
     db.subscription.findMany({
@@ -74,6 +77,19 @@ export default async function KitchenPage() {
     }),
   ]);
 
+  // Delivery-day chips: every day with something to make (split orders count per item day).
+  const dayTotals = new Map<string, { key: string; date: Date | null; items: number }>();
+  for (const it of items) {
+    const d = effectiveItemDate(it, it.order);
+    const k = dayKey(d);
+    const cur = dayTotals.get(k) ?? { key: k, date: d, items: 0 };
+    cur.items += it.qty;
+    dayTotals.set(k, cur);
+  }
+  const days = [...dayTotals.values()].sort((a, b) => (a.date?.getTime() ?? Infinity) - (b.date?.getTime() ?? Infinity));
+  const dayMatch = (d: Date | null) => !activeDay || (activeDay === "none" ? !d : dayKey(d) === activeDay);
+  const visibleItems = items.filter((it) => dayMatch(effectiveItemDate(it, it.order)));
+
   // Roll up by meal across BOTH one-time orders and subscription selections.
   const byMeal = new Map<string, MealRoll>();
   const add = (key: string, roll: MealRoll) => {
@@ -81,7 +97,7 @@ export default async function KitchenPage() {
     if (cur) cur.qty += roll.qty;
     else byMeal.set(key, { ...roll });
   };
-  for (const it of items) {
+  for (const it of visibleItems) {
     // Group by configuration, so "Bowl (Quinoa · Tofu)" and "Bowl (Rice · Chicken)" are separate lines.
     add(`${it.mealId ?? it.nameSnapshot}|${it.optionsKey ?? ""}`, {
       name: it.nameSnapshot,
@@ -100,6 +116,7 @@ export default async function KitchenPage() {
     if (!sel || sel.items.length === 0) continue;
     // Once the cut-off passes this delivery is an order (counted above) — skip the preview.
     if (sub.orders.some((o) => o.deliveryDate && o.deliveryDate.getTime() === sel.deliveryDate.getTime())) continue;
+    if (!dayMatch(sel.deliveryDate)) continue;
     const rows: { name: string; qty: number }[] = [];
     for (const it of sel.items) {
       const name = nameWithOptions(it.meal?.name ?? "Meal", picksFromSnapshot(it.optionsSnapshot));
@@ -123,7 +140,7 @@ export default async function KitchenPage() {
   }
 
   const totalMeals = meals.reduce((s, m) => s + m.qty, 0);
-  const distinctOrders = new Set(items.map((i) => i.orderId)).size;
+  const distinctOrders = new Set(visibleItems.map((i) => i.orderId)).size;
 
   return (
     <Page>
@@ -141,6 +158,8 @@ export default async function KitchenPage() {
           </Link>
         }
       />
+
+      <DayChips basePath="/dashboard/kitchen" days={days} active={activeDay} noun={N.many} />
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 mb-5">
         <Kpi icon={<ClipboardList size={16} />} label={`${N.Many} to produce`} value={totalMeals} />
