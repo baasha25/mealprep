@@ -472,6 +472,7 @@ model Meal {
   reviews              MealReview[]
 
   @@index([businessId])
+  priceExperiments PriceExperiment[]
 }
 
 // ─── Build-your-own: modifier groups ─────────────────────────────────────────
@@ -1011,6 +1012,29 @@ model CompetitorMatch {
   updatedAt        DateTime       @updatedAt
 
   @@unique([mealId, competitorItemId])
+  @@index([businessId, status])
+  @@index([mealId])
+}
+
+/// Price-test loop: run a meal at a test price for a window, compare units and
+/// contribution per day with the same-length window before, then keep or revert.
+/// Baseline is frozen at start so later price edits don't muddy the comparison.
+model PriceExperiment {
+  id                String   @id @default(cuid())
+  businessId        String
+  mealId            String
+  meal              Meal     @relation(fields: [mealId], references: [id], onDelete: Cascade)
+  basePriceCents    Int
+  testPriceCents    Int
+  costCents         Int      // plate cost at start (default options)
+  startAt           DateTime @default(now())
+  endAt             DateTime
+  baselineUnits     Int      // units sold in the window of the same length before startAt
+  baselineDays      Int
+  status            String   @default("running") // running | kept | reverted
+  decidedAt         DateTime?
+  createdAt         DateTime @default(now())
+
   @@index([businessId, status])
   @@index([mealId])
 }

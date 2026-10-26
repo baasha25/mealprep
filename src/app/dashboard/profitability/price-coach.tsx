@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { Sparkles, ArrowRight, Check, FlaskConical } from "lucide-react";
 import { formatCents, bpsToPercent } from "@/lib/money";
 import { suggestedPriceCents } from "@/lib/profitability";
+import { startPriceTest } from "./price-test-actions";
 
 export type CoachMeal = {
   id: string;
@@ -29,6 +30,8 @@ const TARGETS = [
  * build that needs external data and are intentionally not here.)
  */
 export function PriceCoach({ meals }: { meals: CoachMeal[] }) {
+  const [testing, startTesting] = useTransition();
+  const [testNote, setTestNote] = useState<{ ok: boolean; message: string } | null>(null);
   const [target, setTarget] = useState<number>(6500);
 
   const rows = meals
@@ -113,9 +116,23 @@ export function PriceCoach({ meals }: { meals: CoachMeal[] }) {
               >
                 <FlaskConical size={12} /> Try it
               </button>
+              <button
+                type="button"
+                disabled={testing}
+                onClick={() => {
+                  if (!confirm(`Put ${r.name} at ${formatCents(r.suggested)} for 14 days and measure it against the last 14? You can keep or revert any time.`)) return;
+                  startTesting(async () => setTestNote(await startPriceTest({ mealId: r.id, testPriceCents: r.suggested, days: 14 })));
+                }}
+                className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11.5px] font-medium disabled:opacity-50"
+                style={{ background: "var(--pine)", color: "#f4f2ec" }}
+                title="Run the suggested price live for 14 days and compare"
+              >
+                Test it
+              </button>
             </div>
           ))}
           <p className="text-[11px] mt-1" style={{ color: "var(--muted)" }}>
+            {testNote && <span className="block mb-1" style={{ color: testNote.ok ? "var(--pine)" : "var(--clay)" }}>{testNote.message}</span>}
             Suggestions are a starting point — &ldquo;Try it&rdquo; opens the price in the What-if simulator below so you can see the effect on this period&apos;s contribution before you change anything. Edit prices in Menu.
           </p>
         </div>

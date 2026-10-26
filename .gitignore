@@ -55,3 +55,6 @@ scaffold_tmp/
 
 # local harness state
 .claude/settings.local.json
+
+# Local Netlify folder
+.netlify

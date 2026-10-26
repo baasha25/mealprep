@@ -16,6 +16,8 @@ import { RangeFilter } from "@/components/range-filter";
 import { toRangeKey, rangeWhere, rangeLabel } from "@/lib/date-range";
 import { summarizeLosses, LOSS_REASON_META, type LossReason } from "@/lib/loss";
 import { PriceCoach } from "./price-coach";
+import { PriceTests } from "./price-tests";
+import { loadPriceExperiments } from "@/lib/price-test-data";
 import { ingredientPriceRises } from "@/lib/alerts-data";
 import { PriceSimulator } from "./price-simulator";
 import { MenuBoard, CLASS_STYLE } from "./menu-board";
@@ -176,6 +178,7 @@ export default async function ProfitabilityPage({
 
   // Nearby prices (Pro): watched competitors + per-meal comparison.
   const isPro = effectiveTier({ tier: business.tier as TierKey, trialEndsAt: business.trialEndsAt }) === "pro";
+  const experiments = await loadPriceExperiments(business.id);
   const nearby = isPro ? await loadNearbyPrices(business.id) : { competitors: [], rows: [], planRows: [], suggestedCount: 0 };
   // "Kitchens near you" opens on the kitchen's own region: its delivery-zone
   // postal prefixes first, then the service area it typed, then the first list.
@@ -239,7 +242,7 @@ export default async function ProfitabilityPage({
                 {focus === "losing"
                   ? "Every one of these sells for less than its ingredients cost. Raise the price, cut the plate cost (portion, trim, supplier), or retire the meal. "
                   : "Under 50% food margin there's little left after labour and overhead. Raise the price a little, trim the plate cost, or accept it as a traffic-builder on purpose. "}
-                The price coach suggests a price for your target margin; the simulator shows what a change does to this period's contribution. The same rows are highlighted in the table below.
+                The price coach suggests a price for your target margin; the simulator shows what a change does to this period&apos;s contribution. The same rows are highlighted in the table below.
               </p>
             </>
           )}
@@ -398,6 +401,8 @@ export default async function ProfitabilityPage({
         <Kpi icon={<ChefHat size={16} />} label={<span className="inline-flex items-center gap-1">Menu contribution (pre-loss) <Hint text="Each meal's margin × how many sold, added up — BEFORE food losses. Your true bottom line is 'Net contribution' in the P&L above, which subtracts losses." /></span>} value={formatCents(totalContribution)} />
         <Kpi icon={<AlertTriangle size={16} />} label={<span className="inline-flex items-center gap-1">Money-losing meals <Hint text="Meals priced below what they cost to make — every one you sell loses money. Reprice, re-cost the recipe, or retire them." /></span>} value={<span style={{ color: losers ? "var(--clay)" : "var(--ink)", fontWeight: losers ? 700 : 500 }}>{losers}</span>} />
       </div>
+
+      <PriceTests experiments={experiments} />
 
       <div className="mb-5 scroll-mt-6" id="price-coach">
         <PriceCoach
