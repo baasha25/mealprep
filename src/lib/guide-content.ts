@@ -616,7 +616,9 @@ export const GUIDE: GuideArea[] = [
         does: "Your PrepFlow subscription — which plan you're on (Starter / Growth / Pro), what it includes, and your trial status. This is what YOU pay PrepFlow, separate from the money your customers pay you.",
         numbers: [
           ["Current plan", "Starter, Growth, or Pro — sets your monthly fee, order limit, and platform fee %. The fee is the same number in your own currency: CAD for Canadian kitchens, USD for US kitchens (set from where you signed up)."],
-          ["Trial", "During your 30-day free trial you get full Pro-level access to everything, on any plan."],
+          ["Trial", "During your 30-day free trial you get full Pro-level access to everything, on any plan. When it ends you drop to the plan you picked — Starter loses Pro-only tools like Nearby prices and the invoice scanner."],
+          ["Adding a card early", "Choose a plan any time during the trial: the card is saved, nothing is charged until the trial's last day, and billing starts from there. You keep every free day."],
+          ["Trial reminders", "We email the owner 5 days before the trial ends, on the last day, and once more just after. If no plan is chosen, the dashboard goes read-only until one is — your storefront, orders and subscribers keep running."],
           ["Order limit", "How many orders your plan includes per month (Growth and Pro are unlimited)."],
         ],
         tips: ["Two different money flows: (1) your customers pay YOU for food (via Payouts/Stripe), and (2) you pay PREPFLOW a monthly software fee (here). They're separate."],

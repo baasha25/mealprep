@@ -7,6 +7,7 @@ import { appUrl } from "@/lib/app-url";
 import { isTierKey, type TierKey } from "@/lib/tiers";
 import { KITCHEN_BILLING_ENABLED, tierPriceId, tierFromPriceId } from "@/lib/kitchen-billing";
 import { activateKitchenSubscription } from "@/lib/kitchen-billing-sync";
+import { checkoutTrialEnd } from "@/lib/trial";
 
 export type BillingActionResult = { ok: true; url: string } | { ok: false; message: string };
 
@@ -39,12 +40,16 @@ export async function startKitchenSubscription(tier: string): Promise<BillingAct
 
   const customer = await ensureBillingCustomer(business.id, business.name, business.billingCustomerId);
   const origin = await appUrl();
+  // Adding a card before the free trial is over must not cut the trial short:
+  // the subscription starts "trialing" and the first charge lands on the trial's end date.
+  const trialEnd = checkoutTrialEnd(business.trialEndsAt);
   const session = await stripe.checkout.sessions.create({
     mode: "subscription",
     customer,
     line_items: [{ price, quantity: 1 }],
+    payment_method_collection: "always",
     metadata: { kind: "kitchen_billing", businessId: business.id, tier },
-    subscription_data: { metadata: { kind: "kitchen_billing", businessId: business.id, tier } },
+    subscription_data: { metadata: { kind: "kitchen_billing", businessId: business.id, tier }, ...(trialEnd ? { trial_end: trialEnd } : {}) },
     success_url: `${origin}/dashboard/billing?subscribed=1&session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${origin}/dashboard/billing?canceled=1`,
   });

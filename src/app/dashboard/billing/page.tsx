@@ -45,7 +45,7 @@ export default async function BillingPage({
       case "past_due":
         return { icon: <AlertTriangle size={18} />, fg: "var(--clay)", title: "Payment past due", body: "Your last charge didn't go through. Update your card to avoid losing access — we'll retry automatically." };
       case "trialing":
-        return { icon: <Clock size={18} />, fg: "var(--pine)", title: `${trial.daysLeft} day${trial.daysLeft === 1 ? "" : "s"} left in your free trial`, body: "Full access to everything. Pick a plan below before your trial ends to keep things running." };
+        return { icon: <Clock size={18} />, fg: "var(--pine)", title: `${trial.daysLeft} day${trial.daysLeft === 1 ? "" : "s"} left in your free trial`, body: `Full access to everything. Choose a plan now and your card isn't charged until ${trial.endsAt ? new Intl.DateTimeFormat("en-CA", { month: "long", day: "numeric" }).format(trial.endsAt) : "the trial ends"} — you keep every free day.` };
       case "locked":
         return { icon: <AlertTriangle size={18} />, fg: "var(--clay)", title: "Your free trial has ended", body: "Choose a plan to reactivate your dashboard. Your storefront and existing orders are still live." };
     }

@@ -40,3 +40,34 @@ export function trialStatus(
     endsAt: trialEndsAt,
   };
 }
+
+/**
+ * Stripe Checkout only accepts a trial_end at least 48 h out. When the kitchen
+ * still has that much trial left, return it (unix seconds) so adding a card
+ * early starts billing on the trial's last day, not today. Otherwise null.
+ */
+export function checkoutTrialEnd(trialEndsAt: Date | null | undefined, now: Date = new Date()): number | null {
+  if (!trialEndsAt) return null;
+  const ms = trialEndsAt.getTime() - now.getTime();
+  if (ms < 48 * 3_600_000) return null;
+  return Math.floor(trialEndsAt.getTime() / 1000);
+}
+
+export type TrialEmailStep = "trial_5d" | "trial_1d" | "trial_ended";
+
+/**
+ * Which reminder is due for an unpaid kitchen right now, if any. The cron runs
+ * daily and dedupes per step, so each step fires at most once per kitchen:
+ *  - trial_5d: 2–5 days left   - trial_1d: last day   - trial_ended: 0–3 days after.
+ */
+export function trialEmailStep(trialEndsAt: Date | null | undefined, now: Date = new Date()): TrialEmailStep | null {
+  if (!trialEndsAt) return null;
+  const t = trialStatus(trialEndsAt, now);
+  if (t.active) {
+    if (t.daysLeft <= 1) return "trial_1d";
+    if (t.daysLeft <= TRIAL_NUDGE_DAYS) return "trial_5d";
+    return null;
+  }
+  const daysAgo = (now.getTime() - trialEndsAt.getTime()) / 86_400_000;
+  return daysAgo <= 3 ? "trial_ended" : null;
+}

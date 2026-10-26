@@ -319,6 +319,58 @@ export async function sendWelcome(opts: {
   });
 }
 
+/** Free-trial reminders to the kitchen owner — 5 days out, last day, and just after it ends. From PrepFlow, not the kitchen. */
+export async function sendTrialReminder(opts: {
+  to: string;
+  businessName: string;
+  step: "trial_5d" | "trial_1d" | "trial_ended";
+  endsAt: Date;
+  planName: string;
+  planPriceLabel: string;
+  daysLeft: number;
+}): Promise<void> {
+  const when = new Intl.DateTimeFormat("en-CA", { weekday: "long", month: "long", day: "numeric" }).format(opts.endsAt);
+  const billing = `${APP_URL}/dashboard/billing`;
+  const name = escapeHtml(opts.businessName);
+  const plan = `<strong>${escapeHtml(opts.planName)}</strong> (${escapeHtml(opts.planPriceLabel)}/month)`;
+  const copy = {
+    trial_5d: {
+      subject: `${opts.daysLeft} days left in your PrepFlow trial`,
+      heading: `${opts.daysLeft} days left in your free trial`,
+      sub: `${name}'s trial ends ${when}.`,
+      body: `<p style="margin:0 0 12px;color:${INK};font-size:14px;">Add a card now and nothing changes until ${when} — the first charge lands on that day, not today. Your plan is ${plan}; you can switch plans any time.</p>
+      <p style="margin:0 0 12px;color:${INK};font-size:14px;">If you do nothing, your dashboard goes read-only when the trial ends. Your storefront and your customers' subscriptions keep running either way.</p>`,
+      cta: "Add a card · keep the trial",
+    },
+    trial_1d: {
+      subject: `Your PrepFlow trial ends tomorrow`,
+      heading: `Last day of your free trial`,
+      sub: `${name}'s trial ends ${when}.`,
+      body: `<p style="margin:0 0 12px;color:${INK};font-size:14px;">Tomorrow your dashboard goes read-only until a plan is chosen. Orders, your storefront and your subscribers are not affected — only your side of PrepFlow pauses.</p>
+      <p style="margin:0 0 12px;color:${INK};font-size:14px;">Choosing ${plan} takes a minute and bills from ${when}.</p>`,
+      cta: "Choose a plan",
+    },
+    trial_ended: {
+      subject: `Your PrepFlow trial has ended — pick a plan to keep going`,
+      heading: `Your free trial has ended`,
+      sub: `${name}'s dashboard is read-only until a plan is chosen.`,
+      body: `<p style="margin:0 0 12px;color:${INK};font-size:14px;">Everything you set up is still there, and your storefront is still taking orders. Choose a plan and your dashboard unlocks straight away.</p>
+      <p style="margin:0 0 12px;color:${INK};font-size:14px;">Not the right time? Reply to this email and tell us — we'd rather talk than lose you.</p>`,
+      cta: "Choose a plan",
+    },
+  }[opts.step];
+  await send({
+    to: opts.to,
+    subject: copy.subject,
+    businessName: "PrepFlow",
+    heading: copy.heading,
+    subheading: copy.sub,
+    bodyHtml: `${copy.body}
+      <a href="${billing}" style="display:inline-block;margin-top:12px;background:#2f4536;color:#f4f2ec;text-decoration:none;font-size:14px;font-weight:500;padding:10px 18px;border-radius:8px;">${copy.cta}</a>
+      <p style="margin:20px 0 0;color:${SOFT};font-size:13px;">Questions about plans or pricing? Just reply.</p>`,
+  });
+}
+
 /**
  * Internal alert to the platform operator(s) — fired when a new kitchen signs
  * up. Recipients come from the ADMIN_EMAILS allowlist (same list that gates
