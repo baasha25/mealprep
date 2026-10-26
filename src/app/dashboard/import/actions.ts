@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import { requireBusiness } from "@/lib/auth";
 import { dollarsToCents, percentToBps } from "@/lib/money";
 import { parseCsvRecords, splitList } from "@/lib/csv";
+import { mapImportRecords } from "@/lib/import-mapping";
 import { DIET_OPTS, ALLERGENS, UNITS, swatchForIndex } from "@/lib/menu-constants";
 import { densityFromGramsPerCup } from "@/lib/units";
 
@@ -62,7 +63,8 @@ const MenuRow = z.object({
 
 async function importMenu(csvText: string): Promise<ImportResult> {
   const { business } = await requireBusiness();
-  const records = parseCsvRecords(csvText);
+  // Squarespace / Shopify / WooCommerce exports drop in as-is: headers are mapped to ours.
+  const records = mapImportRecords("menu", parseCsvRecords(csvText)).records;
   const result = empty();
   if (records.length === 0) return { ...result, ok: false, message: "No rows found. Include a header row." };
 
@@ -127,7 +129,8 @@ const CustomerRow = z.object({
 
 async function importCustomers(csvText: string): Promise<ImportResult> {
   const { business } = await requireBusiness();
-  const records = parseCsvRecords(csvText);
+  // Squarespace / Shopify / WooCommerce exports drop in as-is: headers are mapped to ours.
+  const records = mapImportRecords("customers", parseCsvRecords(csvText)).records;
   const result = empty();
   if (records.length === 0) return { ...result, ok: false, message: "No rows found. Include a header row." };
 
@@ -194,7 +197,8 @@ const InventoryRow = z.object({
 
 async function importInventory(csvText: string): Promise<ImportResult> {
   const { business } = await requireBusiness();
-  const records = parseCsvRecords(csvText);
+  // Squarespace / Shopify / WooCommerce exports drop in as-is: headers are mapped to ours.
+  const records = mapImportRecords("inventory", parseCsvRecords(csvText)).records;
   const result = empty();
   if (records.length === 0) return { ...result, ok: false, message: "No rows found. Include a header row." };
 
@@ -292,7 +296,8 @@ const SubRow = z.object({
 
 async function importSubscriptions(csvText: string): Promise<ImportResult> {
   const { business } = await requireBusiness();
-  const records = parseCsvRecords(csvText);
+  // Squarespace / Shopify / WooCommerce exports drop in as-is: headers are mapped to ours.
+  const records = mapImportRecords("subscriptions", parseCsvRecords(csvText)).records;
   const result = empty();
   if (records.length === 0) return { ...result, ok: false, message: "No rows found. Include a header row." };
 

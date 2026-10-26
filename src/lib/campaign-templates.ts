@@ -34,6 +34,16 @@ export type TemplateVars = {
 
 export const TEMPLATES: CampaignTemplate[] = [
   {
+    key: "moved-resubscribe",
+    label: "We've moved — re-subscribe",
+    months: [],
+    segment: "all",
+    brief: "Send once when you switch to PrepFlow from Squarespace, Shopify or another platform. Saved cards never move between platforms, so each subscriber picks their plan once on the new page.",
+    subject: "{kitchen} has a new ordering page — one minute to re-subscribe",
+    body: "We've moved ordering to a new home. Same kitchen, same meals{areaPhrase}, but now you pick each week's meals yourself, skip or swap before the cut-off, and see your delivery day from your postal code.\n\nYour card didn't move with us (no platform can move saved cards), so please set your plan up once here: [Choose my plan]({storeUrl}). It takes about a minute, and **{code}** gives you {offer} on your first week to say thanks.\n\nYour old plan ends the week your new one starts — no gap, no double charge. Reply to this email if anything looks off.",
+    coupon: { code: "WELCOMEBACK10", type: "percent", value: 10 },
+  },
+  {
     key: "new-year",
     label: "New year reset",
     months: [1],

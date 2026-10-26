@@ -3,6 +3,7 @@
 import { useMemo, useRef, useState, useTransition } from "react";
 import { Upload, FileText, Check, AlertTriangle, Download, ChefHat, Users, Repeat, Boxes } from "lucide-react";
 import { parseCsvRecords } from "@/lib/csv";
+import { mapImportRecords, SOURCE_LABEL } from "@/lib/import-mapping";
 import { runImport, type ImportKind, type ImportResult } from "./actions";
 
 const KINDS: { id: ImportKind; label: string; icon: typeof ChefHat; cols: string; template: string }[] = [
@@ -59,10 +60,12 @@ export function Importer() {
   const active = KINDS.find((k) => k.id === kind)!;
 
   const preview = useMemo(() => {
-    if (!text.trim()) return { rows: [] as Record<string, string>[], headers: [] as string[] };
-    const rows = parseCsvRecords(text);
-    return { rows, headers: rows.length ? Object.keys(rows[0]) : [] };
-  }, [text]);
+    if (!text.trim()) return { rows: [] as Record<string, string>[], headers: [] as string[], source: null as string | null, mapped: {} as Record<string, string>, missing: [] as string[] };
+    const raw = parseCsvRecords(text);
+    const m = mapImportRecords(kind, raw);
+    const headers = raw.length ? Object.keys(raw[0]) : [];
+    return { rows: raw, headers, source: m.source === "generic" ? null : SOURCE_LABEL[m.source], mapped: m.mapped, missing: m.missing };
+  }, [text, kind]);
 
   const onFile = (file: File) => {
     const reader = new FileReader();
@@ -116,6 +119,7 @@ export function Importer() {
         <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
           <div className="text-[13px]" style={{ color: "var(--ink-soft)" }}>
             Columns: <code className="text-[12px]" style={{ color: "var(--ink)" }}>{active.cols}</code>
+            <span className="block text-[12px] mt-0.5" style={{ color: "var(--muted)" }}>Coming from Squarespace, Shopify or WooCommerce? Drop their export in as-is &mdash; we map the columns (First/Last Name, Email Address, Title, Body (HTML)&hellip;) and show you what we read.</span>
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -163,6 +167,15 @@ export function Importer() {
             <div className="text-[12px] mb-2 flex items-center gap-1.5" style={{ color: "var(--muted)" }}>
               <FileText size={13} /> {preview.rows.length} row{preview.rows.length === 1 ? "" : "s"} detected — preview:
             </div>
+          {preview.rows.length > 0 && (preview.source || Object.keys(preview.mapped).length > 0 || preview.missing.length > 0) && (
+            <div className="rounded-lg border px-3.5 py-2.5 mb-3 text-[12.5px]" style={{ borderColor: "var(--line)", background: "var(--paper)", color: "var(--ink-soft)" }}>
+              {preview.source && <span>Looks like a <strong style={{ color: "var(--ink)" }}>{preview.source}</strong>. </span>}
+              {Object.keys(preview.mapped).length > 0 && (
+                <span>We&apos;ll read {Object.entries(preview.mapped).map(([col, from], i) => (<span key={col}>{i > 0 ? ", " : ""}<code>{from}</code> as <code>{col}</code></span>))}. </span>
+              )}
+              {preview.missing.length > 0 && <span style={{ color: "var(--clay)" }}>Couldn&apos;t find a column for: {preview.missing.join(", ")}. Add it, or rename a column to match.</span>}
+            </div>
+          )}
             <div className="overflow-x-auto rounded-md border" style={{ borderColor: "var(--line)" }}>
               <table className="text-[12px] w-full">
                 <thead>

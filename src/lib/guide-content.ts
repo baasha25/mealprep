@@ -657,6 +657,7 @@ export const GUIDE: GuideArea[] = [
           "Paste your CSV or upload the file, then Import.",
         ],
         numbers: [
+          ["Squarespace / Shopify / WooCommerce exports", "Drop the platform's own export in without editing it. PrepFlow recognises the file and maps its columns to ours — First Name + Last Name become name, Email Address becomes email, Title / Variant price / Body (HTML) become the menu's name, price and description — and shows exactly what it read before you import. Squarespace: Profiles → Export (customers) and Commerce → Products → Export (menu). Saved cards never move between platforms: moved subscribers pick their plan once on your new storefront (use the 'We've moved — re-subscribe' campaign template to invite them)."],
           ["Columns line", "Each tab lists the columns it expects (required and optional). Match your spreadsheet to these."],
           ["Template button", "Downloads a sample CSV with the right headers and example rows — the easiest way to get the format right."],
         ],
