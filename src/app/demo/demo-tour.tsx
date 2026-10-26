@@ -109,6 +109,7 @@ const STEPS: Step[] = [
       "Reminder emails before the cut-off; picks lock when it passes",
       "Extras beyond the plan ride in the same box, billed on the next payment",
       "No picks? Auto-picked from their history — or skipped, your call",
+      "Cancel a subscriber or refund their last payment in one click — no Stripe dashboard",
     ],
     img: "/demo/subscriptions.png",
     imgAlt: "Subscriptions screen showing each subscriber's plan, zone, next delivery and whether they've picked",
