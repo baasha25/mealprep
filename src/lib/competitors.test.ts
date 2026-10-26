@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { normalizeDomain, parseShopify, parseWoo, similarity, suggestFor, compare, positionLabel, portionFrom, isBulkListing } from "./competitors";
+import { normalizeDomain, parseShopify, parseWoo, similarity, suggestFor, compare, positionLabel, portionFrom, isBulkListing, parseManualPrices } from "./competitors";
 
 describe("competitor price helpers", () => {
   it("normalises what an owner types into a domain", () => {
@@ -43,5 +43,24 @@ describe("bulk listings are excluded from suggestions", () => {
     expect(isBulkListing("Custom - Peri Peri Chicken")).toBe(false);
     const s = suggestFor("Persian Chicken", [{ id: "a", name: "Bulk - Persian Style Chicken" }, { id: "b", name: "Custom - Persian Style Chicken" }]);
     expect(s.map((x) => x.item.id)).toEqual(["b"]);
+  });
+});
+
+describe("parseManualPrices", () => {
+  it("reads one dish per line in the ways people actually type", () => {
+    const r = parseManualPrices("Chicken Teriyaki Bowl — 13.99\nKeto Box (400g) $14\nSalmon & Rice, 16.50\nLasagna 12\nCA$ 11,50 Soup\n\nJust a note\nGift card 0");
+    expect(r.items.map((i) => [i.name, i.priceCents, i.portion])).toEqual([
+      ["Chicken Teriyaki Bowl", 1399, null],
+      ["Keto Box (400g)", 1400, "400 g"],
+      ["Salmon & Rice", 1650, null],
+      ["Lasagna", 1200, null],
+    ]);
+    expect(r.items[0].externalId).toBe("manual:chicken-teriyaki-bowl");
+    expect(r.skipped).toEqual(["CA$ 11,50 Soup", "Just a note", "Gift card 0"]);
+  });
+  it("dedupes repeated dishes and caps silly prices", () => {
+    const r = parseManualPrices("Bowl 12\nbowl 13\nTruffle dinner 900");
+    expect(r.items).toHaveLength(1);
+    expect(r.skipped).toEqual(["Truffle dinner 900"]);
   });
 });

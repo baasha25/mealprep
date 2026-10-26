@@ -6,7 +6,7 @@ import { requireOwner } from "@/lib/auth";
 import { effectiveTier, type TierKey } from "@/lib/tiers";
 import { rateLimit } from "@/lib/ratelimit";
 import { normalizeDomain } from "@/lib/competitors";
-import { refreshCompetitorData, MAX_COMPETITORS } from "@/lib/competitors-data";
+import { refreshCompetitorData, saveManualPrices, MAX_COMPETITORS } from "@/lib/competitors-data";
 import kitchens from "@/data/kitchens.json";
 
 export type CompResult = { ok: boolean; message: string };
@@ -49,6 +49,20 @@ export async function refreshCompetitor(id: string): Promise<CompResult> {
   const r = await refreshCompetitorData(comp.id);
   revalidatePath("/dashboard/profitability");
   return r.ok ? { ok: true, message: readSummary("Refreshed", r.items, r.plans ?? 0) } : { ok: false, message: r.error ?? "Could not read their menu." };
+}
+
+/** Prices the owner typed for a site we can't read (plan pickers, logins, PDFs). One dish per line. */
+export async function typeCompetitorPrices(id: string, text: string): Promise<CompResult> {
+  const { business, pro } = await proOwner();
+  if (!pro) return { ok: false, message: "Nearby prices is part of the Pro plan." };
+  if (typeof text !== "string" || text.length > 6000 || text.split("\n").length > 80) return { ok: false, message: "Keep it under 80 lines." };
+  const comp = await db.competitor.findFirst({ where: { id, businessId: business.id }, select: { id: true, name: true } });
+  if (!comp) return { ok: false, message: "Not found." };
+  const r = await saveManualPrices(comp.id, text);
+  revalidatePath("/dashboard/profitability");
+  if (!r.ok) return { ok: false, message: r.error ?? "Could not save." };
+  const skipped = r.skipped.length ? ` Skipped ${r.skipped.length} line${r.skipped.length === 1 ? "" : "s"} without a price (${r.skipped.slice(0, 2).map((l) => `"${l.slice(0, 30)}"`).join(", ")}).` : "";
+  return { ok: true, message: r.items ? `${comp.name}: ${r.items} typed price${r.items === 1 ? "" : "s"} saved — matches suggested below.${skipped}` : `${comp.name}: typed prices cleared.${skipped}` };
 }
 
 export async function removeCompetitor(id: string): Promise<CompResult> {

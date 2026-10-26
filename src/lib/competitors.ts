@@ -34,7 +34,33 @@ export const READ_METHOD_LABEL: Record<string, string> = {
   "ai-rendered": "AI-read · estimated",
   "ai-plans": "plans only · estimated",
   unsupported: "can't read yet",
+  manual: "typed by you",
 };
+export const MANUAL_PREFIX = "manual:";
+export const isManualItem = (externalId: string) => externalId.startsWith(MANUAL_PREFIX);
+
+export type ManualPriceLine = { name: string; priceCents: number; portion: string | null; externalId: string };
+/**
+ * Parse prices an owner typed for a site we can't read, one dish per line:
+ * "Chicken Teriyaki Bowl — 13.99", "Keto Box (400g) $14", "Salmon, 16.50", "Lasagna 12".
+ * Lines without a price, or with a price outside $1–$500, are returned in `skipped`.
+ */
+export function parseManualPrices(text: string): { items: ManualPriceLine[]; skipped: string[] } {
+  const items: ManualPriceLine[] = []; const skipped: string[] = []; const seen = new Set<string>();
+  for (const raw of text.split(/\r?\n/)) {
+    const line = raw.trim();
+    if (!line) continue;
+    const m = line.match(/^(.*?)[\s,;:|–—-]*(?:CA?\$|\$)?\s*(\d{1,3}(?:[.,]\d{1,2})?)\s*(?:CAD|\$)?\s*$/i);
+    const name = m?.[1]?.replace(/[\s,;:|–—-]+$/, "").trim() ?? "";
+    const cents = m ? Math.round(parseFloat(m[2].replace(",", ".")) * 100) : NaN;
+    if (!m || !name || !Number.isFinite(cents) || cents < 100 || cents > 50_000) { skipped.push(line); continue; }
+    const externalId = MANUAL_PREFIX + name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+    if (seen.has(externalId)) continue;
+    seen.add(externalId);
+    items.push({ name: name.slice(0, 120), priceCents: cents, portion: portionFrom(name), externalId });
+  }
+  return { items, skipped };
+}
 export function isEstimatedMethod(platform: string | null | undefined): boolean {
   return platform === "ai" || platform === "ai-rendered" || platform === "ai-plans";
 }

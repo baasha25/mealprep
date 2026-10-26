@@ -1,12 +1,12 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { MapPin, RefreshCw, Trash2, Check, X, ExternalLink, Lock, ChevronDown, ChevronUp } from "lucide-react";
+import { MapPin, RefreshCw, Trash2, Check, X, ExternalLink, Lock, ChevronDown, ChevronUp, PencilLine } from "lucide-react";
 import { Card, CardTitle } from "@/components/ui";
 import { Hint } from "@/components/ui";
 import { formatCents } from "@/lib/money";
 import { READ_METHOD_LABEL, isEstimatedMethod } from "@/lib/competitors";
-import { addCompetitor, refreshCompetitor, removeCompetitor, setMatchStatus } from "./competitor-actions";
+import { addCompetitor, refreshCompetitor, removeCompetitor, setMatchStatus, typeCompetitorPrices } from "./competitor-actions";
 import type { NearbyCompetitor, NearbyRow, PlanRow } from "@/lib/competitors-data";
 
 // Subscription services customers quote by name; they publish plan pricing, not dish prices.
@@ -24,6 +24,7 @@ export function NearbyPrices({ competitors, rows, planRows, suggestedCount, isPr
   const [pending, start] = useTransition();
   const [open, setOpen] = useState<Record<string, boolean>>({});
   const [region, setRegion] = useState(defaultRegion);
+  const [typing, setTyping] = useState<{ id: string; text: string } | null>(null);
   const watched = new Set(competitors.map((c) => c.domain));
   const regions = [...new Set(suggestions.map((s) => s.region))];
   const nearby = suggestions.filter((s) => s.region === region && !watched.has(s.domain)).slice(0, 8);
@@ -60,12 +61,31 @@ export function NearbyPrices({ competitors, rows, planRows, suggestedCount, isPr
                 {isEstimatedMethod(c.platform) ? "≈ AI-read" : READ_METHOD_LABEL[c.platform] ?? c.platform}
               </span>
             )}
+            <button type="button" onClick={() => setTyping(typing?.id === c.id ? null : { id: c.id, text: c.typedLines })} disabled={pending} title={c.status === "ok" ? "Type prices from their menu yourself" : "We couldn't read this site — type a few prices from their menu and they'll count like any other"} className="inline-flex items-center gap-1 text-[11px]" style={{ color: c.status === "ok" ? "var(--muted)" : "var(--clay)" }}><PencilLine size={12} />{c.status === "ok" ? null : <span>type prices</span>}</button>
             <button type="button" onClick={() => run(() => refreshCompetitor(c.id))} disabled={pending} title="Refresh" style={{ color: "var(--muted)" }}><RefreshCw size={12} /></button>
             <button type="button" onClick={() => run(() => removeCompetitor(c.id))} disabled={pending} title="Stop watching" style={{ color: "var(--muted)" }}><Trash2 size={12} /></button>
           </div>
         ))}
         {competitors.length === 0 && <span className="text-[12.5px]" style={{ color: "var(--muted)" }}>No competitors watched yet.</span>}
       </div>
+
+      {typing && (() => {
+        const c = competitors.find((x) => x.id === typing.id);
+        return c ? (
+          <div className="rounded-lg border p-3 mb-3" style={{ borderColor: "var(--line)", background: "var(--paper)" }}>
+            <div className="flex items-baseline justify-between gap-2 mb-1.5">
+              <div className="text-[12.5px] font-medium" style={{ color: "var(--ink)" }}>Type {c.name}&apos;s prices</div>
+              <div className="text-[11.5px]" style={{ color: "var(--muted)" }}>One dish per line, price at the end · kept through weekly re-reads · counts as a listed price</div>
+            </div>
+            <textarea value={typing.text} onChange={(e) => setTyping({ id: c.id, text: e.target.value })} rows={5} placeholder={"Chicken Teriyaki Bowl — 13.99\nKeto Box (400g) $14\nSalmon & Rice 16.50"} className="w-full px-3 py-2 rounded-lg border text-[13px] outline-none font-mono" style={{ borderColor: "var(--line)", background: "var(--surface)", color: "var(--ink)" }} />
+            <div className="flex items-center gap-2 mt-2">
+              <button type="button" disabled={pending} onClick={() => run(async () => { const r = await typeCompetitorPrices(c.id, typing.text); if (r.ok) setTyping(null); return r; })} className="px-3 py-1.5 rounded-md text-[12.5px] font-medium disabled:opacity-60" style={{ background: "var(--pine)", color: "#f4f2ec" }}>{pending ? "Saving…" : "Save prices"}</button>
+              <button type="button" onClick={() => setTyping(null)} className="px-3 py-1.5 rounded-md text-[12.5px] border" style={{ borderColor: "var(--line)", color: "var(--muted)" }}>Cancel</button>
+              <span className="text-[11.5px]" style={{ color: "var(--muted)" }}>Clear the box and save to remove typed prices.</span>
+            </div>
+          </div>
+        ) : null;
+      })()}
 
       {/* Add by URL + nearby suggestions */}
       <form className="flex gap-2 mb-2" onSubmit={(e) => { e.preventDefault(); if (!url.trim()) return; run(async () => { const r = await addCompetitor({ url }); if (r.ok) setUrl(""); return r; }); }}>
@@ -120,7 +140,8 @@ export function NearbyPrices({ competitors, rows, planRows, suggestedCount, isPr
                         <span className="flex-1 min-w-0 truncate" style={{ color: "var(--ink)" }}>
                           <span style={{ color: "var(--muted)" }}>{m.competitorName}: </span>{m.itemName}{m.portion ? <span style={{ color: "var(--muted)" }}> · {m.portion}</span> : null}
                         </span>
-                        <span className="tabular-nums font-medium" style={{ color: "var(--ink)" }} title={m.estimated ? "Estimated: read from their page text by AI" : "Listed price from their structured feed"}>{m.estimated ? "≈ " : ""}{formatCents(m.priceCents)}</span>
+                        <span className="tabular-nums font-medium" style={{ color: "var(--ink)" }} title={m.typed ? "Typed in by you from their menu" : m.estimated ? "Estimated: read from their page text by AI" : "Listed price from their structured feed"}>{m.estimated ? "≈ " : ""}{formatCents(m.priceCents)}</span>
+                        {m.typed && <span className="text-[10.5px] px-1.5 py-px rounded" style={{ background: "var(--sand)", color: "var(--muted)" }}>typed</span>}
                         {m.url && <a href={m.url} target="_blank" rel="noreferrer noopener" title="Open their listing" style={{ color: "var(--muted)" }}><ExternalLink size={12} /></a>}
                         {m.status === "suggested" ? (
                           <>

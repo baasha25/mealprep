@@ -3,7 +3,7 @@
 import { db } from "@/lib/db";
 import { ANTHROPIC_ENABLED } from "@/lib/anthropic";
 import { fetchCompetitorPlans, comparePlans, type PlanRow, type CompPlan } from "@/lib/competitor-plans";
-import { fetchCompetitorMenu, suggestFor, compare, positionLabel, type Comparison } from "@/lib/competitors";
+import { fetchCompetitorMenu, suggestFor, compare, positionLabel, parseManualPrices, MANUAL_PREFIX, isManualItem, type Comparison } from "@/lib/competitors";
 
 export const MAX_COMPETITORS = 10;
 
@@ -14,6 +14,13 @@ export async function refreshCompetitorData(competitorId: string, opts: { deadli
   const startedAt = Date.now();
   const res = await fetchCompetitorMenu(comp.domain, { deadlineMs: opts.deadlineMs });
   if (!res.ok) {
+    // Typed-in prices keep a site "ok" even when its pages can't be read.
+    const typed = await db.competitorItem.count({ where: { competitorId: comp.id, active: true, externalId: { startsWith: MANUAL_PREFIX } } });
+    if (typed > 0) {
+      await db.competitor.update({ where: { id: comp.id }, data: { status: "ok", platform: "manual", lastError: `${res.error} Showing the ${typed} price${typed === 1 ? "" : "s"} you typed.`, lastCheckedAt: new Date() } });
+      await refreshCompetitorPlans(comp.id, comp.domain, Math.max(20_000, (opts.deadlineMs ?? 75_000) - (Date.now() - startedAt)));
+      return { ok: true, items: typed, plans: 0 };
+    }
     await db.competitor.update({ where: { id: comp.id }, data: { status: res.platform === "unsupported" ? "unsupported" : "error", platform: res.platform === "unsupported" ? "unsupported" : undefined, lastError: res.error, lastCheckedAt: new Date() } });
     // Plan-only sellers (CookUnity, many Sprwt kitchens) still have plan pricing worth reading.
     const plans = await refreshCompetitorPlans(comp.id, comp.domain, Math.max(20_000, (opts.deadlineMs ?? 75_000) - (Date.now() - startedAt)));
@@ -34,7 +41,7 @@ export async function refreshCompetitorData(competitorId: string, opts: { deadli
     });
   }
   // Items that vanished from their menu stop counting (history kept).
-  await db.competitorItem.updateMany({ where: { competitorId: comp.id, externalId: { notIn: [...seen] } }, data: { active: false } });
+  await db.competitorItem.updateMany({ where: { competitorId: comp.id, externalId: { notIn: [...seen], not: { startsWith: MANUAL_PREFIX } } }, data: { active: false } });
   await db.competitor.update({ where: { id: comp.id }, data: { platform: res.platform, status: "ok", lastError: res.note ?? null, lastCheckedAt: now } });
   await rebuildSuggestions(comp.businessId);
   const plans = await refreshCompetitorPlans(comp.id, comp.domain, Math.max(20_000, (opts.deadlineMs ?? 75_000) - (Date.now() - startedAt)));
@@ -92,6 +99,28 @@ export async function refreshStaleCompetitors(opts: { budgetMs: number; minAgeDa
   return { attempted, ok, failed, skipped: comps.length - attempted };
 }
 
+/** Save prices the owner typed for a competitor (one dish per line); replaces earlier typed prices for that site. */
+export async function saveManualPrices(competitorId: string, text: string): Promise<{ ok: boolean; items: number; skipped: string[]; error?: string }> {
+  const comp = await db.competitor.findUnique({ where: { id: competitorId }, select: { id: true, businessId: true, status: true, platform: true } });
+  if (!comp) return { ok: false, items: 0, skipped: [], error: "Not found" };
+  const { items, skipped } = parseManualPrices(text);
+  if (items.length === 0 && text.trim()) return { ok: false, items: 0, skipped, error: "No prices found — write one dish per line, like 'Chicken Teriyaki Bowl — 13.99'." };
+  const now = new Date();
+  for (const it of items) {
+    await db.competitorItem.upsert({
+      where: { competitorId_externalId: { competitorId: comp.id, externalId: it.externalId } },
+      create: { competitorId: comp.id, externalId: it.externalId, name: it.name, priceCents: it.priceCents, url: null, portion: it.portion, estimated: false, active: true, seenAt: now },
+      update: { name: it.name, priceCents: it.priceCents, portion: it.portion, estimated: false, active: true, seenAt: now },
+    });
+  }
+  await db.competitorItem.updateMany({ where: { competitorId: comp.id, externalId: { startsWith: MANUAL_PREFIX, notIn: items.map((i) => i.externalId) } }, data: { active: false } });
+  if (comp.status !== "ok" || comp.platform === "manual") {
+    await db.competitor.update({ where: { id: comp.id }, data: items.length ? { status: "ok", platform: "manual", lastCheckedAt: now, lastError: null } : { status: comp.platform === "manual" ? "unsupported" : comp.status, platform: comp.platform === "manual" ? "unsupported" : comp.platform } });
+  }
+  await rebuildSuggestions(comp.businessId);
+  return { ok: true, items: items.length, skipped };
+}
+
 /** Propose matches for every active meal against every active competitor item; never touches confirmed/dismissed rows. */
 export async function rebuildSuggestions(businessId: string): Promise<number> {
   const [meals, items, existing] = await Promise.all([
@@ -112,23 +141,26 @@ export async function rebuildSuggestions(businessId: string): Promise<number> {
   return created;
 }
 
-export type NearbyCompetitor = { id: string; name: string; domain: string; platform: string | null; status: string; lastCheckedAt: Date | null; lastError: string | null; itemCount: number; planCount: number };
+export type NearbyCompetitor = { id: string; name: string; domain: string; platform: string | null; status: string; lastCheckedAt: Date | null; lastError: string | null; itemCount: number; planCount: number; typedLines: string };
 export type { PlanRow };
-export type NearbyMatch = { id: string; status: string; score: number; itemName: string; priceCents: number; portion: string | null; url: string | null; competitorName: string; estimated: boolean };
+export type NearbyMatch = { id: string; status: string; score: number; itemName: string; priceCents: number; portion: string | null; url: string | null; competitorName: string; estimated: boolean; typed: boolean };
 export type NearbyRow = { mealId: string; name: string; priceCents: number; matches: NearbyMatch[]; comparison: Comparison; position: ReturnType<typeof positionLabel> };
 
 export async function loadNearbyPrices(businessId: string): Promise<{ competitors: NearbyCompetitor[]; rows: NearbyRow[]; planRows: PlanRow[]; suggestedCount: number }> {
-  const [comps, meals, matches, yourPlans, compPlans] = await Promise.all([
+  const [comps, meals, matches, yourPlans, compPlans, typedItems] = await Promise.all([
     db.competitor.findMany({ where: { businessId }, orderBy: { createdAt: "asc" }, select: { id: true, name: true, domain: true, platform: true, status: true, lastCheckedAt: true, lastError: true, _count: { select: { items: { where: { active: true } }, plans: { where: { active: true } } } } } }),
     db.meal.findMany({ where: { businessId, active: true }, orderBy: { name: "asc" }, select: { id: true, name: true, priceCents: true } }),
-    db.competitorMatch.findMany({ where: { businessId, status: { in: ["suggested", "confirmed"] }, item: { active: true } }, select: { id: true, mealId: true, status: true, score: true, item: { select: { name: true, priceCents: true, portion: true, url: true, estimated: true, competitor: { select: { name: true } } } } } }),
+    db.competitorMatch.findMany({ where: { businessId, status: { in: ["suggested", "confirmed"] }, item: { active: true } }, select: { id: true, mealId: true, status: true, score: true, item: { select: { name: true, priceCents: true, portion: true, url: true, estimated: true, externalId: true, competitor: { select: { name: true } } } } } }),
     db.plan.findMany({ where: { businessId, active: true }, orderBy: { mealsPerWeek: "asc" }, select: { id: true, name: true, mealsPerWeek: true, perMealPriceCents: true } }),
     db.competitorPlan.findMany({ where: { active: true, competitor: { businessId } }, select: { mealsPerWeek: true, perMealCents: true, startingFrom: true, estimated: true, label: true, url: true, competitor: { select: { name: true } } } }),
+    db.competitorItem.findMany({ where: { active: true, externalId: { startsWith: MANUAL_PREFIX }, competitor: { businessId } }, orderBy: { name: "asc" }, select: { competitorId: true, name: true, priceCents: true } }),
   ]);
+  const typedByComp = new Map<string, string[]>();
+  for (const t of typedItems) typedByComp.set(t.competitorId, [...(typedByComp.get(t.competitorId) ?? []), `${t.name} — ${(t.priceCents / 100).toFixed(2)}`]);
   const byMeal = new Map<string, NearbyMatch[]>();
   for (const m of matches) {
     const arr = byMeal.get(m.mealId) ?? [];
-    arr.push({ id: m.id, status: m.status, score: m.score, itemName: m.item.name, priceCents: m.item.priceCents, portion: m.item.portion, url: m.item.url, competitorName: m.item.competitor.name, estimated: m.item.estimated });
+    arr.push({ id: m.id, status: m.status, score: m.score, itemName: m.item.name, priceCents: m.item.priceCents, portion: m.item.portion, url: m.item.url, competitorName: m.item.competitor.name, estimated: m.item.estimated, typed: isManualItem(m.item.externalId) });
     byMeal.set(m.mealId, arr);
   }
   const rows: NearbyRow[] = meals.map((meal) => {
@@ -141,7 +173,7 @@ export async function loadNearbyPrices(businessId: string): Promise<{ competitor
     compPlans.map((p): CompPlan => ({ competitorName: p.competitor.name, mealsPerWeek: p.mealsPerWeek, perMealCents: p.perMealCents, startingFrom: p.startingFrom, estimated: p.estimated, label: p.label, url: p.url })),
   );
   return {
-    competitors: comps.map((c) => ({ id: c.id, name: c.name, domain: c.domain, platform: c.platform, status: c.status, lastCheckedAt: c.lastCheckedAt, lastError: c.lastError, itemCount: c._count.items, planCount: c._count.plans })),
+    competitors: comps.map((c) => ({ id: c.id, name: c.name, domain: c.domain, platform: c.platform, status: c.status, lastCheckedAt: c.lastCheckedAt, lastError: c.lastError, itemCount: c._count.items, planCount: c._count.plans, typedLines: (typedByComp.get(c.id) ?? []).join("\n") })),
     rows,
     planRows,
     suggestedCount: matches.filter((m) => m.status === "suggested").length,
