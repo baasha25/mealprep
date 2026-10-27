@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { UtensilsCrossed } from "lucide-react";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { getStorefrontBusiness, publicStoreUrls } from "@/lib/storefront";
@@ -259,8 +260,14 @@ export default async function StorePage({
             {s.storeTagline || (s.subscriptionsOnly ? `Choose a plan, then pick your ${nouns.many} each week from the menu below.` : "Browse the menu, build your order, and subscribe to save every week.")}
           </p>
           {s.cateringEnabled && (
-            <Link href={`/store/${slug}/catering`} className="inline-flex items-center gap-1.5 mt-3 text-[13px] font-medium" style={{ color: "var(--pine)" }}>
-              Feeding a group? Catering &amp; large orders →
+            <Link
+              href={`/store/${slug}/catering`}
+              className="inline-flex items-center gap-2.5 mt-4 pl-3.5 pr-4 py-2.5 rounded-xl border text-[14px] font-medium transition-colors hover:brightness-95"
+              style={{ borderColor: "color-mix(in srgb, var(--pine) 35%, transparent)", background: "color-mix(in srgb, var(--pine) 9%, var(--surface))", color: "var(--pine)" }}
+            >
+              <UtensilsCrossed size={16} />
+              <span>Feeding a group?<span className="font-normal" style={{ color: "var(--ink-soft)" }}> Catering &amp; large orders, quoted first</span></span>
+              <span aria-hidden>→</span>
             </Link>
           )}
         </div>
