@@ -45,6 +45,14 @@ export const NON_REVENUE_STATUSES: OrderStatus[] = ["canceled", "refunded"];
 /** Prisma `where` fragment selecting only orders that count as real revenue. */
 export const revenueStatusWhere = { status: { notIn: NON_REVENUE_STATUSES } };
 
+/**
+ * Orders that actually ran through PrepFlow. Order history imported from a
+ * previous platform (Import → Order history) carries an importBatchId; it is
+ * real sales for the kitchen's own P&L and analytics, but never counts toward
+ * the plan's order allowance, platform GMV, or partner stats.
+ */
+export const platformOrdersWhere = { importBatchId: null };
+
 /** Whether an order in this status contributes to revenue / P&L. */
 export function countsAsRevenue(status: OrderStatus): boolean {
   return !NON_REVENUE_STATUSES.includes(status);

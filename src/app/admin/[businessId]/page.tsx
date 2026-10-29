@@ -7,7 +7,7 @@ import { Kpi } from "@/components/ui";
 import { formatCents } from "@/lib/money";
 import { TIERS, type TierKey } from "@/lib/tiers";
 import { monthStart } from "@/lib/usage";
-import { revenueStatusWhere } from "@/lib/order-status";
+import { revenueStatusWhere, platformOrdersWhere } from "@/lib/order-status";
 import { sourceLabel } from "@/lib/attribution";
 import { trialStatus } from "@/lib/trial";
 import { billingBadge, setupScore, momentum, platformFeeCents, agoLabel, dailyBuckets } from "@/lib/admin-metrics";
@@ -42,9 +42,9 @@ export default async function AdminKitchenPage({ params }: { params: Promise<{ b
   const d30 = new Date(now.getTime() - 30 * 86_400_000);
 
   const [revAgg, thisMo, lastMo, activeSubs, recentOrders, topSpend, last30Orders, newCustomers30, newSubs30, canceledSubs30, lastOrder] = await Promise.all([
-    db.order.aggregate({ where: { businessId, ...revenueStatusWhere }, _sum: { totalCents: true } }),
-    db.order.aggregate({ where: { businessId, ...revenueStatusWhere, createdAt: { gte: start } }, _count: { _all: true }, _sum: { totalCents: true } }),
-    db.order.aggregate({ where: { businessId, ...revenueStatusWhere, createdAt: { gte: lastStart, lt: start } }, _count: { _all: true }, _sum: { totalCents: true } }),
+    db.order.aggregate({ where: { businessId, ...revenueStatusWhere, ...platformOrdersWhere }, _sum: { totalCents: true } }),
+    db.order.aggregate({ where: { businessId, ...revenueStatusWhere, ...platformOrdersWhere, createdAt: { gte: start } }, _count: { _all: true }, _sum: { totalCents: true } }),
+    db.order.aggregate({ where: { businessId, ...revenueStatusWhere, ...platformOrdersWhere, createdAt: { gte: lastStart, lt: start } }, _count: { _all: true }, _sum: { totalCents: true } }),
     db.subscription.count({ where: { businessId, status: "active" } }),
     db.order.findMany({
       where: { businessId },
@@ -59,11 +59,11 @@ export default async function AdminKitchenPage({ params }: { params: Promise<{ b
       orderBy: { _sum: { totalCents: "desc" } },
       take: 5,
     }),
-    db.order.findMany({ where: { businessId, ...revenueStatusWhere, createdAt: { gte: d30 } }, select: { createdAt: true } }),
+    db.order.findMany({ where: { businessId, ...revenueStatusWhere, ...platformOrdersWhere, createdAt: { gte: d30 } }, select: { createdAt: true } }),
     db.customer.count({ where: { businessId, createdAt: { gte: d30 } } }),
     db.subscription.count({ where: { businessId, createdAt: { gte: d30 } } }),
     db.subscription.count({ where: { businessId, status: "canceled", updatedAt: { gte: d30 } } }),
-    db.order.findFirst({ where: { businessId, ...revenueStatusWhere }, orderBy: { createdAt: "desc" }, select: { createdAt: true } }),
+    db.order.findFirst({ where: { businessId, ...revenueStatusWhere, ...platformOrdersWhere }, orderBy: { createdAt: "desc" }, select: { createdAt: true } }),
   ]);
 
   const topCustomers = await Promise.all(
@@ -77,7 +77,7 @@ export default async function AdminKitchenPage({ params }: { params: Promise<{ b
   const sixAgo = new Date(start);
   sixAgo.setMonth(sixAgo.getMonth() - 5);
   const monthOrders = await db.order.findMany({
-    where: { businessId, ...revenueStatusWhere, createdAt: { gte: sixAgo } },
+    where: { businessId, ...revenueStatusWhere, ...platformOrdersWhere, createdAt: { gte: sixAgo } },
     select: { totalCents: true, createdAt: true },
   });
   const monthMap = new Map<string, number>();

@@ -180,6 +180,7 @@ model Business {
   partnerCommissions  PartnerCommission[]
   cateringRequests    CateringRequest[]
   deliveryZones       DeliveryZone[]
+  importBatches       ImportBatch[]
 }
 
 /// Zone-based delivery: a named area defined by postal-code prefixes (e.g. L4C,
@@ -775,6 +776,13 @@ model Order {
   extrasCents           Int           @default(0)
   stripeInvoiceItemId   String?       // the Stripe invoice item that bills the extras (null = not billed yet)
   stripePaymentIntentId String?
+  // Order history brought in from a previous platform (Import → Order history).
+  // importBatchId groups one upload so it can be undone in one click; externalRef
+  // is the old system's order number so re-importing the same file is a no-op.
+  // Imported orders never count toward the plan's order allowance or platform GMV.
+  importBatchId         String?
+  importBatch           ImportBatch?  @relation(fields: [importBatchId], references: [id], onDelete: Cascade)
+  externalRef           String?
   createdAt             DateTime      @default(now())
   updatedAt             DateTime      @updatedAt
 
@@ -786,8 +794,31 @@ model Order {
   // A subscription's weekly delivery is materialized as exactly one order per
   // delivery date (see src/lib/subscription-orders.ts) — the cron can rerun safely.
   @@unique([subscriptionId, deliveryDate])
+  @@unique([businessId, externalRef])
   @@index([businessId])
   @@index([customerId])
+  @@index([importBatchId])
+}
+
+// One upload of order history (see src/lib/order-import.ts). Deleting the batch
+// cascades to the orders it created, which is how "Undo this import" works.
+model ImportBatch {
+  id           String    @id @default(cuid())
+  businessId   String
+  business     Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  kind         String    @default("orders")
+  fileName     String?
+  source       String?   // shopify | woocommerce | square | generic
+  orderCount   Int       @default(0)
+  lineCount    Int       @default(0)
+  revenueCents Int       @default(0)
+  firstDate    DateTime?
+  lastDate     DateTime?
+  createdAt    DateTime  @default(now())
+
+  orders Order[]
+
+  @@index([businessId])
 }
 
 /// A catering / large-order request from the storefront. The kitchen turns it

@@ -18,6 +18,7 @@ export async function ordersThisMonth(businessId: string): Promise<number> {
       businessId,
       status: { not: "canceled" },
       createdAt: { gte: monthStart() },
+      importBatchId: null, // imported history never counts toward the allowance
     },
   });
 }

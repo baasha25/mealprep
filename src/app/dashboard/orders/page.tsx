@@ -145,6 +145,11 @@ export default async function OrdersPage({
               </div>
               <div className="text-[12.5px]" style={{ color: "var(--ink-soft)" }}>
                 {ORDER_TYPE_LABEL[o.type] ?? o.type}
+                {o.importBatchId && (
+                  <span className="ml-1.5 px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wide align-middle" style={{ background: "var(--sand)", color: "var(--muted)" }} title="Brought in from your previous platform">
+                    imported
+                  </span>
+                )}
               </div>
               <div className="text-[12.5px]" style={{ color: "var(--ink-soft)" }}>
                 {o._count.items}

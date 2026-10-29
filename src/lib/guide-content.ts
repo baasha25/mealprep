@@ -660,16 +660,17 @@ export const GUIDE: GuideArea[] = [
         img: "23-import.png",
         does: "Bring your existing menu, customers, subscriptions, and inventory into PrepFlow from a spreadsheet (CSV) — most kitchens finish the data import in an afternoon and run their first guided production cycle within the first week.",
         use: [
-          "Pick a tab: Menu, Customers, Subscriptions, or Inventory.",
+          "Pick a tab: Menu, Customers, Subscriptions, Inventory, or Order history.",
           "Download the Template to see the exact columns.",
           "Paste your CSV or upload the file, then Import.",
         ],
         numbers: [
           ["Squarespace / Shopify / WooCommerce exports", "Drop the platform's own export in without editing it. PrepFlow recognises the file and maps its columns to ours — First Name + Last Name become name, Email Address becomes email, Title / Variant price / Body (HTML) become the menu's name, price and description — and shows exactly what it read before you import. Squarespace: Profiles → Export (customers) and Commerce → Products → Export (menu). Saved cards never move between platforms: moved subscribers pick their plan once on your new storefront (use the 'We've moved — re-subscribe' campaign template to invite them)."],
+          ["Order history", "Months of your real sales from your previous platform. Drop in a Shopify, WooCommerce or Square orders export (one row per line item) or our template; PrepFlow groups the rows into orders, matches items to your meals by name, adds any customers it doesn't know yet, and shows orders, line items, customers, sales and the date span before anything is imported. Items that aren't on your menu can be created as hidden meals so you can add recipes and cost them. Imported orders keep their original dates and feed Profitability, Analytics, menu engineering and your customer list, but send no emails, never reach production, and don't count toward your plan's order allowance. Switch Profitability or Analytics to 90 days or 12 months to see them. Re-importing the same file skips orders already imported, and Past imports has an Undo for each upload."],
           ["Columns line", "Each tab lists the columns it expects (required and optional). Match your spreadsheet to these."],
           ["Template button", "Downloads a sample CSV with the right headers and example rows — the easiest way to get the format right."],
         ],
-        tips: ["This is for spreadsheets (CSV). To read a paper/PDF supplier invoice into inventory, use the AI Invoice Scanner on the Inventory page instead."],
+        tips: ["Import your menu first (or let Order history create hidden meals) so past sales attach to meals and can be costed.", "This is for spreadsheets (CSV). To read a paper/PDF supplier invoice into inventory, use the AI Invoice Scanner on the Inventory page instead."],
       },
       {
         id: "settings",

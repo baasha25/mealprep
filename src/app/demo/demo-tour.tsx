@@ -233,14 +233,15 @@ const STEPS: Step[] = [
     kicker: "Getting started",
     title: "Import in an afternoon, live in days",
     blurb:
-      "Bring your menu, customers, subscriptions, and current inventory over from a spreadsheet — or photograph your printed menu and let PrepFlow read it. Most kitchens finish the import in an afternoon and run their first guided production cycle within the week.",
+      "Bring your menu, customers, subscriptions, and current inventory over from a spreadsheet — or photograph your printed menu and let PrepFlow read it. Add your old platform's orders export and months of real sales load too, so your P&L and best-sellers show your own numbers on day one. Most kitchens finish the import in an afternoon and run their first guided production cycle within the week.",
     points: [
       "CSV import for menu, customers, subscriptions, and stock",
+      "Order history from Shopify, WooCommerce or Square: your real P&L from day one",
       "Menu from a photo, recipes and prices kept",
       "Your guide can walk you through this on the call",
     ],
     img: "/demo/import.png",
-    imgAlt: "Data import screen for menu, customers, subscriptions, and inventory",
+    imgAlt: "Data import screen reading a Shopify orders export: orders, customers, sales and date span before importing",
   },
 ];
 

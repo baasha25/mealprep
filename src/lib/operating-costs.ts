@@ -55,6 +55,10 @@ export function rangeDays(range: RangeKey, now: Date = new Date(), since?: Date 
       return 7;
     case "month":
       return Math.max(1, now.getDate()); // month-to-date, matching month-to-date revenue
+    case "90d":
+      return 90;
+    case "12m":
+      return 365;
     case "all":
     default: {
       if (!since) return AVG_DAYS_PER_MONTH;

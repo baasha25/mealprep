@@ -1,10 +1,14 @@
 "use client";
 
 import { useMemo, useRef, useState, useTransition } from "react";
-import { Upload, FileText, Check, AlertTriangle, Download, ChefHat, Users, Repeat, Boxes } from "lucide-react";
+import { Upload, FileText, Check, AlertTriangle, Download, ChefHat, Users, Repeat, Boxes, Receipt } from "lucide-react";
 import { parseCsvRecords } from "@/lib/csv";
 import { mapImportRecords, SOURCE_LABEL } from "@/lib/import-mapping";
 import { runImport, type ImportKind, type ImportResult } from "./actions";
+import { OrderImporter, type ImportBatchRow } from "./order-importer";
+
+// Order history has its own flow (parsed in the browser, uploaded in chunks).
+type Tab = ImportKind | "orders";
 
 const KINDS: { id: ImportKind; label: string; icon: typeof ChefHat; cols: string; template: string }[] = [
   {
@@ -50,8 +54,9 @@ const KINDS: { id: ImportKind; label: string; icon: typeof ChefHat; cols: string
   },
 ];
 
-export function Importer() {
-  const [kind, setKind] = useState<ImportKind>("menu");
+export function Importer({ batches }: { batches: ImportBatchRow[] }) {
+  const [tab, setTab] = useState<Tab>("menu");
+  const kind: ImportKind = tab === "orders" ? "menu" : tab;
   const [text, setText] = useState("");
   const [result, setResult] = useState<ImportResult | null>(null);
   const [pending, startTransition] = useTransition();
@@ -92,13 +97,13 @@ export function Importer() {
     <div className="space-y-4">
       {/* Type picker */}
       <div className="inline-flex p-0.5 rounded-lg flex-wrap" style={{ background: "var(--sand)", border: "1px solid var(--line)" }}>
-        {KINDS.map((k) => {
-          const on = kind === k.id;
+        {[...KINDS, { id: "orders" as const, label: "Order history", icon: Receipt }].map((k) => {
+          const on = tab === k.id;
           return (
             <button
               key={k.id}
               onClick={() => {
-                setKind(k.id);
+                setTab(k.id);
                 setResult(null);
               }}
               className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-[7px] text-[13px] font-medium transition-colors"
@@ -115,6 +120,9 @@ export function Importer() {
         })}
       </div>
 
+      {tab === "orders" && <OrderImporter batches={batches} />}
+
+      {tab !== "orders" && (
       <div className="rounded-xl border p-5" style={cardStyle}>
         <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
           <div className="text-[13px]" style={{ color: "var(--ink-soft)" }}>
@@ -214,9 +222,10 @@ export function Importer() {
           </button>
         </div>
       </div>
+      )}
 
       {/* Result */}
-      {result && (
+      {tab !== "orders" && result && (
         <div className="rounded-xl border p-5 fade" style={cardStyle}>
           {result.message && !result.ok ? (
             <p className="text-[13px] flex items-center gap-2" style={{ color: "var(--clay)" }}>

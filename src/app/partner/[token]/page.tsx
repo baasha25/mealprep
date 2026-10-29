@@ -3,7 +3,7 @@ import { Leaf } from "lucide-react";
 import { db } from "@/lib/db";
 import { formatCents } from "@/lib/money";
 import { appUrl } from "@/lib/app-url";
-import { revenueStatusWhere } from "@/lib/order-status";
+import { revenueStatusWhere, platformOrdersWhere } from "@/lib/order-status";
 import { billingBadge } from "@/lib/admin-metrics";
 import { TIERS, type TierKey } from "@/lib/tiers";
 import { CopyLink } from "./copy-link";
@@ -42,8 +42,8 @@ export default async function PartnerStatsPage({ params }: { params: Promise<{ t
   const consented = partner.referredBusinesses.filter((b) => b.sharePartnerStats).map((b) => b.id);
   const [thisMo, lastMo] = consented.length
     ? await Promise.all([
-        db.order.groupBy({ by: ["businessId"], where: { businessId: { in: consented }, ...revenueStatusWhere, createdAt: { gte: thisStart } }, _sum: { totalCents: true }, _count: { _all: true } }),
-        db.order.groupBy({ by: ["businessId"], where: { businessId: { in: consented }, ...revenueStatusWhere, createdAt: { gte: lastStart, lt: thisStart } }, _sum: { totalCents: true }, _count: { _all: true } }),
+        db.order.groupBy({ by: ["businessId"], where: { businessId: { in: consented }, ...revenueStatusWhere, ...platformOrdersWhere, createdAt: { gte: thisStart } }, _sum: { totalCents: true }, _count: { _all: true } }),
+        db.order.groupBy({ by: ["businessId"], where: { businessId: { in: consented }, ...revenueStatusWhere, ...platformOrdersWhere, createdAt: { gte: lastStart, lt: thisStart } }, _sum: { totalCents: true }, _count: { _all: true } }),
       ])
     : [[], []];
   const tm = new Map(thisMo.map((g) => [g.businessId, g])); const lm = new Map(lastMo.map((g) => [g.businessId, g]));

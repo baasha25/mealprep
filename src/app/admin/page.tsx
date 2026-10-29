@@ -6,7 +6,7 @@ import { Kpi } from "@/components/ui";
 import { formatCents } from "@/lib/money";
 import { TIERS, type TierKey } from "@/lib/tiers";
 import { monthStart } from "@/lib/usage";
-import { revenueStatusWhere } from "@/lib/order-status";
+import { revenueStatusWhere, platformOrdersWhere } from "@/lib/order-status";
 import { sourceLabel } from "@/lib/attribution";
 import { trialStatus } from "@/lib/trial";
 import {
@@ -42,9 +42,9 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
         _count: { select: { customers: true, orders: true, meals: true, plans: true } },
       },
     }),
-    db.order.groupBy({ by: ["businessId"], where: { ...revenueStatusWhere, createdAt: { gte: start } }, _count: { _all: true }, _sum: { totalCents: true } }),
-    db.order.groupBy({ by: ["businessId"], where: { ...revenueStatusWhere, createdAt: { gte: lastStart, lt: start } }, _count: { _all: true }, _sum: { totalCents: true } }),
-    db.order.groupBy({ by: ["businessId"], where: { ...revenueStatusWhere }, _sum: { totalCents: true }, _max: { createdAt: true } }),
+    db.order.groupBy({ by: ["businessId"], where: { ...revenueStatusWhere, ...platformOrdersWhere, createdAt: { gte: start } }, _count: { _all: true }, _sum: { totalCents: true } }),
+    db.order.groupBy({ by: ["businessId"], where: { ...revenueStatusWhere, ...platformOrdersWhere, createdAt: { gte: lastStart, lt: start } }, _count: { _all: true }, _sum: { totalCents: true } }),
+    db.order.groupBy({ by: ["businessId"], where: { ...revenueStatusWhere, ...platformOrdersWhere }, _sum: { totalCents: true }, _max: { createdAt: true } }),
     db.subscription.groupBy({ by: ["businessId"], where: { status: "active" }, _count: { _all: true } }),
   ]);
 
