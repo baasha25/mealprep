@@ -7,6 +7,7 @@ import { updateSettings, signLogoUpload, type SettingsActionState } from "./acti
 import { TIERS, TIER_KEYS, feePctLabel, type TierKey } from "@/lib/tiers";
 import { TIMEZONES } from "@/lib/cutoff";
 import { NOUN_OPTIONS } from "@/lib/nouns";
+import { VERTICALS, VERTICAL_META } from "@/lib/verticals";
 
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
 
@@ -33,6 +34,7 @@ export type SettingsInitial = {
   subscriptionsOnly: boolean;
   subNoPick: "skip" | "chef_choice";
   itemNoun: string;
+  vertical: string;
   pickupLocations: string[];
   loyaltyEnabled: boolean;
   autoApproveReviews: boolean;
@@ -241,6 +243,13 @@ export function SettingsForm({ initial }: { initial: SettingsInitial }) {
           </Field>
         </div>
         <div className="grid sm:grid-cols-2 gap-4 mt-4">
+          <Field label="Main line of business" hint="What you mainly sell. Decides which pages show first in the sidebar and the storefront's default wording. Nothing is switched off: a meal-prep kitchen that starts catering just turns Catering on below.">
+            <select name="vertical" defaultValue={initial.vertical} className={INP} style={inputStyle}>
+              {VERTICALS.map((v) => (
+                <option key={v} value={v}>{VERTICAL_META[v].label}</option>
+              ))}
+            </select>
+          </Field>
           <Field label="What you sell" hint="Changes the word customers and your kitchen screens use: 'Add 3 portions', 'Pick 10 pouches', 'bottles out'. Prices, plans and recipes are unchanged.">
             <select name="itemNoun" defaultValue={initial.itemNoun} className={INP} style={inputStyle}>
               {NOUN_OPTIONS.map((n) => (

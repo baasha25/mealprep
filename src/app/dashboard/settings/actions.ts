@@ -1,6 +1,7 @@
 "use server";
 
 import { z } from "zod";
+import { VERTICALS } from "@/lib/verticals";
 import { normalizePostalCode } from "@/lib/regions";
 import { isValidHostname } from "@/lib/custom-domains";
 import { validateZones } from "@/lib/zones";
@@ -39,6 +40,7 @@ const SettingsInput = z.object({
   subDiscount: z.coerce.number().min(0).max(100),
   taxRate: z.coerce.number().min(0).max(100),
   tier: z.enum(["starter", "growth", "pro"]),
+  vertical: z.enum(VERTICALS),
   deliveryFee: z.coerce.number().min(0).max(1000),
   processingFee: z.coerce.number().min(0).max(1000),
   minOrder: z.coerce.number().min(0).max(100000),
@@ -119,6 +121,7 @@ export async function updateSettings(
     subDiscount: formData.get("subDiscount"),
     taxRate: formData.get("taxRate"),
     tier: formData.get("tier"),
+    vertical: formData.get("vertical") ?? "meal_prep",
     deliveryFee: formData.get("deliveryFee"),
     processingFee: formData.get("processingFee"),
     minOrder: formData.get("minOrder"),
@@ -182,7 +185,7 @@ export async function updateSettings(
   await db.$transaction([
     db.business.update({
       where: { id: business.id },
-      data: { name: d.name, brandColor: d.brandColor, logoUrl: d.logoUrl, customDomain: d.customDomain || null, tier: effectiveTier, sharePartnerStats: d.sharePartnerStats, postalCode: d.postalCode },
+      data: { name: d.name, brandColor: d.brandColor, logoUrl: d.logoUrl, customDomain: d.customDomain || null, tier: effectiveTier, vertical: d.vertical, sharePartnerStats: d.sharePartnerStats, postalCode: d.postalCode },
     }),
     db.businessSettings.upsert({
       where: { businessId: business.id },

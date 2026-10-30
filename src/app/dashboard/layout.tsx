@@ -8,6 +8,8 @@ import { trialStatus } from "@/lib/trial";
 import { kitchenAccess, KITCHEN_BILLING_ENABLED, type BillingStatus } from "@/lib/kitchen-billing";
 import { Lock } from "lucide-react";
 import { DashboardSidebar } from "@/components/dashboard-sidebar";
+import { hiddenNavFor, toVertical } from "@/lib/verticals";
+import { db } from "@/lib/db";
 import { sidebarUrgentCount } from "@/lib/alerts-data";
 import { cldLogo } from "@/lib/cloudinary";
 import { exitStaffPreview } from "./staff/actions";
@@ -40,6 +42,14 @@ export default async function DashboardLayout({
       urgent = await sidebarUrgentCount(business.id); // cached 5 min per kitchen
     } catch { urgent = 0; }
   }
+  // What the vertical hides from the sidebar until the feature is on. One light
+  // query (settings flags + whether any plan exists), cheap next to the page itself.
+  const vertical = toVertical(business.vertical);
+  const [navSettings, planCount] = await Promise.all([
+    db.businessSettings.findUnique({ where: { businessId: business.id }, select: { cateringEnabled: true, subscriptionsOnly: true } }),
+    db.plan.count({ where: { businessId: business.id } }),
+  ]);
+  const hiddenHrefs = hiddenNavFor(vertical, { cateringEnabled: navSettings?.cateringEnabled ?? false, hasPlans: planCount > 0, subscriptionsOnly: navSettings?.subscriptionsOnly ?? false });
   const planLabel = TIERS[usage.tier].name;
   // Free-trial countdown (owner-only, informational — no lockout until billing).
   const trial = trialStatus(business.trialEndsAt);
@@ -80,6 +90,7 @@ export default async function DashboardLayout({
         role={role}
         authEnabled={Boolean(process.env.CLERK_SECRET_KEY)}
         urgent={urgent}
+        hiddenHrefs={hiddenHrefs}
       />
       <main className="flex-1 min-w-0">
         {isDemo && (

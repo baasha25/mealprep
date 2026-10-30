@@ -3,6 +3,7 @@
 import { useActionState, useState } from "react";
 import { Leaf, Check } from "lucide-react";
 import { createKitchen, type OnboardResult } from "./actions";
+import { VERTICALS, VERTICAL_META, type Vertical } from "@/lib/verticals";
 import { TIERS, TIER_KEYS, feePctLabel, type TierKey } from "@/lib/tiers";
 
 const fmtPrice = (cents: number) => `$${Math.round(cents / 100)}`;
@@ -12,6 +13,7 @@ export function OnboardingForm() {
     createKitchen,
     null,
   );
+  const [vertical, setVertical] = useState<Vertical>("meal_prep");
   const [tier, setTier] = useState<TierKey>("starter");
 
   return (
@@ -36,7 +38,7 @@ export function OnboardingForm() {
         </div>
 
         <p className="text-[14px] mb-6" style={{ color: "var(--ink-soft)" }}>
-          Give your meal-prep business a name and a brand color. You can change
+          Give your business a name, tell us what you sell, and pick a brand color. You can change
           everything later in Settings.
         </p>
 
@@ -93,6 +95,39 @@ export function OnboardingForm() {
               className="h-10 w-16 rounded-lg border p-1"
               style={{ borderColor: "var(--line)", background: "var(--paper)" }}
             />
+          </div>
+
+          {/* What they mainly sell — sets defaults and what the dashboard shows first; nothing is locked out. */}
+          <div>
+            <label className="block text-[13px] font-medium mb-1.5" style={{ color: "var(--ink)" }}>
+              What do you mainly sell?
+            </label>
+            <input type="hidden" name="vertical" value={vertical} />
+            <div className="grid sm:grid-cols-2 gap-2">
+              {VERTICALS.map((k) => {
+                const m = VERTICAL_META[k];
+                const on = vertical === k;
+                return (
+                  <button
+                    type="button"
+                    key={k}
+                    onClick={() => setVertical(k)}
+                    className="rounded-xl border px-3.5 py-2.5 text-left transition-colors"
+                    style={{
+                      borderColor: on ? "var(--pine)" : "var(--line)",
+                      background: on ? "color-mix(in srgb, var(--pine) 7%, transparent)" : "var(--paper)",
+                      boxShadow: on ? "0 0 0 1px var(--pine)" : "none",
+                    }}
+                  >
+                    <span className="block text-[13.5px] font-medium" style={{ color: "var(--ink)" }}>{m.label}</span>
+                    <span className="block text-[12px] mt-0.5" style={{ color: "var(--muted)" }}>{m.blurb}</span>
+                  </button>
+                );
+              })}
+            </div>
+            <p className="mt-1 text-[12px]" style={{ color: "var(--muted)" }}>
+              Sets your starting wording and which pages show first. Everything stays available in Settings.
+            </p>
           </div>
 
           {/* Plan picker — drives the platform fee. No card required to start. */}

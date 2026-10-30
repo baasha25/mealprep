@@ -113,6 +113,7 @@ export function DashboardSidebar({
   role,
   authEnabled,
   urgent = 0,
+  hiddenHrefs = [],
 }: {
   businessName: string;
   logoUrl?: string | null;
@@ -121,6 +122,8 @@ export function DashboardSidebar({
   authEnabled: boolean;
   /** Count of urgent alerts (owner only) — shows a clay dot on Overview from any page. */
   urgent?: number;
+  /** Pages the kitchen's vertical hides until the feature is switched on (see src/lib/verticals.ts). */
+  hiddenHrefs?: string[];
 }) {
   const pathname = usePathname();
 
@@ -192,7 +195,7 @@ export function DashboardSidebar({
 
       <div className={`flex flex-col ${rail ? "gap-1" : "gap-3"}`}>
         {NAV_GROUPS.map((group, gi) => {
-          const items = group.items.filter(([href]) => canAccess(role, href));
+          const items = group.items.filter(([href]) => canAccess(role, href) && !hiddenHrefs.includes(href));
           if (items.length === 0) return null;
 
           // ---- Collapsed rail: icon-only, no section headers, tooltips on hover.

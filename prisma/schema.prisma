@@ -140,6 +140,10 @@ model Business {
   isDemo          Boolean  @default(false) // throwaway sales-demo tenant: read-write but isolated, no real emails/charges, auto-deleted, hidden from /admin + store index
   demoKey         String?  @unique // branded prospect demo: "<rep>:<brand>" — re-entering the same link reuses this tenant instead of minting a new one
   demoExpiresAt   DateTime? // when a kept demo is swept (null = default 24h after creation)
+  // What the kitchen mainly sells (asked at sign-up, editable in Settings). Sets
+  // defaults and what the dashboard shows first; never locks a feature out.
+  // meal_prep | catering | prepared_foods | boxes — see src/lib/verticals.ts
+  vertical        String   @default("meal_prep")
   country         String?  // ISO-2 from the visitor's country at sign-up (e.g. CA, US); drives pricing currency
   postalCode      String?  // the kitchen's own postal/ZIP code (asked at onboarding) — opens Nearby prices on the right metro, seeds timezone
   currency        String   @default("CAD") // what this kitchen is billed in for its PrepFlow plan (CAD | USD, parity numbers)
@@ -318,6 +322,12 @@ model BusinessSettings {
   cateringLeadDays Int     @default(3)  // minimum days' notice for an event date
   cateringMinMeals Int     @default(10) // minimum meals on a catering request
   cateringIntro    String? // short pitch on the request page, e.g. "Boxed lunches and trays for offices and events"
+  // Deposits + terms (catering Tier 1). depositBps 0 = pay in full on approval.
+  cateringDepositBps    Int    @default(0)    // e.g. 5000 = 50% deposit charged on approval
+  cateringBalanceDays   Int    @default(7)    // balance due this many days before the event
+  cateringTerms         String @default("on_approval") // on_approval | net15 | net30 — how corporate clients pay
+  invoicePrefix         String @default("INV")
+  invoiceNextNumber     Int    @default(1001)
 
   // Storefront search presence (Settings → Brand → Search & link previews).
   // Drive the page <title>/description, link previews and the JSON-LD Google reads.
@@ -455,6 +465,9 @@ model Meal {
   shelfLifeDays Int?  // days the finished meal keeps; drives label "best by" (null = use kitchen default)
   // Checkout add-on: offered in the cart ("Add to your order") when not already in it.
   isAddOn       Boolean @default(false)
+  // Catering package priced per guest ("Taco bar · $28 a head"): the quote line's
+  // qty is the headcount and the recipe scales to it for purchasing.
+  perGuest      Boolean @default(false)
   upsellPrompt  String? // optional one-liner shown with the add-on, e.g. "Pairs with any bowl"
   // Recipe yield (food-cost lever #3): servings the recipe is costed for vs. what
   // the kitchen actually gets. If actual < expected, real per-plate cost is higher.
@@ -853,6 +866,24 @@ model CateringRequest {
   taxRateBps       Int   @default(0) // snapshot of the kitchen's tax rate when quoted
   ownerNote        String? // message shown on the quote
   declineReason    String?
+  // Proposal with options: up to 3 alternative quotes the client chooses from.
+  // [{label, items, deliveryFeeCents, discountCents, ownerNote}]; chosenOption = index picked.
+  options          Json?
+  chosenOption     Int?
+  // Deposit + balance (snapshot of the kitchen's terms when quoted).
+  depositBps       Int       @default(0)
+  depositCents     Int       @default(0)
+  depositPaidAt    DateTime?
+  balanceDueAt     DateTime?
+  balancePaidAt    DateTime?
+  // Invoice (net terms): number issued when the quote is approved on terms.
+  invoiceNumber    String?
+  invoiceTerms     String?   // on_approval | net15 | net30
+  invoiceDueAt     DateTime?
+  invoiceSentAt    DateTime?
+  // Event details that feed the event sheet and production.
+  deliveryWindow   String?   // e.g. "11:00–11:30"
+  dietary          Json?     // {vegetarian: 12, glutenFree: 3, ...} as the client reported
 
   quotedAt   DateTime?
   approvedAt DateTime?

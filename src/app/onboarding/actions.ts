@@ -11,6 +11,7 @@ import { ATTRIB_COOKIE, parseAttributionCookie } from "@/lib/attribution";
 import { COUNTRY_COOKIE, currencyForCountry, normalizeCountry } from "@/lib/geo";
 import { normalizePostalCode, defaultsForPostal } from "@/lib/regions";
 import { TIMEZONE_VALUES } from "@/lib/cutoff";
+import { VERTICALS, VERTICAL_META } from "@/lib/verticals";
 
 const Input = z.object({
   name: z.string().trim().min(2, "Enter your kitchen's name").max(80),
@@ -20,6 +21,7 @@ const Input = z.object({
     .regex(/^#[0-9a-fA-F]{6}$/, "Pick a valid color")
     .optional(),
   tier: z.enum(["starter", "growth", "pro"]).default("starter"),
+  vertical: z.enum(VERTICALS).default("meal_prep"),
   postalCode: z.string().trim().max(12).transform((v, ctx) => {
     if (!v) return null;
     const n = normalizePostalCode(v);
@@ -44,6 +46,7 @@ export async function createKitchen(
     name: formData.get("name"),
     brandColor: formData.get("brandColor") || undefined,
     tier: formData.get("tier") || undefined,
+    vertical: formData.get("vertical") || undefined,
     postalCode: formData.get("postalCode") ?? "",
   });
   if (!parsed.success) {
@@ -74,6 +77,8 @@ export async function createKitchen(
 
   const brandColor = parsed.data.brandColor ?? "#2f4536";
   const tier = parsed.data.tier;
+  const vertical = parsed.data.vertical;
+  const vdefaults = VERTICAL_META[vertical].defaults;
   // First-touch acquisition (captured client-side into a cookie on landing).
   const attrib = parseAttributionCookie((await cookies()).get(ATTRIB_COOKIE)?.value);
   // Partner Program: if this kitchen arrived via a ?ref=<code> link, attribute
@@ -98,6 +103,7 @@ export async function createKitchen(
       slug,
       brandColor,
       tier,
+      vertical,
       country,
       postalCode: parsed.data.postalCode,
       currency: currencyForCountry(country),
@@ -110,7 +116,8 @@ export async function createKitchen(
       referredByPartnerId,
       // Chosen plan drives the platform fee; other pricing/fulfillment
       // fields fall back to the schema defaults.
-      settings: { create: { platformFeeBps: TIERS[tier].platformFeeBps, ...(timezone ? { timezone } : {}) } },
+      // What they mainly sell sets the wording and which front door the storefront opens with.
+      settings: { create: { platformFeeBps: TIERS[tier].platformFeeBps, itemNoun: vdefaults.itemNoun, subscriptionsOnly: vdefaults.subscriptionsOnly, cateringEnabled: vdefaults.cateringEnabled, ...(timezone ? { timezone } : {}) } },
       users: { create: { email, role: "owner", authProviderId: userId } },
     },
   });

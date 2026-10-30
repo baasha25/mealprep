@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { UtensilsCrossed } from "lucide-react";
+import { toVertical, VERTICAL_META } from "@/lib/verticals";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { getStorefrontBusiness, publicStoreUrls } from "@/lib/storefront";
@@ -64,6 +65,8 @@ export default async function StorePage({
   const business = await getStorefrontBusiness(slug);
   if (!business || !business.settings) notFound();
   const s = business.settings;
+  const vertical = toVertical(business.vertical);
+  const cateringFirst = vertical === "catering" && s.cateringEnabled;
 
   const meals = await db.meal.findMany({
     where: { businessId: business.id, active: true },
@@ -254,21 +257,29 @@ export default async function StorePage({
       <main className="max-w-6xl mx-auto px-6 py-8 fade">
         <div className="mb-7">
           <h1 className="disp text-[30px] leading-none font-medium" style={{ color: "var(--ink)" }}>
-            {nouns.key === "meal" ? "Order Fresh Meals" : `Order Fresh ${nouns.Many}`}{s.serviceArea ? <span style={{ color: "var(--ink-soft)" }}> · {s.serviceArea}</span> : null}
+            {cateringFirst ? "Catering & large orders" : nouns.key === "meal" ? "Order Fresh Meals" : `Order Fresh ${nouns.Many}`}{s.serviceArea ? <span style={{ color: "var(--ink-soft)" }}> · {s.serviceArea}</span> : null}
           </h1>
           <p className="text-[13.5px] mt-2.5" style={{ color: "var(--ink-soft)" }}>
-            {s.storeTagline || (s.subscriptionsOnly ? `Choose a plan, then pick your ${nouns.many} each week from the menu below.` : "Browse the menu, build your order, and subscribe to save every week.")}
+            {s.storeTagline || (cateringFirst ? VERTICAL_META.catering.storeBlurb : s.subscriptionsOnly ? `Choose a plan, then pick your ${nouns.many} each week from the menu below.` : VERTICAL_META[vertical].storeBlurb)}
           </p>
           {s.cateringEnabled && (
+            // A catering kitchen leads with the request form; everyone else offers it beside the menu.
             <Link
               href={`/store/${slug}/catering`}
               className="inline-flex items-center gap-2.5 mt-4 pl-3.5 pr-4 py-2.5 rounded-xl border text-[14px] font-medium transition-colors hover:brightness-95"
-              style={{ borderColor: "color-mix(in srgb, var(--pine) 35%, transparent)", background: "color-mix(in srgb, var(--pine) 9%, var(--surface))", color: "var(--pine)" }}
+              style={cateringFirst
+                ? { borderColor: "var(--pine)", background: "var(--pine)", color: "#f4f2ec" }
+                : { borderColor: "color-mix(in srgb, var(--pine) 35%, transparent)", background: "color-mix(in srgb, var(--pine) 9%, var(--surface))", color: "var(--pine)" }}
             >
               <UtensilsCrossed size={16} />
-              <span>Feeding a group?<span className="font-normal" style={{ color: "var(--ink-soft)" }}> Catering &amp; large orders, quoted first</span></span>
+              {cateringFirst
+                ? <span>Request a quote<span className="font-normal" style={{ opacity: 0.85 }}> · date, headcount, menu</span></span>
+                : <span>Feeding a group?<span className="font-normal" style={{ color: "var(--ink-soft)" }}> Catering &amp; large orders, quoted first</span></span>}
               <span aria-hidden>→</span>
             </Link>
+          )}
+          {cateringFirst && (
+            <p className="text-[12.5px] mt-3" style={{ color: "var(--muted)" }}>Ordering for yourself? The menu below is available for pickup or delivery.</p>
           )}
         </div>
 
