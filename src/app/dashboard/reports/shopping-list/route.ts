@@ -10,7 +10,7 @@ const isoDate = (d: Date) => d.toISOString().slice(0, 10);
 const round2 = (n: number) => (Math.round(n * 100) / 100).toString();
 
 // Demand comes from orders awaiting production (mirrors the Purchasing screen).
-const PRODUCING = ["paid", "in_production"] as const;
+const PRODUCING = ["confirmed", "paid", "in_production"] as const; // confirmed = catering deposit in / invoiced on terms
 
 // Downloadable trim-aware shopping list — what to buy + dollars lost to over-buying.
 export async function GET(request: Request) {

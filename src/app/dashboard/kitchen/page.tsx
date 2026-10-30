@@ -26,7 +26,7 @@ const STATION_ICON: Record<string, typeof Flame> = {
 const stationFor = (diet: string | null) => (diet && STATION[diet]) || "Prep";
 
 // Orders that still need to be made.
-const PRODUCING = ["paid", "in_production"] as const;
+const PRODUCING = ["confirmed", "paid", "in_production"] as const; // confirmed = catering deposit in / invoiced on terms
 
 type MealRoll = { name: string; qty: number; diet: string | null; swatch: string };
 
@@ -73,7 +73,7 @@ export default async function KitchenPage({ searchParams }: { searchParams?: Pro
     db.order.findMany({
       where: { businessId: business.id, type: "catering", status: { in: [...PRODUCING] } },
       orderBy: { deliveryDate: "asc" },
-      select: { id: true, deliveryDate: true, fulfillment: true, customer: { select: { name: true } }, items: { select: { qty: true } } },
+      select: { id: true, deliveryDate: true, fulfillment: true, customer: { select: { name: true } }, items: { select: { qty: true } }, cateringRequest: { select: { id: true } } },
     }),
   ]);
 
@@ -245,12 +245,15 @@ export default async function KitchenPage({ searchParams }: { searchParams?: Pro
                   const soon = !o.deliveryDate || o.deliveryDate <= horizon;
                   const qty = o.items.reduce((s, i) => s + i.qty, 0);
                   return (
-                    <Link key={o.id} href={`/dashboard/orders/${o.id}`} className="flex items-center gap-3 px-3 py-2.5 rounded-lg" style={{ background: "var(--paper)", border: "1px solid var(--line)" }}>
+                    <div key={o.id} className="flex items-center gap-3 px-3 py-2.5 rounded-lg" style={{ background: "var(--paper)", border: "1px solid var(--line)" }}>
                       <span className="grid place-items-center min-w-9 h-8 px-2 rounded-md disp text-[15px] font-medium" style={{ background: "color-mix(in srgb, var(--pine) 10%, transparent)", color: "var(--pine)" }}>{qty}</span>
-                      <span className="text-[13.5px] font-medium" style={{ color: "var(--ink)" }}>{o.customer?.name ?? "Catering"}</span>
+                      <Link href={`/dashboard/orders/${o.id}`} className="text-[13.5px] font-medium" style={{ color: "var(--ink)" }}>{o.customer?.name ?? "Catering"}</Link>
                       <span className="text-[12px]" style={{ color: "var(--muted)" }}>{o.deliveryDate ? dateFmt.format(o.deliveryDate) : "date TBC"} · {o.fulfillment}</span>
+                      {o.cateringRequest && (
+                        <Link href={`/dashboard/catering/${o.cateringRequest.id}/sheet`} className="text-[12px] font-medium" style={{ color: "var(--pine)" }}>Event sheet</Link>
+                      )}
                       <span className="ml-auto text-[11px] font-semibold uppercase tracking-wide" style={{ color: soon ? "var(--clay)" : "var(--muted)" }}>{soon ? "In this run" : "Later"}</span>
-                    </Link>
+                    </div>
                   );
                 })}
               </div>

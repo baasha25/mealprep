@@ -3,6 +3,7 @@
 
 export const ORDER_STATUSES = [
   "pending",
+  "confirmed",
   "paid",
   "in_production",
   "packed",
@@ -19,6 +20,8 @@ export const STATUS_META: Record<
   { label: string; fg: string; bg: string }
 > = {
   pending: { label: "Pending", fg: "#8a6d1f", bg: "#f3e9c9" },
+  // Committed but not fully paid: a catering deposit is in, or an invoice was issued on terms.
+  confirmed: { label: "Confirmed · balance due", fg: "#3f5c5a", bg: "#d6e4e3" },
   paid: { label: "Paid", fg: "#2f5e3f", bg: "#d9ead9" },
   in_production: { label: "In production", fg: "#3f5c5a", bg: "#d6e4e3" },
   packed: { label: "Packed", fg: "#566073", bg: "#dde1ea" },
@@ -27,6 +30,13 @@ export const STATUS_META: Record<
   canceled: { label: "Canceled", fg: "#7a7268", bg: "#e7e3d8" },
   refunded: { label: "Refunded", fg: "#9a5142", bg: "#f0ddd6" },
 };
+
+/**
+ * Orders the kitchen should cook: money committed (confirmed = deposit in or
+ * invoice issued, paid = settled) or already on the line. Shared by Kitchen OS,
+ * KDS, purchasing, labels and the production reports.
+ */
+export const PRODUCING_STATUSES = ["confirmed", "paid", "in_production"] as const;
 
 export const ORDER_TYPE_LABEL: Record<string, string> = {
   subscription: "Subscription",

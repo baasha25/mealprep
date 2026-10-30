@@ -52,6 +52,10 @@ export type SettingsInitial = {
   cateringLeadDays: number;
   cateringMinMeals: number;
   cateringIntro: string;
+  cateringDepositPct: number;
+  cateringBalanceDays: number;
+  cateringTerms: "on_approval" | "net15" | "net30";
+  invoicePrefix: string;
   storeTagline: string;
   storeDescription: string;
   serviceArea: string;
@@ -525,6 +529,31 @@ export function SettingsForm({ initial }: { initial: SettingsInitial }) {
           <Field label="Minimum meals" hint="Below this, a customer must describe what they need instead of picking meals (you still get the request).">
             <input name="cateringMinMeals" type="number" min={0} max={1000} defaultValue={initial.cateringMinMeals} className={INP} style={inputStyle} />
             <ErrorText msg={errors.cateringMinMeals} />
+          </Field>
+        </div>
+        <div className="grid sm:grid-cols-2 gap-4 mt-4">
+          <Field label="Deposit on approval (%)" hint="0 = the client pays the full quote when they approve. 50 = they pay half to lock the date and the balance before the event. The order goes into production as soon as the deposit is in.">
+            <select name="cateringDepositPct" defaultValue={initial.cateringDepositPct} className={INP} style={inputStyle}>
+              {[0, 25, 30, 50, 100].map((p) => (
+                <option key={p} value={p}>{p === 0 ? "No deposit — pay in full" : p === 100 ? "100% up front" : `${p}% deposit`}</option>
+              ))}
+            </select>
+            <ErrorText msg={errors.cateringDepositPct} />
+          </Field>
+          <Field label="Balance due (days before the event)" hint="When the remaining balance is due. The client gets a reminder email and a pay-by-card link; you can also record an e-transfer.">
+            <input name="cateringBalanceDays" type="number" min={0} max={60} defaultValue={initial.cateringBalanceDays} className={INP} style={inputStyle} />
+            <ErrorText msg={errors.cateringBalanceDays} />
+          </Field>
+          <Field label="Payment terms" hint="Corporate clients that pay on invoice: approving the quote issues a numbered invoice with a due date instead of asking for a card. They can still pay by card from the invoice.">
+            <select name="cateringTerms" defaultValue={initial.cateringTerms} className={INP} style={inputStyle}>
+              <option value="on_approval">Card on approval (or deposit)</option>
+              <option value="net15">Invoice · due in 15 days</option>
+              <option value="net30">Invoice · due in 30 days</option>
+            </select>
+          </Field>
+          <Field label="Invoice number prefix" hint="Invoices are numbered PREFIX-1001, PREFIX-1002… and never reused.">
+            <input name="invoicePrefix" defaultValue={initial.invoicePrefix} maxLength={10} className={INP} style={inputStyle} />
+            <ErrorText msg={errors.invoicePrefix} />
           </Field>
         </div>
         <Field className="mt-4" label="Intro on the catering page (optional)" hint="One or two sentences. Blank = a sensible default mentioning your kitchen name.">

@@ -5,7 +5,7 @@ import { db } from "@/lib/db";
 import { requireBusiness } from "@/lib/auth";
 import { stationFor } from "@/lib/stations";
 
-const PRODUCING = ["paid", "in_production"] as const;
+const PRODUCING = ["confirmed", "paid", "in_production"] as const; // confirmed = catering deposit in / invoiced on terms
 
 /**
  * Start (or restart) a production run: turn the current queue into line tickets,

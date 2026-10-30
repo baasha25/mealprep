@@ -6,7 +6,7 @@ import { picksFromSnapshot } from "@/lib/meal-options";
 import { toPurchaseQty } from "@/lib/units";
 import { Fulfillment, type PackingSlip, type MealLabel } from "./fulfillment";
 
-const PRODUCING = ["paid", "in_production"] as const;
+const PRODUCING = ["confirmed", "paid", "in_production"] as const; // confirmed = catering deposit in / invoiced on terms
 
 // Fallback shelf life for meals that don't set their own — "best by" on labels.
 const DEFAULT_SHELF_LIFE_DAYS = 5;

@@ -8,13 +8,15 @@
 
 import { z } from "zod";
 
-export const CATERING_STATUSES = ["requested", "quoted", "approved", "paid", "declined"] as const;
+export const CATERING_STATUSES = ["requested", "quoted", "approved", "deposit_paid", "invoiced", "paid", "declined"] as const;
 export type CateringStatus = (typeof CATERING_STATUSES)[number];
 
 export const CATERING_STATUS_META: Record<CateringStatus, { label: string; fg: string; bg: string; hint: string }> = {
   requested: { label: "New request", fg: "#8a6d1f", bg: "#f3e9c9", hint: "Waiting for your quote" },
   quoted: { label: "Quote sent", fg: "#3f5c5a", bg: "#d6e4e3", hint: "Waiting for the customer" },
   approved: { label: "Approved · unpaid", fg: "#8a6d1f", bg: "#f3e9c9", hint: "Customer said yes; payment not in yet" },
+  deposit_paid: { label: "Deposit paid · balance due", fg: "#3f5c5a", bg: "#d6e4e3", hint: "Confirmed and in production; the balance is still to come" },
+  invoiced: { label: "Invoiced · awaiting payment", fg: "#3f5c5a", bg: "#d6e4e3", hint: "Approved on terms; confirmed and in production, invoice outstanding" },
   paid: { label: "Paid", fg: "#2f5e3f", bg: "#d9ead9", hint: "Confirmed and in production" },
   declined: { label: "Declined", fg: "#7a7268", bg: "#e7e3d8", hint: "You passed on this one" },
 };
@@ -25,11 +27,19 @@ export function canQuote(status: CateringStatus): boolean {
 }
 /** Owner can decline anything that is not paid. */
 export function canDecline(status: CateringStatus): boolean {
-  return status === "requested" || status === "quoted" || status === "approved";
+  return status === "requested" || status === "quoted" || status === "approved" || status === "invoiced";
 }
 /** Owner can record an offline payment (e-transfer, cash) once a quote exists. */
 export function canRecordPayment(status: CateringStatus): boolean {
-  return status === "quoted" || status === "approved";
+  return status === "quoted" || status === "approved" || status === "deposit_paid" || status === "invoiced";
+}
+/** Money is committed and the kitchen should cook (deposit in, invoice issued, or paid). */
+export function isConfirmed(status: CateringStatus): boolean {
+  return status === "deposit_paid" || status === "invoiced" || status === "paid";
+}
+/** The client still owes something they can pay by card from their page. */
+export function hasBalanceDue(status: CateringStatus): boolean {
+  return status === "deposit_paid" || status === "invoiced";
 }
 /** Customer can approve a quote (and retry payment after approving). */
 export function canApprove(status: CateringStatus): boolean {

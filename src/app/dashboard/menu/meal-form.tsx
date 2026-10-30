@@ -58,6 +58,7 @@ export type MealFormInitial = {
   imageUrl: string;
   shelfLifeDays: string;
   isAddOn: boolean;
+  perGuest: boolean;
   upsellPrompt: string;
   expectedServings: string;
   actualServings: string;
@@ -541,6 +542,17 @@ export function MealForm({
             <input type="checkbox" name="active" defaultChecked={initial.active} />
             <span className="text-[13px]" style={{ color: "var(--ink)" }}>
               Active (visible in storefront)
+            </span>
+          </label>
+        </div>
+        <div className="mt-4 rounded-lg border p-3" style={{ borderColor: "var(--line)", background: "var(--paper)" }}>
+          <label className="flex items-start gap-2 cursor-pointer select-none">
+            <input type="checkbox" name="perGuest" defaultChecked={initial.perGuest} className="mt-1" />
+            <span>
+              <span className="block text-[13px] font-medium" style={{ color: "var(--ink)" }}>Catering package, priced per guest</span>
+              <span className="block text-[12px]" style={{ color: "var(--muted)" }}>
+                e.g. “Taco bar · $28 a head”. Shown on the catering request page under Packages, not on the regular menu; the quantity is the headcount and the recipe scales to it for purchasing.
+              </span>
             </span>
           </label>
         </div>

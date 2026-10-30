@@ -10,6 +10,7 @@ import { mealLossCents } from "@/lib/loss";
 
 const ORDER_STATUSES = [
   "pending",
+  "confirmed",
   "paid",
   "in_production",
   "packed",

@@ -2,14 +2,14 @@
 
 import { Printer } from "lucide-react";
 
-/** Opens the browser print dialog — the user picks "Save as PDF". */
-export function PrintButton({ label = "Print / Save as PDF" }: { label?: string }) {
+/** "Print / save as PDF" — the browser's print dialog does the rest. */
+export function PrintButton({ label = "Print" }: { label?: string }) {
   return (
     <button
       type="button"
       onClick={() => window.print()}
-      className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-[13px] font-medium"
-      style={{ background: "var(--pine)", color: "#f4f2ec" }}
+      className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[13px] font-medium border"
+      style={{ borderColor: "var(--line)", background: "var(--surface)", color: "var(--ink)" }}
     >
       <Printer size={15} /> {label}
     </button>

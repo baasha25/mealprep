@@ -6,10 +6,20 @@ import { Check, Loader2 } from "lucide-react";
 import { formatCents } from "@/lib/money";
 import { approveCateringQuote } from "../../../catering-actions";
 
-export function ApproveButton({ slug, token, totalCents, approved }: { slug: string; token: string; totalCents: number; approved: boolean }) {
+/**
+ * Approve the quote. Depending on the kitchen's terms this charges the full
+ * amount, a deposit, or (net terms) just confirms and issues an invoice.
+ */
+export function ApproveButton({ slug, token, amountCents, totalCents, mode, approved }: { slug: string; token: string; amountCents: number; totalCents: number; mode: "card_full" | "card_deposit" | "invoice"; approved: boolean }) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const label =
+    mode === "invoice"
+      ? `Approve ${formatCents(totalCents)} · invoice me`
+      : mode === "card_deposit"
+        ? `${approved ? "Pay" : "Approve & pay"} ${formatCents(amountCents)} deposit`
+        : `${approved ? "Pay" : "Approve & pay"} ${formatCents(amountCents)}`;
   return (
     <div className="mt-5">
       <button
@@ -28,9 +38,11 @@ export function ApproveButton({ slug, token, totalCents, approved }: { slug: str
         style={{ background: "var(--pine)", color: "#f4f2ec" }}
       >
         {pending ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
-        {approved ? `Pay ${formatCents(totalCents)} now` : `Approve & pay ${formatCents(totalCents)}`}
+        {label}
       </button>
-      <p className="text-[11.5px] mt-2" style={{ color: "var(--muted)" }}>Secure card payment. Your date is confirmed as soon as payment goes through.</p>
+      <p className="text-[11.5px] mt-2" style={{ color: "var(--muted)" }}>
+        {mode === "invoice" ? "No card now. Your date is confirmed on approval and the invoice arrives by email." : "Secure card payment. Your date is confirmed as soon as payment goes through."}
+      </p>
       {error && <p className="text-[12.5px] mt-2" style={{ color: "var(--clay)" }}>{error}</p>}
     </div>
   );

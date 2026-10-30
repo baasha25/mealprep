@@ -6,7 +6,7 @@ import { picksFromSnapshot, nameWithOptions } from "@/lib/meal-options";
 import { effectiveItemDate, dayKey } from "@/lib/delivery-stops";
 import { stationFor } from "@/lib/stations";
 
-const PRODUCING = ["paid", "in_production"] as const;
+const PRODUCING = ["confirmed", "paid", "in_production"] as const; // confirmed = catering deposit in / invoiced on terms
 
 // The production pull-list as CSV — what to make, by delivery day and station.
 // Same data as Kitchen OS; made for Google Sheets (live link) or a printout.

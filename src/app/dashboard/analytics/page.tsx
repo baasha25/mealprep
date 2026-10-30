@@ -6,16 +6,22 @@ import { formatCents, formatCents0 } from "@/lib/money";
 import { ORDER_TYPE_LABEL, revenueStatusWhere } from "@/lib/order-status";
 import { RangeFilter } from "@/components/range-filter";
 import { toRangeKey, rangeWhere, rangeLabel } from "@/lib/date-range";
+import { toOrderTypeKey, orderTypeWhere, orderTypeLabel } from "@/lib/order-type-filter";
+import { TypeFilter } from "@/components/type-filter";
 
 export default async function AnalyticsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ range?: string }>;
+  searchParams: Promise<{ range?: string; type?: string }>;
 }) {
   const { business } = await requireOwner();
-  const range = toRangeKey((await searchParams).range);
+  const sp = await searchParams;
+  const range = toRangeKey(sp.range);
+  const type = toOrderTypeKey(sp.type);
+  const typeSettings = await db.businessSettings.findUnique({ where: { businessId: business.id }, select: { cateringEnabled: true } });
+  const showType = (typeSettings?.cateringEnabled ?? false) || type !== "all";
   // Sales analytics exclude canceled/refunded orders.
-  const where = { businessId: business.id, ...rangeWhere(range), ...revenueStatusWhere };
+  const where = { businessId: business.id, ...rangeWhere(range), ...revenueStatusWhere, ...orderTypeWhere(type) };
 
   const [orders, customerCount, activeSubs, orderItems] = await Promise.all([
     db.order.findMany({ where, select: { totalCents: true, type: true, zone: true } }),
@@ -72,8 +78,8 @@ export default async function AnalyticsPage({
       <Head
         kicker="Insights"
         title="Analytics"
-        sub={`Sales, menu performance, and subscriber mix — ${rangeLabel(range).toLowerCase()}.`}
-        right={<RangeFilter basePath="/dashboard/analytics" current={range} />}
+        sub={`Sales, menu performance, and subscriber mix — ${rangeLabel(range).toLowerCase()}${type !== "all" ? `, ${orderTypeLabel(type).toLowerCase()} only` : ""}.`}
+        right={<div className="flex items-center gap-2 flex-wrap">{showType && <TypeFilter basePath="/dashboard/analytics" current={type} range={range} />}<RangeFilter basePath="/dashboard/analytics" current={range} extraParams={type !== "all" ? { type } : undefined} /></div>}
       />
 
       <div className="grid sm:grid-cols-4 gap-3.5 mb-4">

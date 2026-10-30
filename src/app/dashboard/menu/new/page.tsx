@@ -28,6 +28,7 @@ export default async function NewMealPage() {
     swatch: swatchForIndex(count),
     imageUrl: "",
     isAddOn: false,
+    perGuest: false,
     upsellPrompt: "",
     shelfLifeDays: "",
     expectedServings: "",

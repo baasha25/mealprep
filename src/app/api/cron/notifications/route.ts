@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { runDailyNotifications } from "@/lib/notifications";
+import { runCateringReminders } from "@/lib/catering-reminders";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -18,7 +19,9 @@ async function handle(req: NextRequest) {
   }
   try {
     const summary = await runDailyNotifications();
-    return NextResponse.json({ ok: true, ...summary });
+    // Catering balances and invoices due (deposit reminders, overdue invoices).
+    const catering = await runCateringReminders().catch((e) => { console.error("[cron:catering-reminders]", e); return null; });
+    return NextResponse.json({ ok: true, ...summary, catering });
   } catch (err) {
     console.error("[cron:notifications]", err);
     return NextResponse.json({ ok: false, error: "run failed" }, { status: 500 });

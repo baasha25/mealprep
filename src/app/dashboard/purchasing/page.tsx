@@ -17,7 +17,7 @@ import { toPurchaseQty } from "@/lib/units";
 import { CostCell } from "./cost-cell";
 
 // Demand comes from orders awaiting production (same set as the production report).
-const PRODUCING = ["paid", "in_production"] as const;
+const PRODUCING = ["confirmed", "paid", "in_production"] as const; // confirmed = catering deposit in / invoiced on terms
 
 export default async function PurchasingPage() {
   const { business } = await requireBusiness();

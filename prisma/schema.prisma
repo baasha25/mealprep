@@ -46,12 +46,15 @@ enum CateringStatus {
   requested
   quoted
   approved
+  deposit_paid // deposit received; balance still due before the event
+  invoiced     // approved on net terms; invoice issued, payment pending
   paid
   declined
 }
 
 enum OrderStatus {
   pending
+  confirmed // committed, not yet fully paid: catering deposit received or invoice issued on terms
   paid
   in_production
   packed

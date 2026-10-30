@@ -237,6 +237,7 @@ const STEPS: Step[] = [
     points: [
       "CSV import for menu, customers, subscriptions, and stock",
       "Order history from Shopify, WooCommerce or Square: your real P&L from day one",
+      "Tell us what you mainly sell (meal prep, catering, prepared foods, boxes) and the dashboard opens on the right pages",
       "Menu from a photo, recipes and prices kept",
       "Your guide can walk you through this on the call",
     ],

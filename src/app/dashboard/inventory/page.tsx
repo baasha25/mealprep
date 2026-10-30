@@ -17,7 +17,7 @@ import { daysUntilExpiry } from "@/lib/loss";
 import { toPurchaseQty } from "@/lib/units";
 import { consumeProductionQueue } from "./actions";
 
-const PRODUCING = ["paid", "in_production"] as const;
+const PRODUCING = ["confirmed", "paid", "in_production"] as const; // confirmed = catering deposit in / invoiced on terms
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
 export default async function InventoryPage() {

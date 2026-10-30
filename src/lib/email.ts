@@ -845,7 +845,7 @@ export async function sendCateringRequestOwner(opts: CateringEmailBase & { name:
 }
 
 /** Customer: the kitchen's quote, with a button to approve and pay. */
-export async function sendCateringQuote(opts: CateringEmailBase & { firstName: string; quoteUrl: string; items: { nameSnapshot: string; qty: number; unitPriceCentsSnapshot: number }[]; subtotalCents: number; discountCents: number; taxCents: number; deliveryFeeCents: number; totalCents: number; ownerNote: string | null; resend: boolean }): Promise<void> {
+export async function sendCateringQuote(opts: CateringEmailBase & { firstName: string; quoteUrl: string; items: { nameSnapshot: string; qty: number; unitPriceCentsSnapshot: number }[]; subtotalCents: number; discountCents: number; taxCents: number; deliveryFeeCents: number; totalCents: number; ownerNote: string | null; resend: boolean; planLine?: string | null; options?: { label: string; totalCents: number }[] }): Promise<void> {
   const line = (label: string, value: string, strong = false) => `
     <tr>
       <td style="padding:4px 0;color:${strong ? INK : SOFT};font-size:${strong ? "15px" : "13px"};font-weight:${strong ? "600" : "400"};">${label}</td>
@@ -860,8 +860,9 @@ export async function sendCateringQuote(opts: CateringEmailBase & { firstName: s
     heading: `${opts.resend ? "Updated quote" : "Your catering quote"} · ${formatCents(opts.totalCents)}`,
     subheading: `#${opts.code} · ${escapeHtml(opts.eventDateLabel)}`,
     bodyHtml: `
-      <p style="margin:0 0 14px;color:${INK};font-size:14px;line-height:1.5;">Hi ${escapeHtml(opts.firstName)}, here is what ${escapeHtml(opts.businessName)} proposes. Approve it and pay online to lock in your date.</p>
+      <p style="margin:0 0 14px;color:${INK};font-size:14px;line-height:1.5;">Hi ${escapeHtml(opts.firstName)}, here is what ${escapeHtml(opts.businessName)} proposes.${opts.options && opts.options.length > 1 ? " There are a few options to choose from on the page." : ""} ${opts.planLine ? escapeHtml(opts.planLine) : "Approve it and pay online to lock in your date."}</p>
       ${opts.ownerNote ? `<div style="white-space:pre-wrap;color:${INK};font-size:14px;line-height:1.5;background:#f4f2ec;border-radius:10px;padding:12px 14px;margin-bottom:14px;">${escapeHtml(opts.ownerNote)}</div>` : ""}
+      ${opts.options && opts.options.length > 1 ? `<table style="width:100%;border-collapse:collapse;margin-bottom:12px;">${opts.options.map((o, i) => line(`Option ${i + 1}: ${escapeHtml(o.label)}`, formatCents(o.totalCents))).join("")}</table><p style="margin:0 0 14px;color:${SOFT};font-size:12.5px;">Shown below: option 1. Pick any option on the page.</p>` : ""}
       ${itemsTable(opts.items)}
       <table style="width:100%;border-collapse:collapse;">
         ${line("Subtotal", formatCents(opts.subtotalCents))}
@@ -888,5 +889,42 @@ export async function sendCateringDeclined(opts: CateringEmailBase & { firstName
       <p style="margin:0 0 14px;color:${INK};font-size:14px;line-height:1.5;">Hi ${escapeHtml(opts.firstName)}, thank you for thinking of ${escapeHtml(opts.businessName)}. Unfortunately we can't take on this request${opts.reason ? `: ${escapeHtml(opts.reason)}` : "."}</p>
       <p style="margin:0 0 18px;color:${SOFT};font-size:13px;">Our regular menu is always open for smaller orders.</p>
       <a href="${opts.storeUrl}" style="display:inline-block;background:${opts.brandColor || "#2f4536"};color:#f4f2ec;text-decoration:none;font-size:14px;font-weight:500;padding:10px 18px;border-radius:8px;">See the menu</a>`,
+  });
+}
+
+
+/** Customer: approved on terms — here is the invoice, its number, due date and how to pay. */
+export async function sendCateringInvoice(opts: CateringEmailBase & { firstName: string; invoiceNumber: string; dueLabel: string; termsLabel: string; totalCents: number; outstandingCents: number; invoiceUrl: string; quoteUrl: string; reminder?: boolean }): Promise<void> {
+  const overdue = opts.reminder && /overdue/i.test(opts.dueLabel);
+  await send({
+    to: opts.to,
+    businessId: opts.businessId,
+    subject: `${opts.reminder ? (overdue ? "Overdue: " : "Reminder: ") : ""}Invoice ${opts.invoiceNumber} — ${opts.businessName}`,
+    businessName: opts.businessName,
+    brandColor: opts.brandColor,
+    heading: `Invoice ${opts.invoiceNumber} · ${formatCents(opts.outstandingCents)}`,
+    subheading: `#${opts.code} · ${escapeHtml(opts.eventDateLabel)} · ${escapeHtml(opts.termsLabel)}`,
+    bodyHtml: `
+      <p style="margin:0 0 14px;color:${INK};font-size:14px;line-height:1.5;">Hi ${escapeHtml(opts.firstName)}, ${opts.reminder ? `a reminder that invoice ${escapeHtml(opts.invoiceNumber)} from ${escapeHtml(opts.businessName)} is ${escapeHtml(opts.dueLabel)}.` : `thank you — your event is confirmed and on the production schedule. Invoice ${escapeHtml(opts.invoiceNumber)} for ${formatCents(opts.totalCents)} is ${escapeHtml(opts.dueLabel)}.`}</p>
+      <p style="margin:0 0 18px;color:${SOFT};font-size:13px;line-height:1.5;">Pay by card from the invoice page, or by e-transfer / cheque to ${escapeHtml(opts.businessName)} quoting ${escapeHtml(opts.invoiceNumber)}.</p>
+      <a href="${opts.invoiceUrl}" style="display:inline-block;background:${opts.brandColor || "#2f4536"};color:#f4f2ec;text-decoration:none;font-size:14px;font-weight:500;padding:10px 18px;border-radius:8px;">View invoice</a>
+      <a href="${opts.quoteUrl}" style="display:inline-block;margin-left:10px;color:${opts.brandColor || "#2f4536"};text-decoration:none;font-size:13px;font-weight:500;padding:10px 4px;">Your event page</a>`,
+  });
+}
+
+/** Customer: deposit received — the balance is due by a date; pay by card or e-transfer. */
+export async function sendCateringBalanceDue(opts: CateringEmailBase & { firstName: string; balanceCents: number; dueLabel: string; quoteUrl: string; reminder?: boolean }): Promise<void> {
+  await send({
+    to: opts.to,
+    businessId: opts.businessId,
+    subject: `${opts.reminder ? "Reminder: balance" : "Deposit received · balance"} ${formatCents(opts.balanceCents)} ${opts.dueLabel} — ${opts.businessName}`,
+    businessName: opts.businessName,
+    brandColor: opts.brandColor,
+    heading: opts.reminder ? `Balance ${formatCents(opts.balanceCents)} ${opts.dueLabel}` : "Deposit received — your date is confirmed",
+    subheading: `#${opts.code} · ${escapeHtml(opts.eventDateLabel)}`,
+    bodyHtml: `
+      <p style="margin:0 0 14px;color:${INK};font-size:14px;line-height:1.5;">Hi ${escapeHtml(opts.firstName)}, ${opts.reminder ? `a quick reminder that the remaining ${formatCents(opts.balanceCents)} for your event with ${escapeHtml(opts.businessName)} is ${escapeHtml(opts.dueLabel)}.` : `thank you — ${escapeHtml(opts.businessName)} has your deposit and your event is on the production schedule. The remaining ${formatCents(opts.balanceCents)} is ${escapeHtml(opts.dueLabel)}.`}</p>
+      <p style="margin:0 0 18px;color:${SOFT};font-size:13px;line-height:1.5;">Pay the balance by card from your event page any time before then, or by e-transfer to ${escapeHtml(opts.businessName)}.</p>
+      <a href="${opts.quoteUrl}" style="display:inline-block;background:${opts.brandColor || "#2f4536"};color:#f4f2ec;text-decoration:none;font-size:14px;font-weight:500;padding:10px 18px;border-radius:8px;">Pay the balance</a>`,
   });
 }

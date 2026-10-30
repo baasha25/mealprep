@@ -33,8 +33,8 @@ export default async function CateringPage({ params }: { params: Promise<{ slug:
 
   const meals = await db.meal.findMany({
     where: { businessId: business.id, active: true },
-    orderBy: [{ isAddOn: "asc" }, { createdAt: "asc" }],
-    select: { id: true, name: true, priceCents: true, diet: true, isAddOn: true },
+    orderBy: [{ perGuest: "desc" }, { isAddOn: "asc" }, { createdAt: "asc" }],
+    select: { id: true, name: true, priceCents: true, diet: true, isAddOn: true, perGuest: true },
   });
   const tz = s.timezone || DEFAULT_TIMEZONE;
 

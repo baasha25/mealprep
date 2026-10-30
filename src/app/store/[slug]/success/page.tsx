@@ -3,7 +3,10 @@ import { Leaf, Check, AlertTriangle } from "lucide-react";
 import { db } from "@/lib/db";
 import { stripe, STRIPE_ENABLED } from "@/lib/stripe";
 import { getStorefrontBusiness } from "@/lib/storefront";
-import { sendOrderConfirmation, sendOwnerNewOrder } from "@/lib/email";
+import { sendOrderConfirmation, sendOwnerNewOrder, sendCateringBalanceDue } from "@/lib/email";
+import { recordCateringPayment, moneyState } from "@/lib/catering-data";
+import { balanceDueAt } from "@/lib/catering-terms";
+import { formatEventDate, cateringCode } from "@/lib/catering";
 import { formatCents } from "@/lib/money";
 
 export const dynamic = "force-dynamic";
@@ -31,7 +34,52 @@ export default async function CheckoutSuccessPage({
       const session = await stripe.checkout.sessions.retrieve(session_id);
       const orderId = session.metadata?.orderId;
       amountCents = session.amount_total ?? 0;
-      if (session.payment_status === "paid" && orderId) {
+      const cateringRequestId = session.metadata?.cateringRequestId;
+      const kind = session.metadata?.kind;
+      if (session.payment_status === "paid" && orderId && cateringRequestId && business && (kind === "catering_deposit" || kind === "catering_balance" || kind === "catering_full")) {
+        // Catering money: deposit, balance or full — one Payment row per
+        // checkout, idempotent on the payment intent; the data layer moves the
+        // order to confirmed / paid and the request to deposit_paid / paid.
+        const paymentIntentId = typeof session.payment_intent === "string" ? session.payment_intent : null;
+        const res = await recordCateringPayment(cateringRequestId, business.id, { amountCents, stripePaymentIntentId: paymentIntentId });
+        if (res.ok) {
+          paid = true;
+          code = res.orderId.slice(-6);
+          const r = await db.cateringRequest.findFirst({ where: { id: cateringRequestId }, include: { order: { select: { payments: { select: { amountCents: true, status: true, refundedAmountCents: true } } } } } });
+          const tz = business.settings?.timezone || "America/Toronto";
+          if (r) {
+            const eventLabel = new Intl.DateTimeFormat("en-US", { timeZone: tz, weekday: "long", month: "long", day: "numeric" }).format(r.eventDate);
+            if (res.settled) {
+              whenLabel = `Your catering order is confirmed for ${eventLabel}.`;
+              if (res.amountCents > 0) {
+                await sendOrderConfirmation(res.orderId);
+                if (kind === "catering_full") await sendOwnerNewOrder(res.orderId);
+              }
+            } else {
+              const money = moneyState(r);
+              const due = r.balanceDueAt ?? balanceDueAt(r.eventDate, business.settings?.cateringBalanceDays ?? 7);
+              if (!r.balanceDueAt) await db.cateringRequest.update({ where: { id: r.id }, data: { balanceDueAt: due } });
+              const dueLabel = Math.ceil((due.getTime() - Date.now()) / 86_400_000) <= 0 ? "due now" : `due ${formatEventDate(due, tz)}`;
+              whenLabel = `Your deposit confirms ${eventLabel}. The remaining ${formatCents(money.outstandingCents)} is ${dueLabel}; we'll email you a link.`;
+              if (res.amountCents > 0) {
+                await sendCateringBalanceDue({
+                  businessId: business.id,
+                  to: r.email,
+                  businessName: business.name,
+                  brandColor: business.brandColor,
+                  code: cateringCode(r.id),
+                  eventDateLabel: formatEventDate(r.eventDate, tz),
+                  firstName: r.name.split(" ")[0],
+                  balanceCents: money.outstandingCents,
+                  dueLabel,
+                  quoteUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? ""}/store/${slug}/catering/${r.token}`,
+                });
+                await sendOwnerNewOrder(res.orderId);
+              }
+            }
+          }
+        }
+      } else if (session.payment_status === "paid" && orderId) {
         const order = await db.order.findFirst({ where: { id: orderId }, select: { id: true, status: true, type: true, deliveryDate: true } });
         if (order) {
           code = order.id.slice(-6);
@@ -58,7 +106,8 @@ export default async function CheckoutSuccessPage({
           }
         }
       }
-    } catch {
+    } catch (err) {
+      console.error("[checkout:success] could not confirm payment", err);
       paid = false;
     }
   }

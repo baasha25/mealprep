@@ -14,6 +14,8 @@ import {
 import { revenueStatusWhere } from "@/lib/order-status";
 import { RangeFilter } from "@/components/range-filter";
 import { toRangeKey, rangeWhere, rangeLabel } from "@/lib/date-range";
+import { toOrderTypeKey, orderTypeWhere, orderTypeLabel } from "@/lib/order-type-filter";
+import { TypeFilter } from "@/components/type-filter";
 import { summarizeLosses, LOSS_REASON_META, type LossReason } from "@/lib/loss";
 import { PriceCoach } from "./price-coach";
 import { PriceTests } from "./price-tests";
@@ -46,11 +48,15 @@ const SEG = { food: "var(--clay)", labour: "#c9a227", overhead: "#9a9488", profi
 export default async function ProfitabilityPage({
   searchParams,
 }: {
-  searchParams: Promise<{ range?: string; focus?: string }>;
+  searchParams: Promise<{ range?: string; focus?: string; type?: string }>;
 }) {
   const { business } = await requireOwner();
   const sp = await searchParams;
   const range = toRangeKey(sp.range);
+  // Catering kitchens read catering margin on its own; losses are not typed, so they stay whole.
+  const orderType = toOrderTypeKey(sp.type);
+  const typeSettings = await db.businessSettings.findUnique({ where: { businessId: business.id }, select: { cateringEnabled: true } });
+  const showType = (typeSettings?.cateringEnabled ?? false) || orderType !== "all";
   // Deep-link from the Dashboard "Needs attention" panel: which rows to spotlight.
   const focus = sp.focus === "losing" || sp.focus === "thin" || sp.focus === "rises" ? sp.focus : null;
 
@@ -91,7 +97,7 @@ export default async function ProfitabilityPage({
 
   // Sold line items in range (earned revenue only) → units + revenue per meal.
   const soldItems = await db.orderItem.findMany({
-    where: { order: { businessId: business.id, ...rangeWhere(range), ...revenueStatusWhere }, mealId: { not: null } },
+    where: { order: { businessId: business.id, ...rangeWhere(range), ...revenueStatusWhere, ...orderTypeWhere(orderType) }, mealId: { not: null } },
     select: { mealId: true, qty: true, unitPriceCentsSnapshot: true },
   });
   const unitsByMeal = new Map<string, number>();
@@ -206,8 +212,8 @@ export default async function ProfitabilityPage({
       <Head
         kicker="Profit"
         title="Profitability & P&L"
-        sub={`What each plate costs, what it earns, and your true bottom line after losses — ${rangeLabel(range).toLowerCase()}.`}
-        right={<RangeFilter basePath="/dashboard/profitability" current={range} />}
+        sub={`What each plate costs, what it earns, and your true bottom line after losses — ${rangeLabel(range).toLowerCase()}${orderType !== "all" ? `, ${orderTypeLabel(orderType).toLowerCase()} only` : ""}.`}
+        right={<div className="flex items-center gap-2 flex-wrap">{showType && <TypeFilter basePath="/dashboard/profitability" current={orderType} range={range} />}<RangeFilter basePath="/dashboard/profitability" current={range} extraParams={orderType !== "all" ? { type: orderType } : undefined} /></div>}
       />
 
       {/* "From your dashboard" — the Needs-attention item that brought the owner here, with the next step. */}
