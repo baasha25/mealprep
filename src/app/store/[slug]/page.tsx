@@ -3,6 +3,7 @@ import Link from "next/link";
 import { UtensilsCrossed } from "lucide-react";
 import { toVertical, VERTICAL_META } from "@/lib/verticals";
 import { getKitchenCustomer } from "@/lib/customer-auth";
+import { weekStartFor, addWeeks, weekLabel, mealsForWeek, isCustomWeek } from "@/lib/menu-week";
 import { PushPrompt } from "@/components/push-prompt";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
@@ -224,6 +225,19 @@ export default async function StorePage({
   } catch {
     favoriteIds = undefined;
   }
+  // Weekly schedule: the menu for the week the next delivery falls in, plus a
+  // peek at next week when the kitchen has set it. No rows = the whole menu.
+  const menuAnchor = deliveryDateOptions[0]?.value ? new Date(deliveryDateOptions[0].value) : new Date();
+  const thisWeekStart = weekStartFor(menuAnchor, tz);
+  const nextWeekStart = addWeeks(thisWeekStart, 1);
+  const menuWeeks = await db.menuWeek.findMany({ where: { businessId: business.id, weekStart: { in: [thisWeekStart, nextWeekStart] } }, select: { weekStart: true, mealIds: true, note: true } });
+  const thisWeek = menuWeeks.find((w) => w.weekStart.getTime() === thisWeekStart.getTime()) ?? null;
+  const nextWeek = menuWeeks.find((w) => w.weekStart.getTime() === nextWeekStart.getTime()) ?? null;
+  const weekMeals = mealsForWeek(storeMeals, thisWeek);
+  const menuNote = thisWeek?.note ?? null;
+  const thisWeekLabel = isCustomWeek(thisWeek, storeMeals.length) ? weekLabel(thisWeekStart, tz) : null;
+  const nextWeekNames = nextWeek && isCustomWeek(nextWeek, storeMeals.length) ? storeMeals.filter((m) => nextWeek.mealIds.includes(m.id)).map((m) => m.name) : [];
+  const nextWeekLabel = weekLabel(nextWeekStart, tz);
   const settings: StoreSettings = {
     nouns,
     smsAvailable: Boolean(process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN && process.env.TWILIO_FROM) && s.notifyCutoffSms,
@@ -274,6 +288,13 @@ export default async function StorePage({
           <p className="text-[13.5px] mt-2.5" style={{ color: "var(--ink-soft)" }}>
             {s.storeTagline || (cateringFirst ? VERTICAL_META.catering.storeBlurb : s.subscriptionsOnly ? `Choose a plan, then pick your ${nouns.many} each week from the menu below.` : VERTICAL_META[vertical].storeBlurb)}
           </p>
+          {(menuNote || thisWeekLabel) && (
+            <div className="mt-3 rounded-xl border px-4 py-3 max-w-2xl" style={{ borderColor: "var(--line)", background: "var(--surface)" }}>
+              {thisWeekLabel && <div className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: "var(--muted)" }}>This week&apos;s menu · {thisWeekLabel}</div>}
+              {menuNote && <p className="text-[13.5px] mt-0.5" style={{ color: "var(--ink)" }}><span className="font-semibold">From the kitchen:</span> {menuNote}</p>}
+              {nextWeekNames.length > 0 && <p className="text-[12.5px] mt-1" style={{ color: "var(--muted)" }}>Next week ({nextWeekLabel}): {nextWeekNames.slice(0, 6).join(", ")}{nextWeekNames.length > 6 ? ` and ${nextWeekNames.length - 6} more` : ""}.</p>}
+            </div>
+          )}
           {s.cateringEnabled && (
             // A catering kitchen leads with the request form; everyone else offers it beside the menu.
             <Link
@@ -311,7 +332,7 @@ export default async function StorePage({
           />
         )}
 
-        <Storefront slug={slug} businessName={business.name} meals={storeMeals} settings={settings} initialAdd={add} favoriteIds={favoriteIds} />
+        <Storefront slug={slug} businessName={business.name} meals={weekMeals} settings={settings} initialAdd={add} favoriteIds={favoriteIds} />
       </main>
       <PushPrompt slug={slug} businessName={business.name} enabled={Boolean(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY) && s.notifyPush} />
     </div>

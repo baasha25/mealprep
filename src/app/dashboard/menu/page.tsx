@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Plus, ScanLine } from "lucide-react";
+import { Plus, ScanLine, CalendarDays } from "lucide-react";
 import { requireBusiness } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { Page, Head } from "@/components/ui";
@@ -44,6 +44,13 @@ export default async function MenuPage() {
         sub="Every meal is a saved recipe. Retire one to take it off the storefront — its recipe is kept so you can bring it back anytime."
         right={
           <div className="flex items-center gap-2 flex-wrap">
+            <Link
+              href="/dashboard/menu/schedule"
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[13px] font-medium border"
+              style={{ borderColor: "var(--line)", color: "var(--ink)", background: "var(--surface)" }}
+            >
+              <CalendarDays size={15} /> Weekly schedule
+            </Link>
             <Link
               href="/dashboard/menu/import"
               className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[13px] font-medium border"

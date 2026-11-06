@@ -209,6 +209,7 @@ export const GUIDE: GuideArea[] = [
           "Save. It appears on your storefront instantly.",
         ],
         numbers: [
+          ["Weekly schedule (button at the top)", "Which meals are on for each of the next six weeks, plus a one-line 'From the kitchen' note shown on the storefront that week. Weeks you leave alone show the whole menu. The storefront shows the week of the next delivery (after the cut-off, that is next week) and subscribers pick from the week their delivery falls in. 'Copy previous' carries a week forward."],
           ["Price", "What the customer pays for this meal."],
           ["Photo", "The meal's picture, shown large on your storefront. Optional, but the single biggest driver of orders — customers buy food with their eyes. Upload a landscape or square photo (at least 1000px wide; JPG, PNG, or WebP). PrepFlow optimizes it automatically."],
           ["Import from photo", "Upload a photo or PDF of your current menu and PrepFlow builds the menu items for you — names, prices and descriptions — which you review and edit before adding. The fastest way to move an existing menu in. (Needs the AI key configured by the platform.) Add photos, recipes and macros to each meal afterward."],
@@ -349,6 +350,7 @@ export const GUIDE: GuideArea[] = [
         img: "09-customers.png",
         does: "Your customer list (a simple CRM) — everyone who has ordered or subscribed, with how much they've spent, how many times they've ordered, and their loyalty points.",
         numbers: [
+          ["Favourites and reorder (customer side)", "Signed-in customers can heart meals on the storefront; their account shows favourites with 'Add them all to an order', and a 'Same as last time' button that reorders their last one-time order in one tap. Hearts also feed the auto-pick for subscribers who forget."],
           ["Customers", "Total number of unique customers."],
           ["Active subscribers", "How many are on a recurring plan right now."],
           ["Lifetime revenue", "All the money your customers have spent, total."],
@@ -413,6 +415,7 @@ export const GUIDE: GuideArea[] = [
         img: "13-purchasing.png",
         does: "Your smart shopping list — built from the week's real orders and 'trim-aware', so it shows exactly how many dollars of ingredients you're buying just to throw away in prep. This is the money number most kitchens have never seen.",
         numbers: [
+          ["Looking back: bought beyond what orders needed", "Below the shopping list. Every delivery you logged (Inventory → Receive stock, or a scanned invoice) in the last 30 / 90 / 180 days, compared per ingredient with what the orders you sold in that window needed after trim. Surplus is priced at what you actually paid, with a 'year at this rate' line. Shortfalls are shown but never netted off, and ingredients with no logged delivery are listed as not judged. Imported order history counts, so a kitchen that loads six months of orders and its invoices sees a real number on day one."],
           ["To purchase", "The total dollar value of ingredients you need to buy for the upcoming production run."],
           ["Over-bought (trim waste)", "Of that total, how many dollars are pure waste — ingredient you buy only to trim off and bin (fat, peels, ends). Cutting this drops straight to profit."],
           ["Waste share", "The over-bought amount as a percentage of your total purchase."],
@@ -686,6 +689,8 @@ export const GUIDE: GuideArea[] = [
         img: "24-settings.png",
         does: "Your kitchen's rules and branding — fees, tax, delivery days, order cut-off, minimum order, subscription discount, and brand color. These apply across the storefront and checkout.",
         numbers: [
+          ["Cut-off texts (SMS)", "Under Customer notifications. Texts subscribers who opted in (a checkbox at checkout and in their account) two days before picks lock and on the day; the monthly text cap keeps the bill predictable. Appears once texting is switched on by the platform."],
+          ["Push notifications", "Customers who add your storefront to their phone's home screen and allow notifications get the cut-off and delivery-day reminders as a push. Free, no app to build. The storefront offers it once after an order."],
           ["Delivery fee", "What customers pay for delivery, added at checkout."],
           ["Processing fee", "An optional fee added per order."],
           ["Tax rate", "The sales tax applied at checkout (as a %)."],

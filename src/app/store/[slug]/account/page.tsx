@@ -23,6 +23,7 @@ import { RateMeals, type ReviewableMeal } from "@/app/account/rate-meals";
 import { DeliveryAddress } from "@/app/account/delivery-address";
 import { updateSmsPrefs } from "@/app/account/actions";
 import { revenueStatusWhere } from "@/lib/order-status";
+import { weekStartFor, mealsForWeek } from "@/lib/menu-week";
 import { Heart, RotateCcw, MessageSquare } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -187,6 +188,8 @@ export default async function KitchenAccountPage({
       ? "Save your delivery address below so we can place you in a delivery zone."
       : null;
   const nextDate = subscription?.nextDeliveryDate ?? null;
+  // Weekly schedule: subscribers pick from the menu of the week their next delivery falls in.
+  const accountWeek = await db.menuWeek.findFirst({ where: { businessId: business.id, weekStart: weekStartFor(nextDate ?? new Date(), tz) }, select: { mealIds: true } });
   const cutoffRule = business.settings ? { cutoff: business.settings.cutoff, timezone: business.settings.timezone } : null;
   const lockAt = nextDate ? deliveryLockAt(nextDate, cutoffRule) : null;
   const cutoffISO = lockAt ? lockAt.toISOString() : null;
@@ -340,7 +343,7 @@ export default async function KitchenAccountPage({
           allDeliveryDays={enabledDays}
           zoneLine={zoneLine}
           nouns={N}
-          meals={managerMeals}
+          meals={mealsForWeek(managerMeals, accountWeek)}
         />
       )}
 
