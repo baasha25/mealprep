@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { UtensilsCrossed } from "lucide-react";
 import { toVertical, VERTICAL_META } from "@/lib/verticals";
+import { getKitchenCustomer } from "@/lib/customer-auth";
+import { PushPrompt } from "@/components/push-prompt";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { getStorefrontBusiness, publicStoreUrls } from "@/lib/storefront";
@@ -44,6 +46,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   });
   const image = cldImage(firstPhoto?.imageUrl, { w: 1200, h: 630 }) ?? undefined;
   return {
+    manifest: `/store/${slug}/manifest.webmanifest`,
     title,
     description,
     alternates: { canonical: urls.order },
@@ -213,8 +216,17 @@ export default async function StorePage({
   });
 
   const nouns = nounsFor(s.itemNoun);
+  // Signed-in customer (if any) for hearts; dev-stub returns a stand-in.
+  let favoriteIds: string[] | undefined;
+  try {
+    const { customer } = await getKitchenCustomer(business.id);
+    if (customer) favoriteIds = customer.favoriteMealIds;
+  } catch {
+    favoriteIds = undefined;
+  }
   const settings: StoreSettings = {
     nouns,
+    smsAvailable: Boolean(process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN && process.env.TWILIO_FROM) && s.notifyCutoffSms,
     subscriptionsOnly: s.subscriptionsOnly,
     isDemo: business.isDemo,
     demoPostal: business.isDemo ? (zoneRows[0]?.postalPrefixes[0] ? `${zoneRows[0].postalPrefixes[0]} 1A2` : "") : undefined,
@@ -299,8 +311,9 @@ export default async function StorePage({
           />
         )}
 
-        <Storefront slug={slug} businessName={business.name} meals={storeMeals} settings={settings} initialAdd={add} />
+        <Storefront slug={slug} businessName={business.name} meals={storeMeals} settings={settings} initialAdd={add} favoriteIds={favoriteIds} />
       </main>
+      <PushPrompt slug={slug} businessName={business.name} enabled={Boolean(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY) && s.notifyPush} />
     </div>
   );
 }

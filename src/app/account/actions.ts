@@ -347,3 +347,14 @@ export async function saveDeliveryAddress(input: {
   revalidatePath("/store/[slug]/account", "page");
   return { ok: true, message: `Delivery address saved.${note}` };
 }
+
+
+/** Account: phone + "text me before the cut-off" consent. */
+export async function updateSmsPrefs(formData: FormData): Promise<void> {
+  const ctx = await getCustomerContext();
+  if (!ctx) return;
+  const phone = String(formData.get("phone") ?? "").trim().slice(0, 40);
+  const optIn = formData.get("smsOptIn") === "on" && phone.length > 0;
+  await db.customer.update({ where: { id: ctx.customer.id }, data: { phone: phone || null, smsOptIn: optIn } });
+  revalidatePath("/account");
+}

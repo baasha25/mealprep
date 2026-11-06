@@ -127,6 +127,7 @@ const PlaceOrderInput = z.object({
     name: z.string().trim().min(1, "Name is required").max(120),
     email: z.string().trim().toLowerCase().email("Enter a valid email"),
     phone: z.string().trim().max(40).optional().default(""),
+    smsOptIn: z.boolean().optional().default(false),
     address: z.string().trim().max(200).optional().default(""),
     zone: z.string().trim().max(60).optional().default(""),
     postalCode: z.string().trim().max(20).optional().default(""),
@@ -326,10 +327,11 @@ export async function placeOrder(input: PlaceOrderInputT): Promise<PlaceOrderRes
       name: data.customer.name,
       email: data.customer.email,
       phone: data.customer.phone || null,
+      smsOptIn: Boolean(data.customer.smsOptIn && data.customer.phone),
       referredById: referrerId,
       referralCode: referralCodeFrom(data.customer.name, Date.now() % 100000),
     },
-    update: { name: data.customer.name, phone: data.customer.phone || null },
+    update: { name: data.customer.name, phone: data.customer.phone || null, ...(data.customer.phone ? { smsOptIn: Boolean(data.customer.smsOptIn) } : {}) },
   });
 
   const order = await db.order.create({
@@ -450,4 +452,20 @@ export async function placeOrder(input: PlaceOrderInputT): Promise<PlaceOrderRes
     subscription: data.subscribe,
     checkoutUrl,
   };
+}
+
+
+/** Storefront heart: a signed-in customer favourites (or un-favourites) a meal. */
+export async function toggleFavorite(input: { slug: string; mealId: string }): Promise<{ ok: boolean; favorite: boolean }> {
+  const business = await getStorefrontBusiness(input.slug);
+  if (!business) return { ok: false, favorite: false };
+  const { getKitchenCustomer } = await import("@/lib/customer-auth");
+  const { customer } = await getKitchenCustomer(business.id);
+  if (!customer) return { ok: false, favorite: false };
+  const meal = await db.meal.findFirst({ where: { id: input.mealId, businessId: business.id }, select: { id: true } });
+  if (!meal) return { ok: false, favorite: false };
+  const has = customer.favoriteMealIds.includes(meal.id);
+  const next = has ? customer.favoriteMealIds.filter((id) => id !== meal.id) : [...customer.favoriteMealIds, meal.id].slice(-50);
+  await db.customer.update({ where: { id: customer.id }, data: { favoriteMealIds: next } });
+  return { ok: true, favorite: !has };
 }

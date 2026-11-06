@@ -188,6 +188,8 @@ model Business {
   cateringRequests    CateringRequest[]
   deliveryZones       DeliveryZone[]
   importBatches       ImportBatch[]
+  pushSubscriptions   PushSubscription[]
+  menuWeeks           MenuWeek[]
 }
 
 /// Zone-based delivery: a named area defined by postal-code prefixes (e.g. L4C,
@@ -305,6 +307,9 @@ model BusinessSettings {
 
   // Customer notifications (scheduled reminders)
   notifyCutoff      Boolean @default(true) // "edit your box before cutoff" reminder
+  notifyCutoffSms   Boolean @default(false) // also text opted-in subscribers 48h + 6h before the cut-off (needs TWILIO_* env)
+  smsMonthlyCap     Int     @default(500)   // texts per calendar month this kitchen allows (cost guard)
+  notifyPush        Boolean @default(true)  // web push for cut-off / delivery day to customers who installed the storefront
   notifyDeliveryDay Boolean @default(true) // "your meals arrive today" email
   // Retention emails (cron: /api/cron/retention)
   notifyAbandoned   Boolean @default(true)  // "finish your order" nudge 2–48h after an unpaid checkout
@@ -417,6 +422,8 @@ model Customer {
   stripeCustomerId String?
   referralCode     String? // this customer's own code to share
   referredById     String? // the customer who referred them (if any)
+  smsOptIn         Boolean  @default(false) // consented to cut-off / delivery texts (needs phone)
+  favoriteMealIds  String[] @default([]) // hearts on the storefront; feeds "reorder" and auto-pick
   createdAt        DateTime @default(now())
 
   addresses     Address[]
@@ -426,6 +433,7 @@ model Customer {
   referredBy    Customer?  @relation("Referrals", fields: [referredById], references: [id])
   referrals     Customer[] @relation("Referrals")
   cateringRequests CateringRequest[]
+  pushSubscriptions PushSubscription[]
 
   @@unique([businessId, email])
   @@unique([businessId, referralCode])
@@ -818,6 +826,40 @@ model Order {
 
 // One upload of order history (see src/lib/order-import.ts). Deleting the batch
 // cascades to the orders it created, which is how "Undo this import" works.
+// Web push: one row per browser a customer allowed notifications on.
+model PushSubscription {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  customerId String?
+  customer   Customer? @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  endpoint   String   @unique
+  p256dh     String
+  auth       String
+  userAgent  String?
+  createdAt  DateTime @default(now())
+  lastSeenAt DateTime @default(now())
+
+  @@index([businessId])
+  @@index([customerId])
+}
+
+// Weekly menu scheduler: which meals are on for a given week (Monday, noon UTC).
+// No row for a week = the whole active menu, as today.
+model MenuWeek {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  weekStart  DateTime
+  mealIds    String[] @default([])
+  note       String?  // "From the kitchen" line shown on the storefront that week
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([businessId, weekStart])
+  @@index([businessId])
+}
+
 model ImportBatch {
   id           String    @id @default(cuid())
   businessId   String

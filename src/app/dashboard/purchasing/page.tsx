@@ -15,12 +15,16 @@ import { buildShoppingList, type PurchaseLine } from "@/lib/purchasing";
 import { picksFromSnapshot } from "@/lib/meal-options";
 import { toPurchaseQty } from "@/lib/units";
 import { CostCell } from "./cost-cell";
+import { LookbackSection } from "./lookback";
+import { loadLookback, toLookbackDays } from "@/lib/purchasing-lookback-data";
 
 // Demand comes from orders awaiting production (same set as the production report).
 const PRODUCING = ["confirmed", "paid", "in_production"] as const; // confirmed = catering deposit in / invoiced on terms
 
-export default async function PurchasingPage() {
+export default async function PurchasingPage({ searchParams }: { searchParams: Promise<{ back?: string }> }) {
   const { business } = await requireBusiness();
+  const backDays = toLookbackDays((await searchParams).back);
+  const lookbackPromise = loadLookback(business.id, backDays);
 
   // Every order line awaiting production, with its meal's recipe + ingredient costs.
   const orderItems = await db.orderItem.findMany({
@@ -90,6 +94,7 @@ export default async function PurchasingPage() {
   }
 
   const list = buildShoppingList(lines);
+  const lookback = await lookbackPromise;
   const round2 = (n: number) => Math.round(n * 100) / 100;
 
   return (
@@ -97,7 +102,7 @@ export default async function PurchasingPage() {
       <Head
         kicker="Kitchen OS"
         title="Purchasing & waste"
-        sub="What to buy for the production queue — trim-aware, with the dollars you're over-buying."
+        sub="What to buy for the production queue, trim-aware, with the dollars you're about to over-buy. Below it: what you bought beyond what orders needed, looking back."
       />
 
       <div className="grid sm:grid-cols-3 gap-3.5 mb-5">
@@ -134,6 +139,13 @@ export default async function PurchasingPage() {
           </p>
         </div>
       )}
+
+      <div className="mb-5">
+
+        <LookbackSection lb={lookback} days={backDays} />
+
+      </div>
+
 
       {list.rows.length === 0 ? (
         <div

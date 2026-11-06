@@ -8,6 +8,7 @@ import { recordCateringPayment, moneyState } from "@/lib/catering-data";
 import { balanceDueAt } from "@/lib/catering-terms";
 import { formatEventDate, cateringCode } from "@/lib/catering";
 import { formatCents } from "@/lib/money";
+import { PushPrompt } from "@/components/push-prompt";
 
 export const dynamic = "force-dynamic";
 // Personal pages: never in search results.
@@ -27,6 +28,7 @@ export default async function CheckoutSuccessPage({
   let paid = false;
   let amountCents = 0;
   let code = "";
+  let buyerEmail: string | null = null;
   let whenLabel = "You\u2019ll get your meals on the next delivery.";
 
   if (STRIPE_ENABLED && session_id) {
@@ -34,6 +36,7 @@ export default async function CheckoutSuccessPage({
       const session = await stripe.checkout.sessions.retrieve(session_id);
       const orderId = session.metadata?.orderId;
       amountCents = session.amount_total ?? 0;
+      buyerEmail = session.customer_details?.email ?? session.customer_email ?? null;
       const cateringRequestId = session.metadata?.cateringRequestId;
       const kind = session.metadata?.kind;
       if (session.payment_status === "paid" && orderId && cateringRequestId && business && (kind === "catering_deposit" || kind === "catering_balance" || kind === "catering_full")) {
@@ -148,6 +151,7 @@ export default async function CheckoutSuccessPage({
         <Link href={`/store/${slug}`} className="inline-block mt-7 px-5 py-2.5 rounded-lg text-[14px] font-medium" style={{ background: "var(--pine)", color: "#f4f2ec" }}>
           Back to the store
         </Link>
+        {paid && business && <PushPrompt slug={slug} email={buyerEmail} businessName={business.name} enabled={Boolean(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY) && (business.settings?.notifyPush ?? true)} />}
       </main>
     </div>
   );

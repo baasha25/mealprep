@@ -39,6 +39,11 @@ export type SettingsInitial = {
   loyaltyEnabled: boolean;
   autoApproveReviews: boolean;
   notifyCutoff: boolean;
+  notifyCutoffSms: boolean;
+  notifyPush: boolean;
+  smsMonthlyCap: number;
+  smsConfigured: boolean;
+  pushConfigured: boolean;
   notifyDeliveryDay: boolean;
   notifyAbandoned: boolean;
   notifyWinBack: boolean;
@@ -640,6 +645,31 @@ export function SettingsForm({ initial }: { initial: SettingsInitial }) {
           <span>
             <span className="text-[13px] block" style={{ color: "var(--ink)" }}>Delivery-day email</span>
             <span className="text-[12px]" style={{ color: "var(--muted)" }}>“Your meals arrive today” — sent the morning of delivery.</span>
+          </span>
+        </label>
+        <label className="flex items-start gap-2 cursor-pointer select-none">
+          <input type="checkbox" name="notifyCutoffSms" defaultChecked={initial.notifyCutoffSms} className="mt-0.5" disabled={!initial.smsConfigured} />
+          <span>
+            <span className="text-[13px] block" style={{ color: "var(--ink)" }}>Cut-off texts (SMS)</span>
+            <span className="text-[12px]" style={{ color: "var(--muted)" }}>
+              Two texts to subscribers who opted in at checkout or in their account: 2 days before picks lock, and 6 hours before. Forgotten boxes are the biggest churn cause; a text gets opened, an email often doesn&apos;t.
+              {!initial.smsConfigured && " Not available yet on this PrepFlow: texting is switched on by the platform."}
+            </span>
+          </span>
+        </label>
+        <div className="grid sm:grid-cols-2 gap-4 mt-3">
+          <Field label="Monthly text cap" hint="The most texts this kitchen sends in a calendar month. Texts cost about a cent each; this keeps the bill predictable. 500 covers ~120 subscribers at two texts a week.">
+            <input name="smsMonthlyCap" type="number" min={0} max={100000} defaultValue={initial.smsMonthlyCap} className={INP} style={inputStyle} />
+          </Field>
+        </div>
+        <label className="flex items-start gap-2 cursor-pointer select-none mt-3">
+          <input type="checkbox" name="notifyPush" defaultChecked={initial.notifyPush} className="mt-0.5" disabled={!initial.pushConfigured} />
+          <span>
+            <span className="text-[13px] block" style={{ color: "var(--ink)" }}>Push notifications</span>
+            <span className="text-[12px]" style={{ color: "var(--muted)" }}>
+              Customers who add your storefront to their phone&apos;s home screen and allow notifications get the cut-off and delivery-day reminders as a push, free, with no app to build.
+              {!initial.pushConfigured && " Not available yet on this PrepFlow: push is switched on by the platform."}
+            </span>
           </span>
         </label>
         <div className="mt-4 pt-4" style={{ borderTop: "1px solid var(--line)" }}>

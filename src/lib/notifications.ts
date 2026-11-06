@@ -38,13 +38,15 @@ export function dueReminders(input: {
   return kinds;
 }
 
-export type RunSummary = { scanned: number; cutoff: number; deliveryDay: number };
+export type RunSummary = { scanned: number; cutoff: number; deliveryDay: number; sms: number; push: number };
 
 /** Scan active subscriptions and send any due reminders (idempotent per delivery). */
 export async function runDailyNotifications(now: Date = new Date()): Promise<RunSummary> {
   // Lazy imports so dueReminders stays unit-testable without Prisma/email.
   const { db } = await import("@/lib/db");
   const { sendCutoffReminder, sendDeliveryDayReminder } = await import("@/lib/email");
+  const { SMS_ENABLED, sendSms, cutoffSmsBody } = await import("@/lib/sms");
+  const { PUSH_ENABLED, sendPushToCustomer } = await import("@/lib/push");
   const { appUrl } = await import("@/lib/app-url");
   const origin = await appUrl();
 
@@ -54,7 +56,7 @@ export async function runDailyNotifications(now: Date = new Date()): Promise<Run
       id: true,
       businessId: true,
       nextDeliveryDate: true,
-      customer: { select: { name: true, email: true } },
+      customer: { select: { id: true, name: true, email: true, phone: true, smsOptIn: true } },
       // Upcoming-ish selections so we can tell if they've already picked meals.
       selections: {
         where: { deliveryDate: { gte: new Date(now.getTime() - 24 * 3_600_000) } },
@@ -71,7 +73,7 @@ export async function runDailyNotifications(now: Date = new Date()): Promise<Run
       name: true,
       brandColor: true,
       slug: true,
-      settings: { select: { notifyCutoff: true, notifyDeliveryDay: true, cutoff: true, timezone: true } },
+      settings: { select: { notifyCutoff: true, notifyDeliveryDay: true, notifyCutoffSms: true, notifyPush: true, smsMonthlyCap: true, cutoff: true, timezone: true } },
     },
   });
   const bizById = new Map(businesses.map((b) => [b.id, b]));
@@ -84,7 +86,15 @@ export async function runDailyNotifications(now: Date = new Date()): Promise<Run
   });
   const sentKeys = new Set(already.map((r) => `${r.type}:${r.targetId}:${r.forDate}`));
 
-  const summary: RunSummary = { scanned: subs.length, cutoff: 0, deliveryDay: 0 };
+  // SMS cost guard: texts already sent this calendar month, per kitchen.
+  const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+  const smsCounts = new Map<string, number>();
+  if (SMS_ENABLED) {
+    const rows = await db.sentNotification.groupBy({ by: ["businessId"], where: { type: { startsWith: "cutoff_sms" }, createdAt: { gte: monthStart } }, _count: { _all: true } });
+    for (const r of rows) smsCounts.set(r.businessId, r._count._all);
+  }
+
+  const summary: RunSummary = { scanned: subs.length, cutoff: 0, deliveryDay: 0, sms: 0, push: 0 };
 
   for (const sub of subs) {
     if (!sub.nextDeliveryDate || !sub.customer?.email) continue;
@@ -142,6 +152,39 @@ export async function runDailyNotifications(now: Date = new Date()): Promise<Run
       } else {
         await sendDeliveryDayReminder(base);
         summary.deliveryDay++;
+      }
+      // Same moment, other channels: a push to any browser they allowed.
+      if (PUSH_ENABLED && (biz.settings?.notifyPush ?? true) && sub.customer.id) {
+        const n = await sendPushToCustomer(sub.customer.id, {
+          title: kind === "cutoff" ? `Pick your meals for ${deliveryLabel}` : `Your meals arrive today`,
+          body: kind === "cutoff" ? `${biz.name}: picks lock soon. Choose or change your meals.` : `${biz.name} is on its way.`,
+          url: accountUrl,
+          tag: `${kind}-${forDate}`,
+        });
+        summary.push += n;
+      }
+    }
+
+    // Cut-off texts (opted-in subscribers only): "2 days" when the lock is 24–48h
+    // out, "today" when it is within 24h. Daily run, so each fires at most once.
+    if (SMS_ENABLED && biz.settings?.notifyCutoffSms && sub.customer.smsOptIn && sub.customer.phone && !alreadyPicked) {
+      const lock = deliveryLockAt(sub.nextDeliveryDate, biz.settings ? { cutoff: biz.settings.cutoff, timezone: biz.settings.timezone } : null);
+      const msLeft = lock.getTime() - now.getTime();
+      const smsKind = msLeft > 0 && msLeft <= 24 * 3_600_000 ? "cutoff_sms_today" : msLeft > 24 * 3_600_000 && msLeft <= 48 * 3_600_000 ? "cutoff_sms_2d" : null;
+      if (smsKind) {
+        const key = `${smsKind}:${sub.id}:${forDate}`;
+        const used = smsCounts.get(biz.id) ?? 0;
+        if (!sentKeys.has(key) && used < (biz.settings.smsMonthlyCap ?? 500)) {
+          try {
+            await db.sentNotification.create({ data: { businessId: biz.id, type: smsKind, targetId: sub.id, forDate } });
+            sentKeys.add(key);
+            smsCounts.set(biz.id, used + 1);
+            const sid = await sendSms(sub.customer.phone, cutoffSmsBody({ businessName: biz.name, deliveryLabel, hoursLeft: smsKind === "cutoff_sms_today" ? 6 : 48, accountUrl }));
+            if (sid) summary.sms++;
+          } catch {
+            /* duplicate key race: already sent */
+          }
+        }
       }
     }
   }

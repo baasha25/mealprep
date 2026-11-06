@@ -21,6 +21,9 @@ import { nounsFor } from "@/lib/nouns";
 import { SubscriptionManager, type ManagerMeal, type DeliverySlot } from "@/app/account/subscription-manager";
 import { RateMeals, type ReviewableMeal } from "@/app/account/rate-meals";
 import { DeliveryAddress } from "@/app/account/delivery-address";
+import { updateSmsPrefs } from "@/app/account/actions";
+import { revenueStatusWhere } from "@/lib/order-status";
+import { Heart, RotateCcw, MessageSquare } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 // Personal pages: never in search results.
@@ -134,13 +137,28 @@ export default async function KitchenAccountPage({
       .map((g) => ({ id: g.id, name: g.name, minSelect: g.minSelect, maxSelect: g.maxSelect, options: g.options.map((o) => ({ id: o.id, name: o.name, priceDeltaCents: o.priceDeltaCents, isDefault: o.isDefault })) })),
   }));
 
-  const [orderedItems, myReviews] = await Promise.all([
+  const [orderedItems, myReviews, lastOrder] = await Promise.all([
     db.orderItem.findMany({
       where: { order: { customerId: customer.id }, mealId: { not: null } },
       select: { mealId: true, nameSnapshot: true },
     }),
     db.mealReview.findMany({ where: { customerId: customer.id }, select: { mealId: true, rating: true, comment: true } }),
+    db.order.findFirst({
+      where: { customerId: customer.id, type: { in: ["one_time", "pos"] }, ...revenueStatusWhere },
+      orderBy: { createdAt: "desc" },
+      select: { id: true, createdAt: true, items: { select: { mealId: true, qty: true, nameSnapshot: true, optionsSnapshot: true } } },
+    }),
   ]);
+  // "Same as last time": only plain meals (no option choices) can be re-added in one tap.
+  const reorderIds: string[] = [];
+  const reorderNames: string[] = [];
+  for (const it of lastOrder?.items ?? []) {
+    if (!it.mealId || !meals.some((m) => m.id === it.mealId && m.optionGroups.length === 0)) continue;
+    for (let i = 0; i < it.qty; i++) reorderIds.push(it.mealId);
+    reorderNames.push(`${it.qty} × ${it.nameSnapshot}`);
+  }
+  const favourites = meals.filter((m) => customer.favoriteMealIds.includes(m.id));
+  const smsAvailable = Boolean(process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN && process.env.TWILIO_FROM) && (business.settings?.notifyCutoffSms ?? false);
   const reviewByMeal = new Map(myReviews.map((r) => [r.mealId, r]));
   const activeMealIds = new Set(meals.map((m) => m.id));
   const seenMeal = new Set<string>();
@@ -244,9 +262,44 @@ export default async function KitchenAccountPage({
         )}
       </div>
 
+      {(reorderIds.length > 0 || favourites.length > 0) && (
+        <div className="grid sm:grid-cols-2 gap-4 mb-4">
+          {reorderIds.length > 0 && (
+            <div className="rounded-xl border p-5" style={{ borderColor: "var(--line)", background: "var(--surface)" }}>
+              <div className="flex items-center gap-2 mb-1"><RotateCcw size={15} style={{ color: "var(--pine)" }} /><div className="text-[13.5px] font-semibold" style={{ color: "var(--ink)" }}>Same as last time</div></div>
+              <div className="text-[12.5px]" style={{ color: "var(--ink-soft)" }}>{reorderNames.slice(0, 4).join(" · ")}{reorderNames.length > 4 ? " · …" : ""}</div>
+              <Link href={`${storeHref}?add=${reorderIds.join(",")}`} className="inline-block mt-3 px-3.5 py-2 rounded-lg text-[13px] font-medium" style={{ background: "var(--pine)", color: "#f4f2ec" }}>Reorder {reorderIds.length} {N.many}</Link>
+            </div>
+          )}
+          {favourites.length > 0 && (
+            <div className="rounded-xl border p-5" style={{ borderColor: "var(--line)", background: "var(--surface)" }}>
+              <div className="flex items-center gap-2 mb-1"><Heart size={15} style={{ color: "var(--clay)" }} /><div className="text-[13.5px] font-semibold" style={{ color: "var(--ink)" }}>Your favourites</div></div>
+              <div className="text-[12.5px]" style={{ color: "var(--ink-soft)" }}>{favourites.slice(0, 5).map((m) => m.name).join(" · ")}{favourites.length > 5 ? " · …" : ""}</div>
+              {favourites.some((m) => m.optionGroups.length === 0) ? (
+                <Link href={`${storeHref}?add=${favourites.filter((m) => m.optionGroups.length === 0).map((m) => m.id).join(",")}`} className="inline-block mt-3 px-3.5 py-2 rounded-lg text-[13px] font-medium border" style={{ borderColor: "var(--line)", color: "var(--ink)" }}>Add them all to an order</Link>
+              ) : (
+                <Link href={storeHref} className="inline-block mt-3 px-3.5 py-2 rounded-lg text-[13px] font-medium border" style={{ borderColor: "var(--line)", color: "var(--ink)" }}>Order them (pick your options)</Link>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
       <div className="mb-4">
         <DeliveryAddress initial={address} />
       </div>
+
+      {smsAvailable && (
+        <form action={updateSmsPrefs} className="rounded-xl border p-5 mb-4" style={{ borderColor: "var(--line)", background: "var(--surface)" }}>
+          <div className="flex items-center gap-2 mb-1"><MessageSquare size={15} style={{ color: "var(--pine)" }} /><div className="text-[13.5px] font-semibold" style={{ color: "var(--ink)" }}>Text reminders</div></div>
+          <p className="text-[12.5px] mb-3" style={{ color: "var(--muted)" }}>A text two days before your picks lock and one on the day, so a forgotten week never happens. Reply STOP to any text to opt out.</p>
+          <div className="flex flex-wrap items-center gap-3">
+            <input name="phone" type="tel" autoComplete="tel" defaultValue={customer.phone ?? ""} placeholder="Mobile number" className="px-3 py-2 rounded-md border text-[13px] outline-none" style={{ borderColor: "var(--line)", background: "var(--paper)", color: "var(--ink)" }} />
+            <label className="flex items-center gap-2 text-[13px] cursor-pointer" style={{ color: "var(--ink)" }}><input type="checkbox" name="smsOptIn" defaultChecked={customer.smsOptIn} /> Text me before the cut-off</label>
+            <button type="submit" className="px-3.5 py-2 rounded-lg text-[13px] font-medium border" style={{ borderColor: "var(--line)", color: "var(--ink)" }}>Save</button>
+          </div>
+        </form>
+      )}
 
       {!subscription ? (
         <div

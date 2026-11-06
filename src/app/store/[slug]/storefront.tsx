@@ -17,6 +17,7 @@ import {
   Star,
   Gift,
   type LucideIcon,
+  Heart,
 } from "lucide-react";
 import { formatCents } from "@/lib/money";
 import { resolveSelections, optionsKeyOf, nameWithOptions } from "@/lib/meal-options";
@@ -31,6 +32,7 @@ import {
   type CouponResult,
   type GiftCardResult,
   type LoyaltyLookup,
+  toggleFavorite,
 } from "../actions";
 
 const ALLERGEN_ICON: Record<string, LucideIcon> = {
@@ -75,6 +77,8 @@ export type StoreZone = {
 };
 
 export type StoreSettings = PricingSettings & {
+  /** Kitchen sends cut-off texts and the platform has SMS configured: show the consent box. */
+  smsAvailable: boolean;
   /** What this kitchen sells, in its customers' words (meals, portions, bottles…). */
   nouns?: Nouns;
   // Plans-only kitchens: the menu is what subscribers pick from each week; there
@@ -118,13 +122,16 @@ export function Storefront({
   meals,
   settings,
   initialAdd,
+  favoriteIds,
 }: {
   slug: string;
   businessName: string;
   meals: StoreMeal[];
   settings: StoreSettings;
-  /** Meal id from ?add= (the meal page's "Add to order") — added once on load. */
+  /** Meal id(s) from ?add= (a meal page's "Add to order", or a reorder: comma-separated, repeats = quantity) — added once on load. */
   initialAdd?: string;
+  /** Signed-in customer's hearts; undefined = not signed in (no heart shown). */
+  favoriteIds?: string[];
 }) {
   const diets = useMemo(
     () => ["All", ...Array.from(new Set(meals.map((m) => m.diet).filter(Boolean) as string[]))],
@@ -133,10 +140,29 @@ export function Storefront({
   const [diet, setDiet] = useState("All");
   // Arriving from a meal page (?add=<id>): that meal starts in the cart, or its
   // option chooser starts open. Seeded here (not in an effect) so there is no re-render.
-  const initialMeal = initialAdd ? meals.find((m) => m.id === initialAdd) : undefined;
-  const [cart, setCart] = useState<Record<string, number>>(() =>
-    initialMeal && !initialMeal.optionGroups.length ? { [initialMeal.id]: 1 } : {},
-  );
+  const initialIds = (initialAdd ?? "").split(",").filter(Boolean);
+  const initialMeal = initialIds.length ? meals.find((m) => m.id === initialIds[0]) : undefined;
+  const [cart, setCart] = useState<Record<string, number>>(() => {
+    const c: Record<string, number> = {};
+    for (const id of initialIds) {
+      const m = meals.find((x) => x.id === id);
+      if (m && !m.optionGroups.length) c[id] = (c[id] ?? 0) + 1;
+    }
+    return c;
+  });
+  // Hearts (signed-in customers only), optimistic.
+  const [favs, setFavs] = useState<Set<string>>(() => new Set(favoriteIds ?? []));
+  const toggleHeart = (mealId: string) => {
+    setFavs((cur) => {
+      const n = new Set(cur);
+      if (n.has(mealId)) n.delete(mealId);
+      else n.add(mealId);
+      return n;
+    });
+    toggleFavorite({ slug, mealId }).then((r) => {
+      if (!r.ok) setFavs((cur) => { const n = new Set(cur); if (n.has(mealId)) n.delete(mealId); else n.add(mealId); return n; });
+    });
+  };
   // Build-your-own: cart keys for configured meals are "<mealId>|<optionsKey>";
   // plain meals keep their mealId as the key. cartOpts remembers each key's option ids.
   const [cartOpts, setCartOpts] = useState<Record<string, string[]>>({});
@@ -190,6 +216,7 @@ export function Storefront({
   const [splitDelivery, setSplitDelivery] = useState(false);
   const [pickedDayB, setDayB] = useState<string>(settings.deliveryDateOptions[1]?.value ?? "");
   const [form, setForm] = useState({ name: "", email: "", phone: "", address: "", zone: "", postal: "" });
+  const [smsOptIn, setSmsOptIn] = useState(false);
   // Zone-based delivery: the postal code picks the zone, the zone picks the
   // dates and the fee. Outside every zone = no delivery (pickup may still work).
   const zonesOn = settings.zones.length > 0;
@@ -295,7 +322,7 @@ export function Storefront({
         referralCode: referralInput.trim() || undefined,
         fulfillment,
         deliveryDate: fulfillment === "delivery" && deliveryDate ? deliveryDate : undefined,
-        customer: { ...form, postalCode: form.postal },
+        customer: { ...form, postalCode: form.postal, smsOptIn: smsOptIn && !!form.phone.trim() },
       });
       if (result.ok) {
         // Balance due → hand off to Stripe Checkout.
@@ -477,6 +504,18 @@ export function Storefront({
                   className={`${m.imageUrl ? "h-40" : "h-24"} relative grid place-items-center`}
                   style={{ background: `${m.swatch}10` }}
                 >
+                  {favoriteIds !== undefined && (
+                    <button
+                      type="button"
+                      onClick={() => toggleHeart(m.id)}
+                      aria-label={favs.has(m.id) ? "Remove from favourites" : "Add to favourites"}
+                      aria-pressed={favs.has(m.id)}
+                      className="absolute top-2 right-2 z-10 grid place-items-center w-8 h-8 rounded-full"
+                      style={{ background: "rgba(255,253,248,.92)", color: favs.has(m.id) ? "var(--clay)" : "var(--muted)", border: "1px solid var(--line)" }}
+                    >
+                      <Heart size={15} fill={favs.has(m.id) ? "currentColor" : "none"} />
+                    </button>
+                  )}
                   {m.imageUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
@@ -1025,6 +1064,21 @@ export function Storefront({
                   className="w-full px-3 py-2 rounded-md border text-[13px] outline-none"
                   style={inputStyle}
                 />
+                <input
+                  value={form.phone}
+                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                  placeholder={settings.smsAvailable ? "Mobile number (for cut-off texts)" : "Phone (optional)"}
+                  type="tel"
+                  autoComplete="tel"
+                  className="w-full px-3 py-2 rounded-md border text-[13px] outline-none"
+                  style={inputStyle}
+                />
+                {settings.smsAvailable && (
+                  <label className="flex items-start gap-2 cursor-pointer text-[12px]" style={{ color: "var(--ink-soft)" }}>
+                    <input type="checkbox" checked={smsOptIn} onChange={(e) => setSmsOptIn(e.target.checked)} className="mt-0.5" />
+                    <span>Text me before my picks lock. At most two texts a week; reply STOP any time.</span>
+                  </label>
+                )}
                 {fulfillment === "delivery" && (
                   <input
                     value={form.address}
