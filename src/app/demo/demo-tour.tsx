@@ -65,6 +65,8 @@ const STEPS: Step[] = [
       "Weekly or bi-weekly plans; the postal code sets the delivery day and fee",
       "Diet filters, calories, protein, photos and star reviews per meal",
       "Catering requests, gift cards and coupons — all on the same page",
+      "A weekly schedule: which meals are on this week, with a note from the kitchen",
+      "Customers heart favourites, reorder last week in one tap, and add your store to their home screen",
     ],
     img: "/demo/storefront.png",
     imgAlt: "Branded customer storefront with the postal-code plan picker and meal cards",
@@ -106,7 +108,7 @@ const STEPS: Step[] = [
     blurb:
       "Subscribers choose each week's meals in their account before your cut-off, skip or pause when they travel, and add extras at their plan price. Miss the cut-off? PrepFlow picks a box from what they've enjoyed before. At the cut-off every subscriber becomes a paid order, zoned and ready for the kitchen.",
     points: [
-      "Reminder emails before the cut-off; picks lock when it passes",
+      "Reminder emails, texts and phone notifications before the cut-off; picks lock when it passes",
       "Extras beyond the plan ride in the same box, billed on the next payment",
       "No picks? Auto-picked from their history — or skipped, your call",
       "Cancel a subscriber or refund their last payment in one click — no Stripe dashboard",
@@ -153,6 +155,7 @@ const STEPS: Step[] = [
       "Buy the right quantity, calculated from what's actually ordered",
       "See the true usable cost hiding behind the invoice price",
       "Snap a supplier invoice and the prices update themselves",
+      "Looking back: the dollars you bought beyond what your orders needed, over 30, 90 or 180 days",
     ],
     img: "/demo/purchasing.png",
     imgAlt: "Trim-aware purchasing list showing true usable-yield cost per ingredient",
@@ -238,7 +241,6 @@ const STEPS: Step[] = [
       "CSV import for menu, customers, subscriptions, and stock",
       "Order history from Shopify, WooCommerce or Square: your real P&L from day one",
       "Tell us what you mainly sell (meal prep, catering, prepared foods, boxes) and the dashboard opens on the right pages",
-      "Looking back: what you bought beyond what your orders needed, from your logged deliveries",
       "Menu from a photo, recipes and prices kept",
       "Your guide can walk you through this on the call",
     ],
