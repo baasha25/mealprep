@@ -80,6 +80,7 @@ const STEPS: Step[] = [
     points: [
       "Postal code → zone, delivery day and fee, automatically",
       "One tap fills in a demo customer; no card needed",
+      "Card or e-transfer at checkout: e-transfer orders wait for your Mark paid, with no card fee and no order fee",
       "Keep this tab open: you're about to watch the order arrive",
     ],
     img: "/demo/storefront.png",

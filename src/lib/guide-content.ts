@@ -307,10 +307,14 @@ export const GUIDE: GuideArea[] = [
           ["Type", "One-time (a single storefront/POS order) or Subscription (from a recurring plan)."],
           ["Meals", "How many meals are in the order."],
           ["Status", "Where the order is: Paid, and you can move it through your fulfillment stages using the dropdown."],
+          ["Awaiting e-transfer · Mark paid", "A customer who chose Pay by e-transfer at checkout. The order is held and is NOT in Kitchen OS, routes or labels yet. When the money lands in your bank (look for the order code in the e-transfer message), press Mark paid: the payment is recorded, the customer gets their receipt, and the order joins production. The yellow bar at the top counts what you're waiting on and filters to just those orders. An order nobody pays for cancels itself after your hold time (Settings → Pay by e-transfer) and the customer is told; open the order to cancel it sooner."],
           ["Total ($)", "What the customer paid for that order (meals + tax + fees)."],
           ["Newer / Older (pages)", "Orders show 100 to a page, newest first; the total and count at the top always cover every order. Search looks up order codes and customer names across all pages."],
         ],
-        tips: ["Use the search box to find an order by customer name or order code (with or without the #). Click the arrow on the right to open an order and see its items, or issue a refund."],
+        tips: [
+          "Use the search box to find an order by customer name or order code (with or without the #). Click the arrow on the right to open an order and see its items, or issue a refund.",
+          "Taking e-transfers? Check your bank once or twice a day and mark those orders paid before your cut-off, so nothing misses production. The Overview page reminds you when any are waiting.",
+        ],
       },
       {
         id: "catering",
@@ -689,6 +693,7 @@ export const GUIDE: GuideArea[] = [
         img: "24-settings.png",
         does: "Your kitchen's rules and branding — fees, tax, delivery days, order cut-off, minimum order, subscription discount, and brand color. These apply across the storefront and checkout.",
         numbers: [
+          ["Pay by e-transfer", "Lets customers pay one-time storefront orders by Interac e-Transfer instead of a card. Enter the email address your bank receives e-transfers at (turn on auto-deposit with your bank), how many hours to hold an unpaid order (48 by default), and an optional note. Checkout then offers Card or E-transfer; an e-transfer customer is shown and emailed the amount, your address and a reference code. You confirm each one with Mark paid in Orders, because banks give software no way to see an e-transfer arrive. The money goes straight to you: no card fee and no PrepFlow order fee. Weekly plans still bill a card, since an e-transfer can't renew by itself."],
           ["Cut-off texts (SMS)", "Under Customer notifications. Texts subscribers who opted in (a checkbox at checkout and in their account) two days before picks lock and on the day; the monthly text cap keeps the bill predictable. Appears once texting is switched on by the platform."],
           ["Push notifications", "Customers who add your storefront to their phone's home screen and allow notifications get the cut-off and delivery-day reminders as a push. Free, no app to build. The storefront offers it once after an order."],
           ["Delivery fee", "What customers pay for delivery, added at checkout."],

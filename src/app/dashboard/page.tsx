@@ -22,6 +22,7 @@ import { revenueStatusWhere } from "@/lib/order-status";
 import { ingredientPriceRises, menuMarginSnapshot, atRiskSubscribers } from "@/lib/alerts-data";
 import { ALERT_STYLE, alertSummary, sortAlerts, type AlertLevel } from "@/lib/alerts";
 import { bpsToPercent } from "@/lib/money";
+import { awaitingEtransferSummary } from "@/lib/etransfer-data";
 
 const STAFF_LINKS: [string, string, typeof ChefHat][] = [
   ["/dashboard/kitchen", "Kitchen OS", ChefHat],
@@ -65,13 +66,15 @@ export default async function DashboardPage({
   let attention: { key: string; text: string; href: string; level: AlertLevel }[] = [];
 
   if (isOwner) {
-    const [rises, margins, risk, pendingReviews, cateringNew] = await Promise.all([
+    const [rises, margins, risk, pendingReviews, cateringNew, etransfers] = await Promise.all([
       ingredientPriceRises(business.id),
       menuMarginSnapshot(business.id),
       atRiskSubscribers(business.id),
       db.mealReview.count({ where: { businessId: business.id, status: "pending" } }),
       db.cateringRequest.count({ where: { businessId: business.id, status: "requested" } }),
+      awaitingEtransferSummary(business.id),
     ]);
+    if (etransfers.count) attention.push({ key: "etransfer", level: "watch", href: "/dashboard/orders?pay=etransfer", text: `Check your bank: ${etransfers.count} order${etransfers.count === 1 ? "" : "s"} waiting on an e-transfer (${formatCents(etransfers.cents)}). Mark paid to send ${etransfers.count === 1 ? "it" : "them"} to the kitchen` });
     if (cateringNew) attention.push({ key: "catering", level: "watch", href: "/dashboard/catering", text: `Quote: ${cateringNew} catering request${cateringNew === 1 ? "" : "s"} waiting for a price` });
     if (margins.losing.length) attention.push({ key: "losing", level: "urgent", href: "/dashboard/profitability?focus=losing", text: `Reprice: ${margins.losing.slice(0, 3).map((m) => m.name).join(", ")}${margins.losing.length > 3 ? ` +${margins.losing.length - 3} more` : ""} ${margins.losing.length === 1 ? "loses" : "lose"} money on every plate` });
     if (margins.thin.length) attention.push({ key: "thin", level: "watch", href: "/dashboard/profitability?focus=thin", text: `Check margin: ${margins.thin.slice(0, 3).map((m) => `${m.name} (${Math.round(m.marginBps / 100)}%)`).join(", ")}${margins.thin.length > 3 ? ` +${margins.thin.length - 3} more` : ""} under 50%` });

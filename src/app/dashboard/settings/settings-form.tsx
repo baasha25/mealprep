@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useRef, useState } from "react";
-import { Check, Store, Percent, Truck, Star, Bell, ImagePlus, Loader2, X, UtensilsCrossed } from "lucide-react";
+import { Check, Store, Percent, Truck, Star, Bell, ImagePlus, Loader2, X, UtensilsCrossed, Send } from "lucide-react";
 import { Card, CardTitle, Field, INP, btnPrimary } from "@/components/ui";
 import { updateSettings, signLogoUpload, type SettingsActionState } from "./actions";
 import { TIERS, TIER_KEYS, feePctLabel, type TierKey } from "@/lib/tiers";
@@ -38,6 +38,10 @@ export type SettingsInitial = {
   pickupLocations: string[];
   loyaltyEnabled: boolean;
   autoApproveReviews: boolean;
+  etransferEnabled: boolean;
+  etransferEmail: string;
+  etransferNote: string;
+  etransferHoldHours: number;
   notifyCutoff: boolean;
   notifyCutoffSms: boolean;
   notifyPush: boolean;
@@ -413,6 +417,35 @@ export function SettingsForm({ initial }: { initial: SettingsInitial }) {
               style={inputStyle}
             />
             <ErrorText msg={errors.minMeals} />
+          </Field>
+        </div>
+      </Card>
+
+      {/* Pay by e-transfer */}
+      <Card>
+        <CardTitle icon={<Send size={15} />} title="Pay by e-transfer" note="No card fee, no platform fee" />
+        <label className="flex items-start gap-2 cursor-pointer select-none mb-4">
+          <input type="checkbox" name="etransferEnabled" defaultChecked={initial.etransferEnabled} className="mt-0.5" />
+          <span>
+            <span className="text-[13px] block" style={{ color: "var(--ink)" }}>Let customers pay one-time orders by Interac e-Transfer</span>
+            <span className="text-[12px]" style={{ color: "var(--muted)" }}>
+              Checkout offers Card or E-transfer. An e-transfer order is held, the customer is shown and emailed where to send the money and a reference to quote, and you press Mark paid in Orders when it lands. Only then does it reach Kitchen OS, routes and labels. The money goes straight to your bank, so there is no card fee and no PrepFlow order fee on it. Weekly plans still bill a card.
+            </span>
+          </span>
+        </label>
+        <div className="grid sm:grid-cols-2 gap-4">
+          <Field label="Send e-transfers to" hint="The email address your bank account receives Interac e-Transfers at. Turn on auto-deposit with your bank so customers never need a security question.">
+            <input name="etransferEmail" type="email" defaultValue={initial.etransferEmail} placeholder="payments@yourkitchen.ca" className={INP} style={inputStyle} />
+            <ErrorText msg={errors.etransferEmail} />
+          </Field>
+          <Field label="Hold unpaid orders for (hours)" hint="How long an order waits for its e-transfer before it cancels itself and the customer is told. 48 is a good default; shorten it if your cut-off is tight.">
+            <input name="etransferHoldHours" type="number" min={2} max={168} step="1" defaultValue={initial.etransferHoldHours} className={INP} style={inputStyle} />
+            <ErrorText msg={errors.etransferHoldHours} />
+          </Field>
+        </div>
+        <div className="mt-4">
+          <Field label="Note shown with the payment details (optional)" hint="One line the customer sees under your address, e.g. “Auto-deposit is on, no password needed.”">
+            <input name="etransferNote" maxLength={200} defaultValue={initial.etransferNote} placeholder="Auto-deposit is on, no password needed." className={INP} style={inputStyle} />
           </Field>
         </div>
       </Card>

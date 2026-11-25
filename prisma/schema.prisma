@@ -310,6 +310,13 @@ model BusinessSettings {
   notifyCutoffSms   Boolean @default(false) // also text opted-in subscribers 48h + 6h before the cut-off (needs TWILIO_* env)
   smsMonthlyCap     Int     @default(500)   // texts per calendar month this kitchen allows (cost guard)
   notifyPush        Boolean @default(true)  // web push for cut-off / delivery day to customers who installed the storefront
+  // Pay by Interac e-Transfer at storefront checkout: the order waits unpaid until
+  // the owner confirms the money arrived (Interac has no API to watch for it).
+  // No Stripe, so no card fee and no platform fee on these orders.
+  etransferEnabled   Boolean @default(false)
+  etransferEmail     String? // where customers send the e-transfer
+  etransferNote      String? // optional line shown with it, e.g. "Auto-deposit is on, no password needed"
+  etransferHoldHours Int     @default(48) // an unpaid e-transfer order cancels itself after this long
   notifyDeliveryDay Boolean @default(true) // "your meals arrive today" email
   // Retention emails (cron: /api/cron/retention)
   notifyAbandoned   Boolean @default(true)  // "finish your order" nudge 2–48h after an unpaid checkout
@@ -800,6 +807,9 @@ model Order {
   extrasCents           Int           @default(0)
   stripeInvoiceItemId   String?       // the Stripe invoice item that bills the extras (null = not billed yet)
   stripePaymentIntentId String?
+  // How the customer chose to pay when it is not a card: "etransfer". Such an
+  // order sits in `pending` until the owner marks the money received.
+  paymentMethod         String?
   // Order history brought in from a previous platform (Import → Order history).
   // importBatchId groups one upload so it can be undone in one click; externalRef
   // is the old system's order number so re-importing the same file is a no-op.

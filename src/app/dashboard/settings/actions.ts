@@ -1,6 +1,7 @@
 "use server";
 
 import { z } from "zod";
+import { isEtransferEmail, HOLD_HOURS_MIN, HOLD_HOURS_MAX, HOLD_HOURS_DEFAULT } from "@/lib/etransfer";
 import { VERTICALS } from "@/lib/verticals";
 import { normalizePostalCode } from "@/lib/regions";
 import { isValidHostname } from "@/lib/custom-domains";
@@ -62,6 +63,11 @@ const SettingsInput = z.object({
   loyaltyPointsPerDollar: z.coerce.number().int().min(0).max(1000),
   loyaltyRedeemCentsPerPoint: z.coerce.number().int().min(1).max(1000),
   referralBonusPoints: z.coerce.number().int().min(0).max(1_000_000),
+  // Pay by e-transfer at checkout
+  etransferEnabled: z.boolean(),
+  etransferEmail: z.string().trim().toLowerCase().max(200).optional().default(""),
+  etransferNote: z.string().trim().max(200).optional().default(""),
+  etransferHoldHours: z.coerce.number().int().min(HOLD_HOURS_MIN, `At least ${HOLD_HOURS_MIN} hours`).max(HOLD_HOURS_MAX, `At most ${HOLD_HOURS_MAX} hours (7 days)`),
   // Customer notifications
   notifyCutoff: z.boolean(),
   notifyCutoffSms: z.boolean(),
@@ -146,6 +152,10 @@ export async function updateSettings(
     loyaltyPointsPerDollar: formData.get("loyaltyPointsPerDollar"),
     loyaltyRedeemCentsPerPoint: formData.get("loyaltyRedeemCentsPerPoint"),
     referralBonusPoints: formData.get("referralBonusPoints"),
+    etransferEnabled: formData.get("etransferEnabled") === "on",
+    etransferEmail: formData.get("etransferEmail") ?? "",
+    etransferNote: formData.get("etransferNote") ?? "",
+    etransferHoldHours: formData.get("etransferHoldHours") ?? HOLD_HOURS_DEFAULT,
     notifyCutoff: formData.get("notifyCutoff") === "on",
     notifyCutoffSms: formData.get("notifyCutoffSms") === "on",
     notifyPush: formData.get("notifyPush") === "on",
@@ -184,6 +194,14 @@ export async function updateSettings(
   }
 
   const d = parsed.data;
+
+  // E-transfer can't be offered without somewhere to send the money.
+  if (d.etransferEnabled && !isEtransferEmail(d.etransferEmail)) {
+    return { ok: false, message: "Please fix the highlighted fields.", errors: { etransferEmail: "Enter the email address customers send e-transfers to" } };
+  }
+  if (d.etransferEmail && !isEtransferEmail(d.etransferEmail)) {
+    return { ok: false, message: "Please fix the highlighted fields.", errors: { etransferEmail: "That doesn't look like an email address" } };
+  }
 
   // When the kitchen has a paid subscription, the plan is owned by Stripe — a
   // tier change must go through the billing portal, not this form (else desync).
@@ -225,6 +243,10 @@ export async function updateSettings(
         loyaltyPointsPerDollar: d.loyaltyPointsPerDollar,
         loyaltyRedeemCentsPerPoint: d.loyaltyRedeemCentsPerPoint,
         referralBonusPoints: d.referralBonusPoints,
+        etransferEnabled: d.etransferEnabled,
+        etransferEmail: d.etransferEmail || null,
+        etransferNote: d.etransferNote || null,
+        etransferHoldHours: d.etransferHoldHours,
         notifyCutoff: d.notifyCutoff,
         notifyCutoffSms: d.notifyCutoffSms,
         notifyPush: d.notifyPush,
@@ -271,6 +293,10 @@ export async function updateSettings(
         loyaltyPointsPerDollar: d.loyaltyPointsPerDollar,
         loyaltyRedeemCentsPerPoint: d.loyaltyRedeemCentsPerPoint,
         referralBonusPoints: d.referralBonusPoints,
+        etransferEnabled: d.etransferEnabled,
+        etransferEmail: d.etransferEmail || null,
+        etransferNote: d.etransferNote || null,
+        etransferHoldHours: d.etransferHoldHours,
         notifyCutoff: d.notifyCutoff,
         notifyCutoffSms: d.notifyCutoffSms,
         notifyPush: d.notifyPush,

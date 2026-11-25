@@ -18,6 +18,8 @@ import {
   Gift,
   type LucideIcon,
   Heart,
+  CreditCard,
+  Send,
 } from "lucide-react";
 import { formatCents } from "@/lib/money";
 import { resolveSelections, optionsKeyOf, nameWithOptions } from "@/lib/meal-options";
@@ -79,6 +81,8 @@ export type StoreZone = {
 export type StoreSettings = PricingSettings & {
   /** Kitchen sends cut-off texts and the platform has SMS configured: show the consent box. */
   smsAvailable: boolean;
+  /** Pay by Interac e-Transfer is on for this kitchen (null = card only). */
+  etransfer?: { holdHours: number } | null;
   /** What this kitchen sells, in its customers' words (meals, portions, bottles…). */
   nouns?: Nouns;
   // Plans-only kitchens: the menu is what subscribers pick from each week; there
@@ -217,6 +221,7 @@ export function Storefront({
   const [pickedDayB, setDayB] = useState<string>(settings.deliveryDateOptions[1]?.value ?? "");
   const [form, setForm] = useState({ name: "", email: "", phone: "", address: "", zone: "", postal: "" });
   const [smsOptIn, setSmsOptIn] = useState(false);
+  const [payBy, setPayBy] = useState<"card" | "etransfer">("card");
   // Zone-based delivery: the postal code picks the zone, the zone picks the
   // dates and the fee. Outside every zone = no delivery (pickup may still work).
   const zonesOn = settings.zones.length > 0;
@@ -301,6 +306,10 @@ export function Storefront({
     });
   };
 
+  // E-transfer is a one-time-order choice: a recurring order needs a card on file.
+  const payingByEtransfer = Boolean(settings.etransfer) && !subscribe && payBy === "etransfer";
+  const holdLabel = settings.etransfer ? (settings.etransfer.holdHours % 24 === 0 && settings.etransfer.holdHours >= 48 ? `${settings.etransfer.holdHours / 24} days` : `${settings.etransfer.holdHours} hours`) : "";
+
   const checkout = () => {
     setError("");
     startTransition(async () => {
@@ -322,9 +331,15 @@ export function Storefront({
         referralCode: referralInput.trim() || undefined,
         fulfillment,
         deliveryDate: fulfillment === "delivery" && deliveryDate ? deliveryDate : undefined,
+        payBy: payingByEtransfer ? "etransfer" : "card",
         customer: { ...form, postalCode: form.postal, smsOptIn: smsOptIn && !!form.phone.trim() },
       });
       if (result.ok) {
+        // Pay by e-transfer → the page that says what to send, where and by when.
+        if (result.etransfer) {
+          window.location.href = `/store/${slug}/etransfer/${result.orderId}`;
+          return;
+        }
         // Balance due → hand off to Stripe Checkout.
         if (result.checkoutUrl) {
           window.location.href = result.checkoutUrl;
@@ -1124,6 +1139,36 @@ export function Storefront({
                 </button>
               )}
 
+              {settings.etransfer && !subscribe && (
+                <div className="mb-3">
+                  <div className="text-[12px] font-medium mb-1.5" style={{ color: "var(--ink)" }}>How would you like to pay?</div>
+                  <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Payment method">
+                    {(["card", "etransfer"] as const).map((k) => {
+                      const on = payBy === k;
+                      return (
+                        <button
+                          type="button"
+                          key={k}
+                          role="radio"
+                          aria-checked={on}
+                          onClick={() => setPayBy(k)}
+                          className="px-3 py-2 rounded-lg border text-[13px] font-medium flex items-center justify-center gap-1.5 transition-colors"
+                          style={{ borderColor: on ? "var(--pine)" : "var(--line)", background: on ? "color-mix(in srgb, var(--pine) 6%, transparent)" : "transparent", color: on ? "var(--pine)" : "var(--ink)" }}
+                        >
+                          {k === "card" ? <CreditCard size={14} /> : <Send size={14} />}
+                          {k === "card" ? "Card" : "E-transfer"}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {payingByEtransfer && (
+                    <p className="text-[11.5px] mt-1.5" style={{ color: "var(--muted)" }}>
+                      Place your order, then send an Interac e-Transfer. We hold it for {holdLabel} and confirm it as soon as your payment arrives.
+                    </p>
+                  )}
+                </div>
+              )}
+
               {error && (
                 <p className="text-[12px] mb-2" style={{ color: "var(--clay)" }}>
                   {error}
@@ -1139,10 +1184,10 @@ export function Storefront({
                   color: totals.belowMinimum || totals.belowMinMeals || !formValid ? "#b3ada0" : "#f4f2ec",
                 }}
               >
-                {pending ? "Placing…" : subscribe ? "Start subscription" : "Place order"}
+                {pending ? "Placing…" : subscribe ? "Start subscription" : payingByEtransfer ? "Place order · pay by e-transfer" : "Place order"}
               </button>
               <p className="text-[11px] mt-2 text-center" style={{ color: "var(--muted)" }}>
-                {settings.isDemo ? "Demo kitchen: orders are marked paid, no card is charged." : "Payment is collected once Stripe is connected."}
+                {payingByEtransfer ? "You'll see where to send it on the next screen, and we'll email it to you." : settings.isDemo ? "Demo kitchen: orders are marked paid, no card is charged." : "Payment is collected once Stripe is connected."}
               </p>
             </>
           )}

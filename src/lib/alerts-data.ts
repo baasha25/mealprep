@@ -148,7 +148,7 @@ export async function sidebarUrgentCount(businessId: string): Promise<number> {
       const [{ losing }, failedCards] = await Promise.all([
         menuMarginSnapshot(businessId),
         db.subscription.count({
-          where: { businessId, status: "active", customer: { orders: { some: { status: "pending", createdAt: { gte: new Date(Date.now() - 14 * 86_400_000) } } } } },
+          where: { businessId, status: "active", customer: { orders: { some: { status: "pending", paymentMethod: null, createdAt: { gte: new Date(Date.now() - 14 * 86_400_000) } } } } },
         }),
       ]);
       return losing.length + (failedCards > 0 ? 1 : 0);

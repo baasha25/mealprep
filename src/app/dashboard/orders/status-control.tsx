@@ -19,6 +19,7 @@ export function StatusControl({
     <form ref={ref} action={action}>
       <input type="hidden" name="orderId" value={orderId} />
       <select
+        key={status /* remount so the menu shows the saved status after the action resets the form */}
         name="status"
         defaultValue={status}
         onChange={() => ref.current?.requestSubmit()}

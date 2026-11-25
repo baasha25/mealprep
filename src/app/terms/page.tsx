@@ -51,7 +51,9 @@ export default function TermsPage() {
           from a Kitchen&apos;s customers settle to that Kitchen. PrepFlow may collect a platform fee on
           transactions and its software subscription fee. PrepFlow is not a party to the sale of food
           between a Kitchen and its customers. Card processing fees are charged by Stripe at its
-          rates. You are responsible for your own taxes, chargebacks, and refunds to your customers.
+          rates. Where a Kitchen chooses to accept Interac e-Transfer, that payment is made directly
+          between the customer and the Kitchen: PrepFlow does not process, hold, or verify it, and the
+          Kitchen is responsible for confirming receipt. You are responsible for your own taxes, chargebacks, and refunds to your customers.
         </p>
       </Section>
 

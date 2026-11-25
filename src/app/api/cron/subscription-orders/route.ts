@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { materializeSubscriptionOrders } from "@/lib/subscription-orders-run";
+import { expireEtransferOrders } from "@/lib/etransfer-data";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -18,7 +19,9 @@ async function handle(req: NextRequest) {
   if (!authorized(req)) return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
   try {
     const summary = await materializeSubscriptionOrders();
-    return NextResponse.json({ ok: true, ...summary });
+    // Same hourly beat: release e-transfer orders whose hold window has passed.
+    const etransferReleased = await expireEtransferOrders().then((ids) => ids.length).catch((e) => { console.error("[cron:etransfer-expiry]", e); return 0; });
+    return NextResponse.json({ ok: true, ...summary, etransferReleased });
   } catch (err) {
     console.error("[cron:subscription-orders]", err);
     return NextResponse.json({ ok: false, error: "run failed" }, { status: 500 });

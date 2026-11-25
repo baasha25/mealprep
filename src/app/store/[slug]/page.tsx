@@ -7,6 +7,7 @@ import { weekStartFor, addWeeks, weekLabel, mealsForWeek, isCustomWeek } from "@
 import { PushPrompt } from "@/components/push-prompt";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
+import { etransferOffer } from "@/lib/etransfer";
 import { getStorefrontBusiness, publicStoreUrls } from "@/lib/storefront";
 import { cldImage } from "@/lib/cloudinary";
 import { storeTitle, storeDescription, storeJsonLd, jsonLdScript, type SeoMeal } from "@/lib/seo";
@@ -238,8 +239,11 @@ export default async function StorePage({
   const thisWeekLabel = isCustomWeek(thisWeek, storeMeals.length) ? weekLabel(thisWeekStart, tz) : null;
   const nextWeekNames = nextWeek && isCustomWeek(nextWeek, storeMeals.length) ? storeMeals.filter((m) => nextWeek.mealIds.includes(m.id)).map((m) => m.name) : [];
   const nextWeekLabel = weekLabel(nextWeekStart, tz);
+  const etransfer = etransferOffer(s);
   const settings: StoreSettings = {
     nouns,
+    // The address itself is only shown after an order is placed.
+    etransfer: etransfer ? { holdHours: etransfer.holdHours } : null,
     smsAvailable: Boolean(process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN && process.env.TWILIO_FROM) && s.notifyCutoffSms,
     subscriptionsOnly: s.subscriptionsOnly,
     isDemo: business.isDemo,

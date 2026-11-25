@@ -89,7 +89,9 @@ export async function enterDemo(
       demoExpiresAt: keepDays > 0 ? new Date(Date.now() + keepDays * 86_400_000) : null,
       billingComped: true,
       trialEndsAt: trialEndFrom(),
-      settings: { create: { platformFeeBps: TIERS.starter.platformFeeBps } },
+      // E-transfer is on so a prospect can try both ways to pay; the address is a
+      // reserved example domain and the note says not to send real money.
+      settings: { create: { platformFeeBps: TIERS.starter.platformFeeBps, etransferEnabled: true, etransferEmail: "payments@demokitchen.example", etransferNote: "Demo kitchen: don't send real money. Open Orders in the dashboard and press Mark paid." } },
     },
     select: { id: true, slug: true },
   });

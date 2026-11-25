@@ -9,7 +9,8 @@ import { stripe, STRIPE_ENABLED, PLATFORM_CURRENCY } from "@/lib/stripe";
 import { getStorefrontBusiness } from "@/lib/storefront";
 import { orderLimitStatus } from "@/lib/usage";
 import { effectiveTier, type TierKey } from "@/lib/tiers";
-import { sendOrderConfirmation, sendOwnerNewOrder } from "@/lib/email";
+import { sendOrderConfirmation, sendOwnerNewOrder, sendEtransferInstructions } from "@/lib/email";
+import { ETRANSFER, etransferOffer } from "@/lib/etransfer";
 import { computeOrder, type AppliedCoupon } from "@/lib/pricing";
 import { nounsFor } from "@/lib/nouns";
 import { nextCutoffAt, upcomingDeliveries, DEFAULT_TIMEZONE } from "@/lib/cutoff";
@@ -123,6 +124,8 @@ const PlaceOrderInput = z.object({
   referralCode: z.string().trim().toUpperCase().max(24).optional(),
   fulfillment: z.enum(["delivery", "pickup"]),
   deliveryDate: z.string().datetime().optional(),
+  // How the balance is paid. "etransfer" is honoured only when the kitchen offers it.
+  payBy: z.enum(["card", "etransfer"]).optional().default("card"),
   customer: z.object({
     name: z.string().trim().min(1, "Name is required").max(120),
     email: z.string().trim().toLowerCase().email("Enter a valid email"),
@@ -134,10 +137,10 @@ const PlaceOrderInput = z.object({
   }),
 });
 
-export type PlaceOrderInputT = z.infer<typeof PlaceOrderInput>;
+export type PlaceOrderInputT = z.input<typeof PlaceOrderInput>;
 
 export type PlaceOrderResult =
-  | { ok: true; orderId: string; totalCents: number; giftRedeemedCents: number; amountDueCents: number; subscription: boolean; checkoutUrl?: string; demo?: boolean }
+  | { ok: true; orderId: string; totalCents: number; giftRedeemedCents: number; amountDueCents: number; subscription: boolean; checkoutUrl?: string; demo?: boolean; etransfer?: boolean }
   | { ok: false; message: string };
 
 export async function placeOrder(input: PlaceOrderInputT): Promise<PlaceOrderResult> {
@@ -162,6 +165,14 @@ export async function placeOrder(input: PlaceOrderInputT): Promise<PlaceOrderRes
   const usage = await orderLimitStatus({ id: business.id, tier: effectiveTier({ tier: business.tier as TierKey, trialEndsAt: business.trialEndsAt }) });
   if (usage.atLimit) {
     return { ok: false, message: "This kitchen has paused new orders for now. Please check back soon." };
+  }
+
+  // Pay by e-transfer: only when this kitchen has switched it on, and never for
+  // a recurring order (there is no card to bill the next cycle).
+  const payByEtransfer = data.payBy === "etransfer";
+  if (payByEtransfer) {
+    if (!etransferOffer(s)) return { ok: false, message: "This kitchen doesn't take e-transfers. Please pay by card." };
+    if (data.subscribe) return { ok: false, message: "Subscriptions need a card. Switch off Subscribe & save to pay by e-transfer." };
   }
 
   if (data.fulfillment === "delivery" && s.fulfillment === "pickup") {
@@ -334,12 +345,17 @@ export async function placeOrder(input: PlaceOrderInputT): Promise<PlaceOrderRes
     update: { name: data.customer.name, phone: data.customer.phone || null, ...(data.customer.phone ? { smsOptIn: Boolean(data.customer.smsOptIn) } : {}) },
   });
 
+  const amountDueCents = Math.max(0, totals.totalCents - giftAppliedCents);
+  // Only an order with money still owing waits on an e-transfer.
+  const awaitingEtransfer = payByEtransfer && amountDueCents > 0;
+
   const order = await db.order.create({
     data: {
       businessId: business.id,
       customerId: customer.id,
       type: data.subscribe ? "subscription" : "one_time",
-      status: "pending", // until Stripe payment is wired
+      status: "pending", // until the card payment clears or the e-transfer is confirmed
+      paymentMethod: awaitingEtransfer ? ETRANSFER : null,
       fulfillment: data.fulfillment,
       deliveryDate,
       address: data.customer.address || null,
@@ -380,14 +396,22 @@ export async function placeOrder(input: PlaceOrderInputT): Promise<PlaceOrderRes
     }
   }
 
-  const amountDueCents = Math.max(0, totals.totalCents - giftAppliedCents);
-
   // Fully covered by gift card / points → nothing to charge; mark it paid and
   // send the receipt now (Stripe's success page won't run for these).
   if (amountDueCents === 0) {
     await db.order.update({ where: { id: order.id }, data: { status: "paid" } });
     await sendOrderConfirmation(order.id);
     await sendOwnerNewOrder(order.id);
+  }
+
+  // Pay by e-transfer: nothing to charge. The order waits (out of production)
+  // until the owner confirms the money; the customer gets the how-to-pay email
+  // and the owner hears about it now. Same in the sales sandbox, so a prospect
+  // can try the whole loop (emails are suppressed under the demo cookie).
+  if (awaitingEtransfer) {
+    await sendEtransferInstructions(order.id);
+    await sendOwnerNewOrder(order.id);
+    return { ok: true, orderId: order.id, totalCents: totals.totalCents, giftRedeemedCents: giftAppliedCents, amountDueCents, subscription: false, etransfer: true };
   }
 
   // Sales sandbox: never touch Stripe. Mark the order paid so it lands in Orders,

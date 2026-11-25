@@ -7,6 +7,9 @@ import { requireBusiness, requireOwner } from "@/lib/auth";
 import { stripe, STRIPE_ENABLED } from "@/lib/stripe";
 import { plateCostFromRecipe } from "@/lib/profitability";
 import { mealLossCents } from "@/lib/loss";
+import { isAwaitingEtransfer, impliesMoneyIn } from "@/lib/etransfer";
+import { markEtransferPaid, cancelUnpaidEtransfer } from "@/lib/etransfer-data";
+import { sendOrderConfirmation } from "@/lib/email";
 
 const ORDER_STATUSES = [
   "pending",
@@ -36,18 +39,52 @@ export async function updateOrderStatus(formData: FormData) {
   // Tenant guard: only touch orders belonging to this business.
   const order = await db.order.findFirst({
     where: { id: parsed.data.orderId, businessId: business.id },
-    select: { id: true },
+    select: { id: true, status: true, paymentMethod: true },
   });
   if (!order) return;
 
-  await db.order.update({
-    where: { id: parsed.data.orderId },
-    data: { status: parsed.data.status },
-  });
+  // An order waiting on its e-transfer: moving it forward from the menu means the
+  // money arrived (record the payment, send the receipt); cancelling it releases
+  // it properly. Anything else is a plain status change.
+  if (isAwaitingEtransfer(order) && impliesMoneyIn(parsed.data.status)) {
+    const res = await markEtransferPaid(order.id, business.id, parsed.data.status as "paid");
+    if (res.ok) await sendOrderConfirmation(order.id);
+  } else if (isAwaitingEtransfer(order) && parsed.data.status === "canceled") {
+    await cancelUnpaidEtransfer(order.id, business.id);
+  } else {
+    await db.order.update({
+      where: { id: parsed.data.orderId },
+      data: { status: parsed.data.status },
+    });
+  }
 
+  revalidateOrder(parsed.data.orderId);
+}
+
+function revalidateOrder(orderId: string) {
   revalidatePath("/dashboard/orders");
-  revalidatePath(`/dashboard/orders/${parsed.data.orderId}`);
+  revalidatePath(`/dashboard/orders/${orderId}`);
   revalidatePath("/dashboard");
+  revalidatePath("/dashboard/kitchen");
+}
+
+/** The e-transfer arrived: record it, confirm the order, email the receipt. */
+export async function markEtransferReceived(formData: FormData) {
+  const { business } = await requireBusiness();
+  const orderId = String(formData.get("orderId") ?? "");
+  if (!orderId) return;
+  const res = await markEtransferPaid(orderId, business.id);
+  if (res.ok) await sendOrderConfirmation(orderId);
+  revalidateOrder(orderId);
+}
+
+/** No e-transfer is coming: release the order now instead of waiting for the hold to run out. */
+export async function releaseEtransferOrder(formData: FormData) {
+  const { business } = await requireBusiness();
+  const orderId = String(formData.get("orderId") ?? "");
+  if (!orderId) return;
+  await cancelUnpaidEtransfer(orderId, business.id);
+  revalidateOrder(orderId);
 }
 
 export type RefundResult = { ok: boolean; message?: string };

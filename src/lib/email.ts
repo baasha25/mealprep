@@ -4,6 +4,7 @@ import { senderFor, type Sender } from "@/lib/sender";
 import { nounsFor } from "@/lib/nouns";
 import { formatCents } from "@/lib/money";
 import { cldImage } from "@/lib/cloudinary";
+import { ETRANSFER, isAwaitingEtransfer, etransferAmountCents, etransferReference, etransferDeadline } from "@/lib/etransfer";
 
 // Transactional email via Resend. Gated on the key so the app runs without it —
 // when disabled we log what would have been sent instead of failing.
@@ -183,9 +184,12 @@ type OrderRow = {
   giftRedeemedCents: number;
   extrasCount?: number;
   extrasCents?: number;
+  status?: string;
+  paymentMethod?: string | null;
+  createdAt?: Date;
   items: { nameSnapshot: string; qty: number; unitPriceCentsSnapshot: number; addedVia?: string | null }[];
   customer: { name: string; email: string; phone: string | null } | null;
-  business: { name: string; brandColor: string; settings?: { itemNoun: string } | null };
+  business: { name: string; slug?: string | null; brandColor: string; settings?: { itemNoun: string; timezone?: string; etransferEmail?: string | null; etransferNote?: string | null; etransferHoldHours?: number } | null };
 };
 
 function itemsTable(items: OrderRow["items"]): string {
@@ -220,7 +224,7 @@ function totalsTable(o: OrderRow, chargedLabel: string): string {
 async function loadOrder(orderId: string): Promise<OrderRow | null> {
   return db.order.findUnique({
     where: { id: orderId },
-    include: { items: true, customer: true, business: { include: { settings: { select: { itemNoun: true } } } } },
+    include: { items: true, customer: true, business: { include: { settings: { select: { itemNoun: true, timezone: true, etransferEmail: true, etransferNote: true, etransferHoldHours: true } } } } },
   }) as unknown as OrderRow | null;
 }
 
@@ -257,7 +261,7 @@ export async function sendOrderConfirmation(orderId: string): Promise<void> {
     brandColor: o.business.brandColor,
     heading: isSub ? (autoPicked ? `We picked your box, ${escapeHtml(firstName)}` : `Your box is set, ${escapeHtml(firstName)}`) : `Thanks, ${escapeHtml(firstName)} — your order is confirmed`,
     subheading: `Order #${code} · ${fulfil}${when ? ` · ${when}` : ""}${o.address ? ` · ${escapeHtml(o.address)}` : ""}`,
-    bodyHtml: `${itemsTable(o.items)}${totalsTable(o, isSub ? "Covered by your plan" : "Total charged")}${autoNote}${extrasNote}
+    bodyHtml: `${itemsTable(o.items)}${totalsTable(o, isSub ? "Covered by your plan" : o.paymentMethod === ETRANSFER ? "Paid by e-transfer" : "Total charged")}${autoNote}${extrasNote}
       <p style="margin:20px 0 0;color:${SOFT};font-size:13px;">${closing} Questions? Just reply to this email.</p>`,
   });
 }
@@ -277,19 +281,95 @@ export async function sendOwnerNewOrder(orderId: string): Promise<void> {
   const contact = o.customer
     ? `${escapeHtml(o.customer.name)} · ${escapeHtml(o.customer.email)}${o.customer.phone ? ` · ${escapeHtml(o.customer.phone)}` : ""}`
     : "—";
+  // Pay by e-transfer: the order is in, the money is not. Tell the owner what to
+  // watch for and that nothing is cooked until they confirm it.
+  const awaiting = isAwaitingEtransfer({ status: o.status ?? "", paymentMethod: o.paymentMethod });
+  const due = formatCents(etransferAmountCents(o));
+  const awaitingNote = awaiting
+    ? `<p style="margin:0 0 14px;padding:12px 14px;border-radius:8px;background:#f3e9c9;color:#5c4a12;font-size:13.5px;"><strong>Paying by e-transfer.</strong> Watch for ${due} from ${o.customer ? escapeHtml(o.customer.name) : "this customer"}, with <strong>${etransferReference(o.id)}</strong> in the message. When it arrives, open the order and press <strong>Mark paid</strong>. It joins production only then${o.createdAt ? `, and cancels itself on ${whenLabel(etransferDeadline(o.createdAt, o.business.settings?.etransferHoldHours), o.business.settings?.timezone)} if nothing comes in` : ""}.</p>`
+    : "";
   await send({
     to: owner.email,
     businessId: o.businessId,
-    subject: `New order #${code} — ${o.business.name}`,
+    subject: awaiting ? `New order #${code} — awaiting e-transfer of ${due}` : `New order #${code} — ${o.business.name}`,
     businessName: o.business.name,
     brandColor: o.business.brandColor,
-    heading: `New order · ${formatCents(Math.max(0, o.totalCents - o.giftRedeemedCents))}`,
+    heading: awaiting ? `New order · ${due} by e-transfer` : `New order · ${formatCents(Math.max(0, o.totalCents - o.giftRedeemedCents))}`,
     subheading: `Order #${code} · ${fulfil}`,
     bodyHtml: `
+      ${awaitingNote}
       <p style="margin:0 0 14px;color:${INK};font-size:14px;"><strong>Customer:</strong> ${contact}</p>
       ${o.address ? `<p style="margin:0 0 14px;color:${INK};font-size:14px;"><strong>Address:</strong> ${escapeHtml(o.address)}</p>` : ""}
       ${itemsTable(o.items)}${totalsTable(o, "Order total")}
       <a href="${APP_URL}/dashboard/orders" style="display:inline-block;margin-top:20px;background:${o.business.brandColor || "#2f4536"};color:#f4f2ec;text-decoration:none;font-size:14px;font-weight:500;padding:10px 18px;border-radius:8px;">View in dashboard</a>`,
+  });
+}
+
+/** "Thursday, November 26 at 3:00 PM" in the kitchen's time zone. */
+function whenLabel(d: Date, tz?: string | null): string {
+  return new Intl.DateTimeFormat("en-US", { timeZone: tz || "America/Toronto", weekday: "long", month: "long", day: "numeric", hour: "numeric", minute: "2-digit" }).format(d);
+}
+
+/**
+ * Pay by e-transfer: the order is placed but unpaid. Tell the customer exactly
+ * what to send, where, what to write in the message, and by when.
+ */
+export async function sendEtransferInstructions(orderId: string): Promise<void> {
+  const o = await loadOrder(orderId);
+  const st = o?.business.settings;
+  if (!o || !o.customer?.email || !st?.etransferEmail) return;
+  const code = etransferReference(o.id);
+  const firstName = o.customer.name?.split(" ")[0] ?? "there";
+  const amount = formatCents(etransferAmountCents(o));
+  const deadline = o.createdAt ? whenLabel(etransferDeadline(o.createdAt, st.etransferHoldHours), st.timezone) : null;
+  const payUrl = o.business.slug ? `${APP_URL}/store/${o.business.slug}/etransfer/${o.id}` : null;
+  const row = (label: string, value: string) => `
+    <tr>
+      <td style="padding:7px 0;color:${SOFT};font-size:13px;width:38%;">${label}</td>
+      <td style="padding:7px 0;color:${INK};font-size:15px;font-weight:600;">${value}</td>
+    </tr>`;
+  await send({
+    to: o.customer.email,
+    businessId: o.businessId,
+    subject: `Send ${amount} by e-transfer to confirm your ${o.business.name} order`,
+    businessName: o.business.name,
+    brandColor: o.business.brandColor,
+    heading: `One step left, ${escapeHtml(firstName)}: send your e-transfer`,
+    subheading: `Order #${code} · held for you${deadline ? ` until ${deadline}` : ""}`,
+    bodyHtml: `
+      <table style="width:100%;border-collapse:collapse;border:1px solid ${LINE};border-radius:10px;margin-bottom:18px;"><tr><td style="padding:10px 16px;">
+        <table style="width:100%;border-collapse:collapse;">
+          ${row("Amount", amount)}
+          ${row("Send to", escapeHtml(st.etransferEmail))}
+          ${row("Message", code)}
+        </table>
+      </td></tr></table>
+      ${st.etransferNote ? `<p style="margin:0 0 14px;color:${INK};font-size:13.5px;">${escapeHtml(st.etransferNote)}</p>` : ""}
+      <p style="margin:0 0 16px;color:${SOFT};font-size:13px;">Put <strong style="color:${INK};">${code}</strong> in the e-transfer message so ${escapeHtml(o.business.name)} can match it to your order. You'll get a confirmation as soon as they receive it.${deadline ? ` If nothing arrives by ${deadline}, the order is released.` : ""}</p>
+      ${itemsTable(o.items)}${totalsTable(o, "Amount to send")}
+      ${payUrl ? `<a href="${payUrl}" style="display:inline-block;margin-top:20px;background:${o.business.brandColor || "#2f4536"};color:#f4f2ec;text-decoration:none;font-size:14px;font-weight:500;padding:10px 18px;border-radius:8px;">View payment details</a>` : ""}`,
+  });
+}
+
+/** The hold window passed with no e-transfer: the order was released. */
+export async function sendEtransferExpired(orderId: string): Promise<void> {
+  const o = await loadOrder(orderId);
+  if (!o || !o.customer?.email) return;
+  const code = etransferReference(o.id);
+  const firstName = o.customer.name?.split(" ")[0] ?? "there";
+  const storeUrl = o.business.slug ? `${APP_URL}/store/${o.business.slug}` : null;
+  await send({
+    to: o.customer.email,
+    businessId: o.businessId,
+    subject: `Your ${o.business.name} order #${code} was released`,
+    businessName: o.business.name,
+    brandColor: o.business.brandColor,
+    heading: `We released order #${code}, ${escapeHtml(firstName)}`,
+    subheading: "No e-transfer arrived in time",
+    bodyHtml: `
+      <p style="margin:0 0 14px;color:${INK};font-size:14px;">We held your order but didn't receive the e-transfer, so it has been cancelled and nothing is owed. Please don't send payment for this order now.</p>
+      <p style="margin:0 0 4px;color:${SOFT};font-size:13px;">Still hungry? You can place it again any time. If you did send the money, just reply to this email and ${escapeHtml(o.business.name)} will sort it out.</p>
+      ${storeUrl ? `<a href="${storeUrl}" style="display:inline-block;margin-top:18px;background:${o.business.brandColor || "#2f4536"};color:#f4f2ec;text-decoration:none;font-size:14px;font-weight:500;padding:10px 18px;border-radius:8px;">Order again</a>` : ""}`,
   });
 }
 

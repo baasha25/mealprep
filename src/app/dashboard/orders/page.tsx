@@ -9,21 +9,26 @@ import { ORDER_TYPE_LABEL } from "@/lib/order-status";
 import { ensureSubscriptionOrders } from "@/lib/subscription-orders-run";
 import { splitSummary } from "@/lib/delivery-stops";
 import { StatusControl } from "./status-control";
-import { updateOrderStatus } from "./actions";
+import { updateOrderStatus, markEtransferReceived } from "./actions";
+import { isAwaitingEtransfer, awaitingEtransferWhere, etransferAmountCents, etransferReference } from "@/lib/etransfer";
+import { expireEtransferOrders, awaitingEtransferSummary } from "@/lib/etransfer-data";
 
 const PAGE_SIZE = 100;
 
 export default async function OrdersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; page?: string }>;
+  searchParams: Promise<{ q?: string; page?: string; pay?: string }>;
 }) {
   const { business, role } = await requireBusiness();
   // Subscriber deliveries past their cut-off show up here as paid orders.
   await ensureSubscriptionOrders(business.id);
+  // Release e-transfer orders nobody paid for before listing what is still waiting.
+  await expireEtransferOrders({ businessId: business.id });
   const isStaff = role !== "owner";
   const sp = await searchParams;
   const term = (sp.q ?? "").trim();
+  const onlyAwaiting = sp.pay === "etransfer";
   const page = Math.max(1, parseInt(sp.page ?? "1", 10) || 1);
 
   // Staff don't see revenue: drop the total figure + the per-order $ column.
@@ -39,6 +44,7 @@ export default async function OrdersPage({
   // renders in the same time as one with twenty. Totals stay across all orders.
   const where = {
     businessId: business.id,
+    ...(onlyAwaiting ? awaitingEtransferWhere : {}),
     ...(term
       ? {
           OR: [
@@ -48,7 +54,7 @@ export default async function OrdersPage({
         }
       : {}),
   };
-  const [orders, matchCount, totals] = await Promise.all([
+  const [orders, matchCount, totals, awaiting] = await Promise.all([
     db.order.findMany({
       where,
       orderBy: { createdAt: "desc" },
@@ -62,12 +68,13 @@ export default async function OrdersPage({
     }),
     db.order.count({ where }),
     db.order.aggregate({ where: { businessId: business.id }, _count: { _all: true }, _sum: { totalCents: true } }),
+    awaitingEtransferSummary(business.id),
   ]);
   const allCount = totals._count._all;
   const revenueCents = totals._sum.totalCents ?? 0;
   const shown = orders;
   const pageCount = Math.max(1, Math.ceil(matchCount / PAGE_SIZE));
-  const pageHref = (p: number) => `/dashboard/orders?${term ? `q=${encodeURIComponent(term)}&` : ""}page=${p}`;
+  const pageHref = (p: number) => `/dashboard/orders?${term ? `q=${encodeURIComponent(term)}&` : ""}${onlyAwaiting ? "pay=etransfer&" : ""}page=${p}`;
 
   return (
     <Page>
@@ -101,6 +108,17 @@ export default async function OrdersPage({
         </div>
       ) : (
         <>
+          {(awaiting.count > 0 || onlyAwaiting) && (
+            <div className="rounded-xl border px-4 py-3 mb-3 flex flex-wrap items-center justify-between gap-2" style={{ borderColor: "#e6d59a", background: "#fbf5df" }}>
+              <div className="text-[13px]" style={{ color: "#5c4a12" }}>
+                <strong>{awaiting.count} order{awaiting.count === 1 ? "" : "s"} waiting for an e-transfer</strong>
+                {!isStaff && awaiting.count > 0 ? ` · ${formatCents(awaiting.cents)} expected` : ""}. They join production once you mark them paid.
+              </div>
+              <Link href={onlyAwaiting ? "/dashboard/orders" : "/dashboard/orders?pay=etransfer"} className="text-[12.5px] font-medium px-3 py-1.5 rounded-md border" style={{ borderColor: "#d9c47a", color: "#5c4a12", background: "#fffdf8" }}>
+                {onlyAwaiting ? "Show all orders" : "Show only these"}
+              </Link>
+            </div>
+          )}
           <ListSearch
             placeholder="Search by order code or customer…"
             basePath="/dashboard/orders"
@@ -108,7 +126,7 @@ export default async function OrdersPage({
           />
           {shown.length === 0 ? (
             <div className="rounded-xl border p-8 text-center" style={{ borderColor: "var(--line)", background: "var(--surface)" }}>
-              <p className="text-[13.5px]" style={{ color: "var(--muted)" }}>No orders match “{term}”.</p>
+              <p className="text-[13.5px]" style={{ color: "var(--muted)" }}>{term ? `No orders match “${term}”.` : "Nothing is waiting on an e-transfer."}</p>
             </div>
           ) : (
             <div
@@ -156,7 +174,19 @@ export default async function OrdersPage({
                 {(() => { const s = splitSummary(o, (d) => new Intl.DateTimeFormat("en-US", { weekday: "short" }).format(d)); return s ? <div className="text-[10.5px]" style={{ color: "var(--muted)" }}>split · {s}</div> : null; })()}
               </div>
               <div>
-                <StatusControl orderId={o.id} status={o.status} action={updateOrderStatus} />
+                {isAwaitingEtransfer(o) ? (
+                  <form action={markEtransferReceived} className="flex flex-col items-start gap-1">
+                    <input type="hidden" name="orderId" value={o.id} />
+                    <span className="text-[11px] font-semibold px-1.5 py-0.5 rounded" style={{ background: "#f3e9c9", color: "#8a6d1f" }} title={`Customer is sending ${formatCents(etransferAmountCents(o))} with ${etransferReference(o.id)} in the message`}>
+                      Awaiting e-transfer
+                    </span>
+                    <button type="submit" className="text-[12px] font-medium px-2.5 py-1 rounded-md" style={{ background: "var(--pine)", color: "#f4f2ec" }}>
+                      Mark paid
+                    </button>
+                  </form>
+                ) : (
+                  <StatusControl orderId={o.id} status={o.status} action={updateOrderStatus} />
+                )}
               </div>
               {!isStaff && (
                 <div className="disp text-[15px] font-medium text-right" style={{ color: "var(--ink)" }}>

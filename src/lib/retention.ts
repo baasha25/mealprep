@@ -31,6 +31,7 @@ export async function runRetentionEmails(now: Date = new Date()): Promise<Retent
       where: {
         businessId: { in: abandonedBizIds },
         status: "pending",
+        paymentMethod: null, // an order waiting on its e-transfer is not an abandoned checkout
         type: { in: ["one_time", "subscription"] },
         createdAt: { gte: new Date(now.getTime() - 48 * 3_600_000), lte: new Date(now.getTime() - 2 * 3_600_000) },
         customer: { isNot: null },

@@ -7,7 +7,9 @@ import { Page, Head, Card, CardTitle, Row } from "@/components/ui";
 import { formatCents } from "@/lib/money";
 import { ORDER_TYPE_LABEL } from "@/lib/order-status";
 import { StatusControl } from "../status-control";
-import { updateOrderStatus } from "../actions";
+import { updateOrderStatus, markEtransferReceived, releaseEtransferOrder } from "../actions";
+import { ETRANSFER, isAwaitingEtransfer, etransferAmountCents, etransferReference, etransferDeadline } from "@/lib/etransfer";
+import { DEFAULT_TIMEZONE } from "@/lib/cutoff";
 import { OrderLossControl } from "./order-loss-control";
 import { RefundButton } from "./refund-button";
 
@@ -28,6 +30,14 @@ export default async function OrderDetailPage({
     },
   });
   if (!order) notFound();
+
+  const awaitingEtransfer = isAwaitingEtransfer(order);
+  const etSettings = awaitingEtransfer
+    ? await db.businessSettings.findUnique({ where: { businessId: business.id }, select: { etransferHoldHours: true, timezone: true } })
+    : null;
+  const etDeadline = awaitingEtransfer
+    ? new Intl.DateTimeFormat("en-US", { timeZone: etSettings?.timezone || DEFAULT_TIMEZONE, weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }).format(etransferDeadline(order.createdAt, etSettings?.etransferHoldHours))
+    : "";
 
   const discountsCents =
     order.subtotalCents + order.taxCents + order.feesCents - order.totalCents;
@@ -51,6 +61,32 @@ export default async function OrderDetailPage({
           <StatusControl orderId={order.id} status={order.status} action={updateOrderStatus} />
         }
       />
+
+      {awaitingEtransfer && (
+        <div className="rounded-xl border px-4 py-3.5 mb-4 flex flex-wrap items-center justify-between gap-3" style={{ borderColor: "#e6d59a", background: "#fbf5df" }}>
+          <div className="text-[13px] min-w-0" style={{ color: "#5c4a12" }}>
+            <div className="font-semibold text-[14px]">Waiting for an e-transfer{isStaff ? "" : ` of ${formatCents(etransferAmountCents(order))}`}</div>
+            <div className="mt-0.5">
+              Look for <strong>{etransferReference(order.id)}</strong> in the message{order.customer ? `, from ${order.customer.name}` : ""}. Not in production until you mark it paid
+              {order.giftRedeemedCents > 0 ? ". A gift card was used, so it won't cancel by itself." : `. Cancels itself ${etDeadline} if nothing arrives.`}
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <form action={releaseEtransferOrder}>
+              <input type="hidden" name="orderId" value={order.id} />
+              <button type="submit" className="text-[12.5px] font-medium px-3 py-2 rounded-lg border" style={{ borderColor: "#d9c47a", color: "#5c4a12", background: "#fffdf8" }}>
+                Cancel order
+              </button>
+            </form>
+            <form action={markEtransferReceived}>
+              <input type="hidden" name="orderId" value={order.id} />
+              <button type="submit" className="text-[13px] font-medium px-3.5 py-2 rounded-lg" style={{ background: "var(--pine)", color: "#f4f2ec" }}>
+                Mark paid
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
 
       <div className="grid lg:grid-cols-[1.4fr_1fr] gap-4">
         <Card>
@@ -100,6 +136,11 @@ export default async function OrderDetailPage({
                 {formatCents(order.totalCents)}
               </span>
             </div>
+            {order.paymentMethod === ETRANSFER && (
+              <div className="pt-2 text-[12.5px]" style={{ color: "var(--muted)" }}>
+                {awaitingEtransfer ? "Paying by e-transfer · not received yet" : order.status === "canceled" ? "Chose e-transfer · never paid" : "Paid by e-transfer · no card or platform fee"}
+              </div>
+            )}
             {order.giftRedeemedCents > 0 && (
               <div className="pt-2 space-y-1.5">
                 <Row l="Paid by gift card" v={`−${formatCents(order.giftRedeemedCents)}`} green />
@@ -121,7 +162,7 @@ export default async function OrderDetailPage({
               .map((it) => ({ mealId: it.mealId as string, name: it.nameSnapshot, qty: it.qty }))}
           />
 
-          {!isStaff && order.status !== "refunded" && order.status !== "canceled" && (
+          {!isStaff && !awaitingEtransfer && order.status !== "refunded" && order.status !== "canceled" && (
             <div className="mt-4 pt-4" style={{ borderTop: "1px solid var(--line)" }}>
               <RefundButton orderId={order.id} amountLabel={formatCents(Math.max(0, order.totalCents - order.giftRedeemedCents))} />
             </div>
